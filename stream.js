@@ -183,7 +183,8 @@
     if (!Object.keys(chars).length) return;
     pm = { at: Date.now(), chars: Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed)).map(c => {
       const all = (inv[c.characterId] || {}).items || [];
-      return { id: c.characterId, name: CLS[c.classType] || 'Character',
+      const eq = (((p.characterEquipment && p.characterEquipment.data) || {})[c.characterId] || {}).items || [];
+      return { id: c.characterId, name: CLS[c.classType] || 'Character', eq: new Set(eq.map(x => x.bucketHash)),
         items: all.filter(it => it.bucketHash === PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1 })),
         // what's in this character's inventory (not equipped), so a full bucket can be emptied into the vault
         inv: all.filter(it => it.bucketHash !== PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1, bucket: it.bucketHash,
@@ -268,6 +269,33 @@
     const own = x.id !== '0' && typeof byId === 'function' ? byId(x.id) : null; if (own){ own.charId = null; own.loc = 'Vault'; if ('where' in own) own.where = 'vault'; }
     return { moved: pmDef(x.hash).n + (x.qty > 1 ? ' ×' + x.qty : '') };
   }
+  // Is that bucket on the character already full? Bucket sizes come from DestinyInventoryBucketDefinition
+  // (itemCount includes the equipped item for equippable buckets). Only used for instanced items: a stack can merge
+  // into one the character already has, so stacks rely on Bungie's no-room answer instead.
+  async function bucketFull(ch, bucket){
+    if (!bucket) return false;
+    let d = null; try { d = await ent('DestinyInventoryBucketDefinition', bucket); } catch {}
+    const cap = d && d.itemCount; if (!cap) return false;
+    const used = ch.inv.filter(x => x.bucket === bucket).length + (d.category === 3 && ch.eq && ch.eq.has(bucket) ? 1 : 0);
+    return used >= cap;
+  }
+  // make room for one postmaster item on a character, before the pull (force = Bungie already said there's no room)
+  async function ensureRoom(cid, hash, instanced, force){
+    if (!pm || ls.get('pmMakeRoom') === '0') return {};
+    const ch = pm.chars.find(c => c.id === cid); if (!ch) return {};
+    const bucket = await destBucket(hash);
+    if (!force && !(instanced && await bucketFull(ch, bucket))) return {};
+    return makeRoom(ch, bucket);
+  }
+  // after a pull the item takes a slot: keep the count right for the next item in Pull all
+  function landed(cid, it, bucket){ const ch = pm && pm.chars.find(c => c.id === cid); if (!ch) return;
+    ch.items = ch.items.filter(x => !(x.id === it.id && x.hash === it.hash && (it.id !== '0' || x.qty === it.qty)));
+    if (bucket) ch.inv.push({ id: it.id, hash: it.hash, qty: it.qty, bucket, locked: false, power: 0 });
+    pmButton(); if (!$('pmPanel').classList.contains('hidden')) pmRender(); }
+  // the item cards on Weapons, Armor and Vault pull from the postmaster through this too
+  window.pmEnsureRoom = (cid, hash, instanced, force) => ensureRoom(cid, hash, instanced, force);
+  window.pmIsNoRoom = e => NO_ROOM.test((e && e.message) || '');
+  window.pmLanded = async (cid, it) => landed(cid, it, await destBucket(it.hash));
   async function pmPull(cid, pick, btn){
     if (pmBusy) return;
     if (!state.acct || !auth.valid()){ setStatus('Sign in with Bungie (top right) to pull from the postmaster.', true); return; }
@@ -278,16 +306,21 @@
     const pull = it => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: it.hash, stackSize: it.qty, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
     for (const it of items){
       try {
+        const bucket = await destBucket(it.hash);
+        // empty a slot first when we can already see the bucket is full
+        const pre = await ensureRoom(cid, it.hash, it.id !== '0', false);
+        if (pre.err) throw new Error('NoRoom: ' + pre.err);
+        if (pre.moved){ moved.push(pre.moved); await new Promise(res => setTimeout(res, 300)); }
         try { await pull(it); }
         catch (e){
           if (!NO_ROOM.test(e.message || '') || !makeRoomOn()) throw e;
-          const r = await makeRoom(ch, await destBucket(it.hash));
+          const r = await ensureRoom(cid, it.hash, it.id !== '0', true);
           if (r.err) throw new Error('NoRoom: ' + r.err);
-          moved.push(r.moved);
+          if (r.moved) moved.push(r.moved);
           await new Promise(res => setTimeout(res, 300));
           await pull(it);
         }
-        ch.items = ch.items.filter(x => x !== it); ok++;
+        landed(cid, it, bucket); ok++;
         const g = it.id !== '0' && state.gear && state.gear.get(it.id); if (g){ g.postmaster = false; g.loc = ch.name; }
         const own = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (own){ own.postmaster = false; own.loc = ch.name; if ('where' in own) own.where = cid; }
       } catch (e){

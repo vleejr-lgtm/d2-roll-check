@@ -125,7 +125,7 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 
 * The 📬 button in the header shows how many lost items are waiting across your characters, and turns red when one of them is close to the 21 item limit.
 * Open it to pull one item or everything for a character.
-* **Make room** (on by default): if that slot on the character is full, it first moves your lowest rarity, lowest power **unlocked** item in that slot to the vault, then pulls. Locked and equipped items are never moved, so lock anything you want to keep on the character. Engrams and quests can't go to the vault, so for those it tells you to clear space in game.
+* **Make room** (on by default): if that slot on the character is full, it first moves your lowest rarity, lowest power **unlocked** item in that slot to the vault, then pulls. Locked and equipped items are never moved, so lock anything you want to keep on the character. Engrams and quests can't go to the vault, so for those it tells you to clear space in game. The same applies to the 📬 Pull button on weapon, armor and vault cards.
 
 ## Shaders (shaders.html)
 
