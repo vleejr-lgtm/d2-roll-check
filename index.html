@@ -941,6 +941,12 @@ function rerate(){
     }
     ls.set('weaponIndex', JSON.stringify({ at: Date.now(), m: wi }));
   } catch {}
+  // per item verdicts, so the Character page can label every weapon the same way
+  try {
+    const vm = {};
+    for (const it of state.items) if (it.id) vm[it.id] = [it.r.verdict, (it.r.reason || '').slice(0, 110), it.dupCount > 1 ? it.dupRank + '/' + it.dupCount : '', it.tier !== 6 && !it.gearTier ? 1 : 0];
+    ls.set('verdicts:weapons', JSON.stringify({ at: Date.now(), m: vm }));
+  } catch {}
   const c = {}; state.items.forEach(i => c[i.r.verdict] = (c[i.r.verdict] || 0) + 1);
   try { ls.set('weaponSummary', JSON.stringify({ at: Date.now(), total: state.items.length, c })); } catch {}   // for the Home view
   if (typeof renderHome === 'function') renderHome();
