@@ -234,6 +234,21 @@
   .modelist summary b{color:var(--dim);font-weight:400;margin-left:6px}
   .modelist .agrid{padding:0 12px 12px}
   .signin{border-color:#2b4f6b}
+  .catrow{grid-column:1 / -1}
+  .catrow .chips{flex-wrap:wrap}
+  .lsfall{display:flex; flex-direction:column; gap:10px}
+  .lsf-title{font-weight:650; font-size:15px}
+  .lsf-chars{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .lsf-chars button{height:30px}
+  details.lsall summary{cursor:pointer; color:#9fc6ef; font-size:13px}
+  .lsdest{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px 20px; margin-top:10px; font-size:13px}
+  .lsdest b{display:block; color:var(--text); font-weight:600}
+  .lsdest span{color:var(--dim)}
+  .lslinks{font-size:12.5px; color:var(--faint); margin-top:4px}
+  .lslinks a{color:#9fc6ef; text-decoration:none} .lslinks a:hover{text-decoration:underline}
+  #lost .lslinks{margin-top:8px}
+  .flash{animation:flash 1.2s ease-out}
+  @keyframes flash{0%{box-shadow:0 0 0 2px rgba(226,183,75,.6); border-radius:12px} 100%{box-shadow:0 0 0 0 rgba(226,183,75,0)}}
   .lsbox{display:grid;grid-template-columns:minmax(260px,420px) 1fr;gap:0;border:1px solid #5a4a1c;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#221b0c,#161b22 70%);margin-bottom:12px}
   .lsbox .hero{min-height:170px;background:#0b0e12 center/cover no-repeat}
   .lsbox .ab{padding:14px 16px;display:flex;flex-direction:column;gap:7px}
@@ -285,6 +300,7 @@
     <div class="fgrid">
       <div class="frow"><span class="flbl">Character</span><div class="chips" id="tChar"></div></div>
       <div class="frow"><span class="flbl">Search</span><input id="tSearch" placeholder="activity, modifier, reward or place" style="flex:1"></div>
+      <div class="frow catrow"><span class="flbl">Show</span><div class="chips" id="tCat"></div></div>
     </div>
   </div>
 
@@ -666,32 +682,102 @@ function findLostSectors(c){
 // remember today's lost sector so it still shows when you're signed out later the same day
 const lastReset = () => nextUtc(null) - 864e5;
 function lsCache(list){
-  if (list){ ls.set('lsToday', JSON.stringify({ day: lastReset(), list })); return list; }
+  if (list){ if (list.length) ls.set('lsToday', JSON.stringify({ day: lastReset(), list })); return list; }
   try { const c = JSON.parse(ls.get('lsToday') || 'null'); return c && c.day === lastReset() ? c.list : null; } catch { return null; }
 }
+const LS_LINKS = '<div class="lslinks">Full daily rotation calendar: <a href="https://kyberscorner.com/destiny2/lost-sectors/" target="_blank" rel="noopener">Kyber\'s Corner ↗</a> · <a href="https://www.todayindestiny.com/" target="_blank" rel="noopener">TodayInDestiny ↗</a></div>';
+const slimLS = g => ({ name: g.name, hash: g.hash, diffs: g.diffs, mods: g.mods, rewards: g.rewards });
 function renderLost(){
   const el = $('lost');
+  if (state.cat !== 'all' && state.cat !== 'lost'){ el.innerHTML = ''; return; }
   const c = state.tchar && state.char[state.tchar];
-  let list = c ? lsCache(findLostSectors(c).map(g => ({ name: g.name, hash: g.hash, diffs: g.diffs, mods: g.mods, rewards: g.rewards }))) : lsCache();
-  const fromCache = !c && list;
-  const head = '<div class="sect"><h2>Lost Sector today</h2><span class="dim-lbl">Changes at the daily reset, in ' + cd(nextUtc(null)) + '.' + (fromCache ? ' Seen on your account earlier today.' : '') + '</span></div>';
-  if (!list){
-    el.innerHTML = head + '<div class="panel signin">' + (auth.valid() ? 'Loading…' : 'Sign in with Bungie (top right) to see today\'s lost sector. Bungie only lists the daily rotation in your character\'s activities, not in the public data.') + '</div>';
-    return;
+  const chName = (state.chars.find(x => x.id === state.tchar) || {}).name || 'character';
+  let list = c ? findLostSectors(c).map(slimLS) : null, note = '', other = null;
+  if (list && list.length) lsCache(list);
+  if (!list || !list.length){
+    // another character may have it unlocked
+    for (const ch of state.chars || []){
+      if (ch.id === state.tchar || !state.char[ch.id]) continue;
+      const l = findLostSectors(state.char[ch.id]);
+      if (l.length){ other = ch; list = l.map(slimLS); lsCache(list); break; }
+    }
+    if (other) note = 'Not listed on your ' + chName + ', but your ' + other.name + ' has it.';
+    else { const cached = lsCache(); if (cached && cached.length){ list = cached; note = 'Seen on your account earlier today.'; } }
   }
-  if (!list.length){ el.innerHTML = head + '<div class="panel dim-lbl">Bungie isn\'t listing a rotating lost sector for this character right now. If you haven\'t unlocked Expert or Master lost sectors on this character yet, try another one.</div>'; return; }
-  const s = q();
-  list = list.filter(g => !s || [g.name, where(g.hash), ...modNames(g.mods), ...g.rewards.map(nameOf)].join(' ').toLowerCase().includes(s));
-  el.innerHTML = head + list.map(g => {
-    const a = T.act[g.hash] || {}, loc = where(g.hash);
-    const rw = g.rewards.map(h => (state.defs || {})[h]).filter(d => d && d.n);
-    return '<div class="lsbox"><div class="hero" style="background-image:url(\'' + img(a.img) + '\')"></div><div class="ab">' +
-      '<h3>' + esc(g.name) + '</h3>' + (loc ? '<div class="vloc" style="color:#9fe7ff">📍 ' + esc(loc) + '</div>' : '') +
-      '<div class="diffs">' + g.diffs.map(d => '<span class="diff"><b>' + esc(d.label) + '</b>' + (d.light ? ' · Power ' + d.light : '') + '</span>').join('') + '</div>' +
-      modsHtml(g.mods) +
-      (rw.length ? '<div class="lsrw">' + rw.map(d => '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + '</span>').join('') + '</div>' : '') +
-      ((a.d) ? '<div class="ad">' + esc(a.d) + '</div>' : '') + '</div></div>';
-  }).join('');
+  const head = '<div class="sect"><h2>Lost Sector today</h2><span class="dim-lbl">Changes at the daily reset, in ' + cd(nextUtc(null)) + '.' + (note ? ' ' + esc(note) : '') + '</span></div>';
+  if (!list || !list.length){
+    // nothing rotating to show: still useful, list what this character can run and point to a calendar
+    const lsActs = c ? [...new Map((c.availableActivities || []).filter(a => a.isVisible !== false && isLostSector(a.activityHash)).map(a => [lsBase(a.activityHash) || actName(a.activityHash), a])).entries()] : [];
+    const byDest = {};
+    for (const [name, a] of lsActs){ const d = where(a.activityHash) || 'Other'; (byDest[d] = byDest[d] || []).push(name); }
+    const others = (state.chars || []).filter(x => x.id !== state.tchar);
+    el.innerHTML = head + '<div class="panel lsfall">' +
+      '<div class="lsf-title">' + (c ? 'No rotating lost sector on your ' + esc(chName) + ' right now' : auth.valid() ? 'Loading…' : 'Sign in with Bungie to see today\'s lost sector') + '</div>' +
+      '<div class="dim-lbl">' + (c ? 'Bungie only lists the daily Expert and Master lost sector for characters that have them unlocked, and none of your characters show it yet today.' : 'Bungie only lists the daily rotation in your character\'s activities, not in the public data.') + '</div>' +
+      (c && others.length ? '<div class="lsf-chars"><span class="dim-lbl">Check another character:</span>' + others.map(x => '<button class="ghost" data-switch="' + esc(x.id) + '">' + esc(x.name) + '</button>').join('') + '</div>' : '') +
+      (lsActs.length ? '<details class="lsall"><summary>Lost sectors your ' + esc(chName) + ' can run (' + lsActs.length + ')</summary><div class="lsdest">' +
+        Object.keys(byDest).sort().map(d => '<div><b>' + esc(d) + '</b><span>' + byDest[d].map(esc).join(', ') + '</span></div>').join('') + '</div></details>' : '') +
+      LS_LINKS + '</div>';
+  } else {
+    const s = q();
+    const shown = list.filter(g => !s || [g.name, where(g.hash), ...modNames(g.mods), ...g.rewards.map(nameOf)].join(' ').toLowerCase().includes(s));
+    el.innerHTML = head + shown.map(g => {
+      const a = T.act[g.hash] || {}, loc = where(g.hash);
+      const rw = g.rewards.map(h => (state.defs || {})[h]).filter(d => d && d.n);
+      return '<div class="lsbox"><div class="hero" style="background-image:url(\'' + img(a.img) + '\')"></div><div class="ab">' +
+        '<h3>' + esc(g.name) + '</h3>' + (loc ? '<div class="vloc" style="color:#9fe7ff">📍 ' + esc(loc) + '</div>' : '') +
+        '<div class="diffs">' + g.diffs.map(d => '<span class="diff"><b>' + esc(d.label) + '</b>' + (d.light ? ' · Power ' + d.light : '') + '</span>').join('') + '</div>' +
+        modsHtml(g.mods) +
+        (rw.length ? '<div class="lsrw">' + rw.map(d => '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + '</span>').join('') + '</div>' : '') +
+        ((a.d) ? '<div class="ad">' + esc(a.d) + '</div>' : '') +
+        (other ? '<div><button class="ghost" data-switch="' + esc(other.id) + '">Switch to your ' + esc(other.name) + '</button></div>' : '') +
+        '</div></div>';
+    }).join('') + (s && !shown.length ? '<div class="panel dim-lbl">Today\'s lost sector doesn\'t match the search.</div>' : '') + LS_LINKS;
+  }
+  el.querySelectorAll('[data-switch]').forEach(b => b.onclick = () => { state.tchar = b.dataset.switch; ls.set('todayChar', state.tchar); render(); });
+}
+
+/* ---- activity categories (pills) ---- */
+const CATS = [['all', 'All'], ['lost', 'Lost Sector'], ['strike', 'Strikes / Nightfall'], ['raid', 'Raids'], ['dungeon', 'Dungeons'], ['pvp', 'Crucible'], ['weekly', 'Weekly / Portal']];
+state.cat = ls.get('todayCat') || 'all';
+function catsOf(h, weekly){
+  const a = T.act[h] || {}, s = [a.n, a.o, actType(h), (T.mode[a.mode] || {}).n].join(' ');
+  const out = new Set();
+  if (isLostSector(h)) out.add('lost');
+  if (/nightfall|\bstrikes?\b|vanguard ops|grandmaster/i.test(s)) out.add('strike');
+  if (/\braid\b/i.test(s)) out.add('raid');
+  if (/dungeon/i.test(s)) out.add('dungeon');
+  if (a.pvp || /crucible|trials of osiris|iron banner|competitive|\bcontrol\b|\bclash\b|rumble|elimination/i.test(s)) out.add('pvp');
+  if (weekly) out.add('weekly');   // weekly rotations, Portal-featured, or has weekly challenges
+  return out;
+}
+const catOk = set => state.cat === 'all' || set.has(state.cat);
+const msCats = m => { const acts = m.activities || []; const out = new Set(['weekly']); acts.forEach(a => catsOf(a.activityHash, true).forEach(x => out.add(x))); return out; };
+const actCats = a => catsOf(a.activityHash, !!(a.isFocusedActivity || (a.challenges || []).length));
+function renderCats(){
+  // live counts, after the search box is applied
+  const seen = new Map();
+  for (const m of Object.values(state.pub || {})){
+    const md = T.ms[m.milestoneHash] || {}, acts = m.activities || [];
+    if (!acts.length && !md.n) continue;
+    const okSearch = acts.length ? matches(acts[0].activityHash, [md.n, md.d, ...acts.flatMap(a => modNames(a.modifierHashes))]) : matches(0, [md.n, md.d]);
+    if (okSearch) seen.set('ms:' + m.milestoneHash, msCats(m));
+  }
+  for (const a of state.actsList || []) if (matches(a.activityHash, [...modNames(a.modifierHashes), ...rewardNames(a.visibleRewards)])) seen.set('a:' + actName(a.activityHash), actCats(a));
+  const n = k => k === 'all' ? seen.size : [...seen.values()].filter(set => set.has(k)).length;
+  $('tCat').innerHTML = CATS.map(([k, l]) => '<span class="chip' + (state.cat === k ? ' on' : '') + '" data-cat="' + k + '">' + esc(l) + '<b>' + n(k) + '</b></span>').join('');
+  $('tCat').querySelectorAll('[data-cat]').forEach(c => c.onclick = () => {
+    state.cat = c.dataset.cat; ls.set('todayCat', state.cat);
+    renderLost(); renderWeekly(); renderChar(); renderCats();
+    if (state.cat !== 'all') jumpToFirst();
+  });
+}
+// scroll to the first section that has something in this category, and flash it
+function jumpToFirst(){
+  const el = ['lost', 'weekly', 'featured', 'challenges', 'allActs'].map($).find(e => e && e.innerHTML.trim() && e.querySelector('.act, .lsbox, .lsfall, details'));
+  if (!el) return;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
 function render(){
@@ -701,7 +787,7 @@ function render(){
     '<div class="sum"><span class="dim-lbl">Weekly reset</span><b>' + cd(weekly) + '</b><span class="dim-lbl">' + fmtWhen(weekly) + ' your time</span></div>' +
     (() => { const c = state.tchar && state.char[state.tchar]; const l = c ? findLostSectors(c) : (lsCache() || []); return l.length ? '<div class="sum"><span class="dim-lbl">Lost Sector today</span><b style="font-size:16px">' + esc(l.map(g => g.name).join(' / ')) + '</b><span class="dim-lbl">' + esc(where(l[0].hash)) + '</span></div>' : ''; })() +
     '<div class="sum"><span class="dim-lbl">' + (xw.here ? 'Xûr leaves in' : 'Xûr arrives in') + '</span><b>' + cd(xw.here ? xw.leaves : xw.arrives) + '</b><span class="dim-lbl"><a href="vendors.html">Vendors &amp; Xûr →</a></span></div>';
-  renderLost(); renderWeekly(); renderChar();
+  renderLost(); renderWeekly(); renderChar(); renderCats();
 }
 function renderWeekly(){
   const el = $('weekly');
@@ -712,6 +798,7 @@ function renderWeekly(){
     const md = T.ms[m.milestoneHash] || {};
     const acts = m.activities || [];
     if (!acts.length && !md.n) continue;
+    if (!catOk(msCats(m))) continue;
     if (!acts.length){
       if (!matches(0, [md.n, md.d])) continue;
       cards.push('<div class="act"><div class="hero" style="background-image:url(\'' + img(md.img) + '\')"><span class="ty">Weekly</span></div><div class="ab"><div class="an">' + (md.i ? '<img src="' + img(md.i) + '" alt="">' : '') + esc(md.n || 'Milestone') + '</div>' +
@@ -729,6 +816,7 @@ function renderWeekly(){
       chal: [...new Set(acts.flatMap(a => a.challengeObjectiveHashes || []))].map(h => ({ objectiveHash: h }))
     }));
   }
+  if (!cards.length && state.cat !== 'all'){ el.innerHTML = ''; return; }
   el.innerHTML = '<div class="sect"><h2>This week</h2><span class="dim-lbl">Weekly rotations from Bungie, the same for everyone. They change at the weekly reset.</span></div>' +
     (cards.length ? '<div class="agrid">' + cards.join('') + '</div>' : '<div class="panel dim-lbl">Nothing matches the search.</div>');
 }
@@ -738,12 +826,12 @@ function renderChar(){
     $('toolbar').classList.toggle('hidden', !state.pub);
     $('tChar').innerHTML = '<span class="dim-lbl">Sign in with Bungie to pick a character.</span>';
     $('featured').innerHTML = state.pub && !auth.valid() ? '<div class="panel signin" style="margin-top:18px">Sign in with Bungie (top right) to add what your characters can play right now: featured activities, weekly challenges with your progress, modifiers and rewards.</div>' : '';
-    $('challenges').innerHTML = ''; $('allActs').innerHTML = '';
+    $('challenges').innerHTML = ''; $('allActs').innerHTML = ''; state.actsList = [];
     return;
   }
   $('toolbar').classList.remove('hidden');
   $('tChar').innerHTML = state.chars.map(ch => '<span class="chip ' + (ch.id === state.tchar ? 'on' : '') + '" data-c="' + ch.id + '">' + esc(ch.name) + (ch.light ? ' <b>' + ch.light + '</b>' : '') + '</span>').join('');
-  $('tChar').querySelectorAll('.chip').forEach(x => x.onclick = () => { state.tchar = x.dataset.c; ls.set('todayChar', state.tchar); renderLost(); renderChar(); });
+  $('tChar').querySelectorAll('.chip').forEach(x => x.onclick = () => { state.tchar = x.dataset.c; ls.set('todayChar', state.tchar); render(); });
   const list = (c.availableActivities || []).filter(a => a.isVisible !== false && actName(a.activityHash));
   // same name, several difficulty variants: keep one card (the featured or highest-power one)
   const byName = new Map();
@@ -752,12 +840,12 @@ function renderChar(){
     if (!cur || (a.isFocusedActivity && !cur.isFocusedActivity) || ((a.challenges || []).length > (cur.challenges || []).length) || (!cur.isFocusedActivity && (a.recommendedLight || 0) > (cur.recommendedLight || 0))) byName.set(n, a);
   }
   const acts = [...byName.values()];
-  state.nActs = acts.length;
+  state.nActs = acts.length; state.actsList = acts;
   const extra = a => ({ feat: a.isFocusedActivity, light: a.recommendedLight, mods: a.modifierHashes, chal: a.challenges, rewards: a.visibleRewards,
     done: a.isCompleted && !(a.challenges || []).some(x => x.objective && !x.objective.complete) });
-  const ok = a => matches(a.activityHash, [...modNames(a.modifierHashes), ...rewardNames(a.visibleRewards)]);
+  const ok = a => catOk(actCats(a)) && matches(a.activityHash, [...modNames(a.modifierHashes), ...rewardNames(a.visibleRewards)]);
   const feat = acts.filter(a => a.isFocusedActivity && ok(a));
-  $('featured').innerHTML = '<div class="sect"><h2>Featured right now</h2><span class="dim-lbl">What the Portal is spotlighting for your ' + esc((state.chars.find(x => x.id === state.tchar) || {}).name || '') + '.</span></div>' +
+  $('featured').innerHTML = !feat.length && state.cat !== 'all' ? '' : '<div class="sect"><h2>Featured right now</h2><span class="dim-lbl">What the Portal is spotlighting for your ' + esc((state.chars.find(x => x.id === state.tchar) || {}).name || '') + '.</span></div>' +
     (feat.length ? '<div class="agrid">' + feat.map(a => actCard(a.activityHash, extra(a))).join('') + '</div>' : '<div class="panel dim-lbl">' + (q() ? 'Nothing featured matches the search.' : 'Bungie isn\'t flagging any featured activities for this character.') + '</div>');
   const ch = acts.filter(a => (a.challenges || []).length && !a.isFocusedActivity && ok(a))
     .sort((x, y) => (x.challenges.every(c => c.objective && c.objective.complete) ? 1 : 0) - (y.challenges.every(c => c.objective && c.objective.complete) ? 1 : 0));
@@ -766,16 +854,21 @@ function renderChar(){
   for (const a of acts){ if (!ok(a)) continue; (groups[actType(a.activityHash)] = groups[actType(a.activityHash)] || []).push(a); }
   const keys = Object.keys(groups).sort((x, y) => groups[y].length - groups[x].length || x.localeCompare(y));
   const open = new Set(JSON.parse(ls.get('todayOpen') || '[]'));
-  $('allActs').innerHTML = '<div class="sect"><h2>Everything you can play</h2><span class="dim-lbl">' + acts.length + ' activities, grouped by type. Click a group to open it.</span></div><div class="modelist">' +
-    keys.map(k => '<details data-k="' + esc(k) + '"' + (open.has(k) || q() ? ' open' : '') + '><summary>' + esc(k) + '<b>' + groups[k].length + '</b></summary><div class="agrid">' +
+  const filtered = q() || state.cat !== 'all';
+  const shown = keys.reduce((n, k) => n + groups[k].length, 0);
+  const catName = (CATS.find(c => c[0] === state.cat) || [])[1] || '';
+  $('allActs').innerHTML = '<div class="sect"><h2>Everything you can play</h2><span class="dim-lbl">' + (state.cat !== 'all' ? shown + ' ' + esc(catName) + ' activities' : acts.length + ' activities, grouped by type. Click a group to open it.') + '</span></div>' +
+    (!keys.length && filtered ? '<div class="panel dim-lbl">Nothing ' + (state.cat !== 'all' ? 'in ' + esc(catName) : 'matching') + ' for your ' + esc((state.chars.find(x => x.id === state.tchar) || {}).name || 'character') + ' right now.' + (state.cat !== 'all' ? ' Try All, or another character.' : '') + '</div>' : '') +
+    '<div class="modelist">' +
+    keys.map(k => '<details data-k="' + esc(k) + '"' + (open.has(k) || filtered ? ' open' : '') + '><summary>' + esc(k) + '<b>' + groups[k].length + '</b></summary><div class="agrid">' +
       groups[k].sort((x, y) => actName(x.activityHash).localeCompare(actName(y.activityHash))).map(a => actCard(a.activityHash, extra(a))).join('') + '</div></details>').join('') + '</div>';
   $('allActs').querySelectorAll('details[data-k]').forEach(d => d.ontoggle = () => {
-    if (q()) return;
+    if (q() || state.cat !== 'all') return;
     const s = new Set(JSON.parse(ls.get('todayOpen') || '[]')); d.open ? s.add(d.dataset.k) : s.delete(d.dataset.k); ls.set('todayOpen', JSON.stringify([...s]));
   });
 }
 let searchT = 0;
-$('tSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(() => { renderLost(); renderWeekly(); renderChar(); }, 150); };
+$('tSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(() => { renderLost(); renderWeekly(); renderChar(); renderCats(); }, 150); };
 
 /* ===================== footer, refresh, countdowns ===================== */
 function updateFooter(){
