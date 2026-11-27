@@ -180,17 +180,17 @@
   .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
   .sb-new{background:#2fd3c8;color:#04201e}
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <header>
-  <h1>D2 Roll Check</h1>
-  <div class="tabs">
-    <button class="tab active" data-view="scan">My weapons</button>
-    <button class="tab" data-view="lookup">Look up a weapon</button>
-    <a class="tab navlink" href="armor.html">Armor triage →</a>
-    <a class="tab navlink" href="vendors.html">Vendors &amp; Xûr →</a>
-    <a class="tab navlink" href="today.html">Today →</a>
-  </div>
+  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html">Today</a>
+    <a class="nav active" href="index.html#weapons">Weapons</a>
+    <a class="nav" href="armor.html">Armor triage</a>
+    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
+  </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull weapons to"></select>
@@ -222,6 +222,10 @@
 </div>
 <div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
 <main>
+  <div class="subtabs">
+    <button class="tab active" data-view="scan">My weapons</button>
+    <button class="tab" data-view="lookup">Look up a weapon</button>
+  </div>
   <section class="settings" id="settings">
     <label for="apiKey">Bungie API key</label>
     <input id="apiKey" type="password" placeholder="Paste key from bungie.net/en/Application" autocomplete="off">
@@ -240,9 +244,47 @@
 
   <div id="status"></div>
 
+  <section id="view-home" class="hidden">
+    <div class="hero">
+      <div>
+        <h2 id="homeGreet">Welcome back, Guardian</h2>
+        <p class="dim-lbl" id="homeConn"></p>
+      </div>
+      <div class="quick">
+        <a class="qbtn primary" href="#weapons">Scan my weapons</a>
+        <a class="qbtn ghost" href="armor.html">Triage armor</a>
+      </div>
+    </div>
+    <div>
+      <div class="sectionhead"><h2>At a glance</h2><span class="dim-lbl" id="homeAt"></span></div>
+      <div class="hstats" id="homeStats"></div>
+    </div>
+    <div>
+      <div class="sectionhead"><h2>Jump to</h2></div>
+      <div class="navcards">
+        <a class="navcard" href="#weapons"><b>My weapons</b><span>Every weapon graded god roll, close or trash, with pull, lock and perk swaps.</span></a>
+        <a class="navcard" href="#lookup"><b>Look up a weapon</b><span>See the recommended rolls for any weapon before you farm it.</span></a>
+        <a class="navcard" href="armor.html"><b>Armor triage</b><span>Keep or trash every armor piece, and what to farm next.</span></a>
+        <a class="navcard" href="vendors.html"><b>Vendors &amp; Xûr</b><span>What's worth buying this week, Zavala, Shaxx and Xûr.</span></a>
+        <a class="navcard" href="today.html"><b>Today</b><span>Lost sector, weekly rotations, featured activities and challenges.</span></a>
+      </div>
+    </div>
+    <div class="two">
+      <div>
+        <div class="sectionhead"><h2>Recent drops</h2><span class="dim-lbl">From the 📡 Activity stream</span></div>
+        <div class="feed" id="homeFeed"></div>
+      </div>
+      <div>
+        <div class="sectionhead"><h2>Clocks</h2></div>
+        <div class="hstats clocks" id="homeClocks"></div>
+      </div>
+    </div>
+  </section>
+
   <section id="view-scan">
-    <div class="bar">
-      <input id="bungieName" placeholder="BungieName#1234 or bungie.net profile link" style="min-width:320px">
+    <div class="toolbar">
+    <div class="bar tb-scan">
+      <input id="bungieName" placeholder="BungieName#1234 or bungie.net profile link">
       <select id="mode">
         <option value="all">PvE + PvP</option>
         <option value="pve">PvE only</option>
@@ -253,10 +295,9 @@
       <label class="dim-lbl" title="Re-reads your inventory when you switch back to this tab, and every 60 seconds while it's open"><input type="checkbox" id="autoRefresh"> Auto-refresh</label>
       <span class="dim-lbl" id="lastScan"></span>
     </div>
-    <div id="privacyWarn" class="warn hidden">Your vault and character inventories are private, so only equipped weapons are shown. On Bungie.net go to Settings, Privacy, and turn on "Show my non-equipped Inventory", then scan again.</div>
-    <div class="bar">
+    <div class="bar tb-filter">
       <div class="chips" id="chips"></div>
-      <input id="filterText" placeholder="Filter by name or type" style="margin-left:auto;min-width:220px">
+      <input id="filterText" placeholder="Filter by name or type">
       <select id="sort">
         <option value="verdict">Sort: verdict</option>
         <option value="name">Sort: name</option>
@@ -266,8 +307,13 @@
       </select>
       <label class="dim-lbl"><input type="checkbox" id="onlyDupes"> only duplicates</label>
     </div>
+    </div>
+    <div id="privacyWarn" class="warn hidden">Your vault and character inventories are private, so only equipped weapons are shown. On Bungie.net go to Settings, Privacy, and turn on "Show my non-equipped Inventory", then scan again.</div>
     <div class="dimbar hidden" id="dimbar">
-      <b>DIM</b>
+      <details class="drawer">
+        <summary>DIM Export &amp; Bulk Actions <span class="dim-lbl" title="DIM doesn't let other apps write tags, so tags go to DIM through a CSV you import.">tags, CSV for DIM, DIM searches, bulk lock</span></summary>
+        <div class="drawer-body">
+          <div class="drawer-row"><span class="dim-lbl">Bulk</span> <button class="ghost needauth" id="btnLockGod">🔒 Lock all god rolls</button> <button class="ghost needauth" id="btnLockFav">🔒 Lock everything tagged favorite</button></div>
       <span class="dim-lbl">Tag god rolls as</span>
       <select id="tagGod"><option>favorite</option><option>keep</option><option value="">(skip)</option></select>
       <span class="dim-lbl">close as</span>
@@ -276,16 +322,18 @@
       <select id="tagTrash"><option>junk</option><option value="">(skip)</option></select>
       <label class="dim-lbl"><input type="checkbox" id="tagNotes" checked> add notes</label>
       <label class="dim-lbl" title="When you click Apply on tags: favorite or keep locks the weapon in game, junk unlocks it. Needs Sign in with Bungie."><input type="checkbox" id="tagLockSync"> Apply also locks favorite/keep, unlocks junk</label>
-      <button class="primary" id="btnCsv">Export DIM tags (CSV)</button>
+      <button class="ghost" id="btnCsv">Export DIM tags (CSV)</button>
       <button class="ghost" id="btnSearchGod">Copy DIM search: god rolls (to lock)</button>
       <button class="ghost" id="btnSearchTrash">Copy DIM search: trash (to pull)</button>
       <button class="ghost" id="btnSearchDupes">Copy DIM search: weaker duplicates</button>
       <span class="dim-lbl">weaker duplicates as</span>
       <select id="tagDupe"><option value="">(same as verdict)</option><option>archive</option><option>junk</option></select>
       <button class="ghost" id="btnSearch">Copy DIM search for shown weapons</button>
-      <button class="primary needauth" id="btnLockGod">🔒 Lock all god rolls</button>
-      <button class="ghost needauth" id="btnLockFav">🔒 Lock everything tagged favorite</button>
-      <div class="dimhelp">The dropdowns above suggest tags for weapons you haven't tagged yourself. Tick tags on a card and click <b>Apply</b> to set your own. DIM allows one tag per weapon, so the highest one (favorite, keep, infuse, archive, junk) becomes the DIM tag and all ticks go into the note. To send tags to DIM: click <b>Export DIM tags (CSV)</b>, then in DIM open Settings (gear icon), scroll to <b>Spreadsheets</b>, click <b>Import tags/notes from CSV</b> and pick the downloaded file. Refresh DIM afterward.</div>
+      
+      
+      <div class="dimhelp" title="DIM keeps tags on its own servers, so nothing here can write them directly. Export the CSV, then in DIM: Settings (gear icon) → Spreadsheets → Import tags/notes from CSV, and refresh DIM.">Tags stay in this browser until you import the CSV into DIM: Settings → Spreadsheets → Import tags/notes from CSV. <span class="info">ⓘ</span></div>
+        </div>
+      </details>
     </div>
     <div class="grid" id="grid"></div>
   </section>
@@ -857,6 +905,8 @@ function rerate(){
     ls.set('weaponIndex', JSON.stringify({ at: Date.now(), m: wi }));
   } catch {}
   const c = {}; state.items.forEach(i => c[i.r.verdict] = (c[i.r.verdict] || 0) + 1);
+  try { ls.set('weaponSummary', JSON.stringify({ at: Date.now(), total: state.items.length, c })); } catch {}   // for the Home view
+  if (typeof renderHome === 'function') renderHome();
   setStatus('Scanned ' + state.items.length + ' weapons. ' + (c.god || 0) + ' god rolls, ' + (c.close || 0) + ' close, ' + (c.trash || 0) + ' trash.');
   renderChips(c);
   $('dimbar').classList.remove('hidden');
@@ -896,35 +946,50 @@ function render(){
   $('grid').innerHTML = list.map(i => {
     const r = i.r, note = r.entry ? state.wl.notes[r.entry.n] : '';
     const showRoll = r.verdict === 'god' || r.verdict === 'close' || (r.verdict === 'trash' && r.entry && r.reason.startsWith('On'));
-    return '<div class="card ' + r.verdict + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for perks and stats">' +
-      '<label class="pickbox" title="Select for bulk actions"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
-      '<img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
-      '<div class="body"><div class="top"><span class="name">' + esc(i.name) + '</span><span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + '</span></div>' +
-      '<div class="meta">' + esc(i.type) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · Power ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + '</div>' +
-      (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
-      (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
-      (noteFor(i.id) ? '<div class="mynote" title="Your note. Click the card to edit.">📝 ' + esc(noteFor(i.id)) + '</div>' : '') +
-      '<div class="scoreline">' + (i.score != null ? '<span class="score">Score ' + i.score + '</span>' : '') +
-        (i.aegis ? '<span class="aegis t' + i.aegis + '" title="Weapon tier from Aegis Endgame Analysis">Aegis ' + i.aegis + '</span>' : '') +
-        (i.dupCount > 1 ? (i.dupRank === 1 ? '<span class="dup best">Best of ' + i.dupCount + ' copies</span>' : '<span class="dup">Copy ' + i.dupRank + ' of ' + i.dupCount + ', weaker than your best</span>') : '') + '</div>' +
-      '<div class="reason">' + esc(r.reason) + (r.matches > 1 ? ' · ' + r.matches + ' matching rolls' : '') + '</div>' +
-      (i.roles && i.roles.length ? '<div class="roles">Good for: ' + i.roles.map(esc).join(', ') + '</div>' : '') +
-      (i.mine && !i.r.isMine ? '<div class="roles">My god roll: has ' + i.mine.hit + ' of ' + i.mine.total + ' perks</div>' : '') +
+    const tags = tagFor(i);
+    const pullBtn = i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another weapon for this slot so this one can be moved or dismantled">Unequip</button>' :
+      (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull' : '⬇ Pull') + '</button>' : '') +
+      (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '" title="Send to vault">To vault</button>' : '');
+    const extraLines = (i.mine && !i.r.isMine ? '<div class="roles">My god roll: has ' + i.mine.hit + ' of ' + i.mine.total + ' perks</div>' : '') +
       (i.srcs && i.srcs.length ? '<div class="srcs">Matched in: ' + i.srcs.map(esc).join(', ') + '</div>' : '') +
-      (i.swap && i.swap.length ? '<div class="swapnote">Swap in game to: ' + i.swap.map(esc).join(', ') + '</div>' : '') +
-      (showRoll ? perkChips(r.entry, i.have, i.sel) : '') +
-      '<div class="perks">' + i.active.map(n => '<span class="perk">' + esc(n) + '</span>').join('') + '</div>' +
-      (note ? '<details><summary>Community notes</summary><p>' + esc(note) + '</p></details>' : '') +
-      '<div class="actions">' +
-        tagBoxes(i.id, tagFor(i)) +
-        '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '">' + (i.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
-        (i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another weapon for this slot so this one can be moved or dismantled">Unequip</button>' :
-          (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' : '') +
-          (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '">To vault</button>' : '')) +
-        (i.swap && i.swap.length ? '<button class="needauth apply" data-act="apply" data-id="' + esc(i.id) + '" title="Switches the perks in game. Must be in orbit, a social space, or offline.">Apply god roll perks</button>' : '') +
-        '<button data-copy="id:' + esc(i.id) + '">Copy DIM search</button>' +
+      (i.dupCount > 1 && i.dupRank !== 1 ? '<div class="srcs">Copy ' + i.dupRank + ' of ' + i.dupCount + ', weaker than your best</div>' : '') +
+      (i.active.length ? '<div class="perks">' + i.active.map(n => '<span class="perk">' + esc(n) + '</span>').join('') + '</div>' : '') +
+      (note ? '<p class="cnote">' + esc(note) + '</p>' : '');
+    return '<div class="card wcard ' + r.verdict + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for perks and stats">' +
+      '<label class="pickbox" title="Select for bulk actions"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
+      // header: icon, name + subtitle, then score / tier / verdict on one row
+      '<div class="chead"><img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+        '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
+        '<div class="meta">' + esc(i.type) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
+        '<div class="cstats">' + (i.score != null ? '<span class="score" title="Roll score">' + i.score + '</span>' : '') +
+          (i.aegis ? '<span class="aegis t' + i.aegis + '" title="Weapon tier from Aegis Endgame Analysis">' + i.aegis + '</span>' : '') +
+          (i.gearTier ? '<span class="ctier" title="Gear tier ' + i.gearTier + '">T' + i.gearTier + '</span>' : '') +
+          '<span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + '</span></div></div>' +
+      // middle: why, and only the recommended perks
+      '<div class="body">' +
+        (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
+        (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
+        (noteFor(i.id) ? '<div class="mynote" title="Your note. Click the card to edit.">📝 ' + esc(noteFor(i.id)) + '</div>' : '') +
+        '<div class="reason">' + esc(r.reason) + (r.matches > 1 ? ' · ' + r.matches + ' rolls' : '') +
+          (i.roles && i.roles.length ? '<span class="roles"> · ' + i.roles.map(esc).join(', ') + '</span>' : '') + '</div>' +
+        '<div class="scoreline">' +
+          (i.dupCount > 1 && i.dupRank === 1 ? '<span class="dup best">Best of ' + i.dupCount + '</span>' : '') +
+          (i.dupCount > 1 && i.dupRank !== 1 ? '<span class="dup">Copy ' + i.dupRank + '/' + i.dupCount + '</span>' : '') + '</div>' +
+        (i.swap && i.swap.length ? '<div class="swapnote">Swap to: ' + i.swap.map(esc).join(', ') + '</div>' : '') +
+        (showRoll ? perkChips(r.entry, i.have, i.sel) : '') +
+        (extraLines ? '<details class="more"><summary>Show all perks' + (note ? ' &amp; notes' : '') + '</summary>' + extraLines + '</details>' : '') +
       '</div>' +
-      '</div></div>';
+      // footer: one tag menu, then compact actions
+      '<div class="cfoot">' +
+        '<details class="tagpop"><summary title="DIM tags (sent to DIM with the CSV export)">🏷 ' + (tags.length ? esc(tags.join(' + ')) : 'Tag') + '</summary><div class="tagmenu">' + tagBoxes(i.id, tags) + '</div></details>' +
+        '<span class="cacts">' +
+          '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '" title="' + (i.locked ? 'Unlock' : 'Lock') + ' in game">' + (i.locked ? '🔒' : '🔓') + '</button>' +
+          pullBtn +
+          (i.swap && i.swap.length ? '<button class="needauth apply" data-act="apply" data-id="' + esc(i.id) + '" title="Switches to the god roll perks in game. Must be in orbit, a social space, or offline.">Apply perks</button>' : '') +
+          '<button data-copy="id:' + esc(i.id) + '" title="Copy a DIM search for this exact weapon">Copy DIM</button>' +
+        '</span>' +
+      '</div>' +
+      '</div>';
   }).join('') || '<div style="color:var(--dim)">Nothing to show.</div>';
   $('grid').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText(b.dataset.copy, 'Copied. Paste it into the DIM search bar.'));
   wireTagBoxes($('grid'), () => render());
@@ -1453,6 +1518,9 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = async () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
   $('view-scan').classList.toggle('hidden', t.dataset.view !== 'scan');
   $('view-lookup').classList.toggle('hidden', t.dataset.view !== 'lookup');
+  $('view-home').classList.add('hidden');
+  document.querySelector('.subtabs').classList.remove('hidden');
+  if (location.hash === '#home') history.replaceState(null, '', '#' + (t.dataset.view === 'lookup' ? 'lookup' : 'weapons'));
   if (t.dataset.view === 'lookup'){
     try { await loadDefs(); await loadWishlist(); setStatus('Ready. Type a weapon name.'); } catch (e){ setStatus(e.message, true); }
   }
@@ -1548,6 +1616,72 @@ const PM_BUCKET = 215593132;   // Lost Items (postmaster)
 // ---- startup ----
 updateFooter();
 if (location.hash === '#settings') $('settings').classList.add('open');
+
+/* ---- Home view (#home), weapons (#weapons), lookup (#lookup) ---- */
+function route(){
+  const h = location.hash;
+  if (h === '#home'){
+    ['view-scan', 'view-lookup'].forEach(id => $(id).classList.add('hidden'));
+    document.querySelector('.subtabs').classList.add('hidden');
+    $('view-home').classList.remove('hidden');
+    document.querySelectorAll('header .tabs a.nav').forEach(a => a.classList.remove('active'));
+    renderHome();
+  } else if (h === '#weapons' || h === '#lookup'){
+    document.querySelectorAll('header .tabs a.nav').forEach(a => a.classList.toggle('active', /index\.html/.test(a.getAttribute('href'))));
+    const t = document.querySelector('.subtabs .tab[data-view="' + (h === '#lookup' ? 'lookup' : 'scan') + '"]');
+    if (t) t.onclick();
+  }
+}
+window.addEventListener('hashchange', route);
+// only one card tag menu open at a time; clicking elsewhere closes it
+document.addEventListener('click', e => { document.querySelectorAll('details.tagpop[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.tagpop') && e.target.open) document.querySelectorAll('details.tagpop[open]').forEach(d => { if (d !== e.target) d.open = false; }); }, true);
+const homeRead = k => { try { return JSON.parse(ls.get(k) || 'null'); } catch { return null; } };
+const homeAgo = t => { const s = (Date.now() - t) / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : new Date(t).toLocaleDateString(); };
+const homeStat = (k, v, sub, cls, href) => '<a class="hstat ' + (cls || '') + '" href="' + href + '"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div>' + (sub ? '<div class="s">' + sub + '</div>' : '') + '</a>';
+function homeLeft(t){ let s = Math.max(0, Math.round((t - Date.now()) / 1000)); const d = Math.floor(s / 86400); s -= d * 86400; const h = Math.floor(s / 3600); s -= h * 3600; const m = Math.floor(s / 60); return d ? d + 'd ' + h + 'h ' + m + 'm' : h ? h + 'h ' + m + 'm' : m + 'm ' + (s - m * 60) + 's'; }
+function homeUtc(dow){
+  const n = new Date(), d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 17));
+  if (dow == null){ if (d <= n) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); }
+  let add = (dow - d.getUTCDay() + 7) % 7; if (add === 0 && d <= n) add = 7; d.setUTCDate(d.getUTCDate() + add); return d.getTime();
+}
+function renderHome(){
+  if ($('view-home').classList.contains('hidden')) return;
+  const name = ($('bungieName').value || ls.get('bungieName') || '').split('#')[0];
+  $('homeGreet').textContent = name ? 'Welcome back, ' + name : 'Welcome back, Guardian';
+  const signed = auth.valid();
+  $('homeConn').innerHTML = (ls.get('apiKey') ? '<span class="dot ok"></span>Bungie API key set' : '<span class="dot bad"></span>No API key yet: open Settings') + ' · ' +
+    (signed ? '<span class="dot ok"></span>Signed in until ' + new Date(auth.get().exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '<span class="dot"></span>Not signed in') +
+    (state.lastScan ? ' · Last scan ' + homeAgo(state.lastScan) : '');
+  // live numbers after a scan on this page, otherwise the last saved summary
+  let w = null;
+  if (state.items && state.items.length){ const c = {}; state.items.forEach(i => c[i.r.verdict] = (c[i.r.verdict] || 0) + 1); w = { at: state.lastScan || Date.now(), total: state.items.length, c }; }
+  else w = homeRead('weaponSummary');
+  const a = homeRead('armorSummary');
+  const wc = (w && w.c) || {}, ac = (a && a.c) || {};
+  const n = x => (x || 0).toLocaleString();
+  $('homeAt').textContent = w ? 'Weapons scanned ' + homeAgo(w.at) + (a ? ' · armor ' + homeAgo(a.at) : '') : 'Scan once to fill these in';
+  $('homeStats').innerHTML = !w && !a ? '<a class="hstat" href="#weapons"><div class="k">Nothing scanned yet</div><div class="v">—</div><div class="s">Click Scan my weapons to start</div></a>' :
+    homeStat('Weapons', w ? n(w.total) : '—', 'scanned', '', '#weapons') +
+    homeStat('God rolls', w ? n(wc.god) : '—', 'keep and lock', 'gold', '#weapons') +
+    homeStat('Close', w ? n(wc.close) : '—', 'near a recommended roll', 'blue', '#weapons') +
+    homeStat('Trash', w ? n(wc.trash) : '—', 'safe to dismantle', 'red', '#weapons') +
+    homeStat('Armor keepers', a ? n(ac.keep) : '—', a ? n(ac.trash) + ' trash · ' + n(ac.legacy) + ' get newer' : 'open Armor triage once', 'green', 'armor.html');
+  const ev = (homeRead('stream') || []).filter(e => e.kind !== 'info').slice(0, 6);
+  $('homeFeed').innerHTML = ev.length ? ev.map(e => e.kind === 'gone'
+    ? '<div class="ev"><div class="ic">🗑</div><div class="t"><div class="n">Dismantled ' + e.count + ' ' + (e.page === 'armor' ? 'armor' : 'weapons') + '</div><div class="m">' + esc((e.names || []).join(', ')) + '</div></div><div class="w">' + homeAgo(e.t) + '</div></div>'
+    : '<a class="ev" href="' + (e.page === 'armor' ? 'armor.html' : 'index.html') + '#open=' + esc(e.id) + '"><img src="' + (e.icon ? 'https://www.bungie.net' + esc(e.icon) : '') + '" alt=""><div class="t"><div class="n">' + esc(e.name) + '</div><div class="m">' + esc(e.extra || '') + '</div></div><span class="vb ' + esc(e.v) + '">' + esc(e.label) + '</span><div class="w">' + homeAgo(e.t) + '</div></a>'
+  ).join('') : '<div class="empty">No drops yet. New weapon and armor drops show up here after a scan.</div>';
+  const fri = homeUtc(5), lastFri = fri - 7 * 864e5, xur = Date.now() >= lastFri && Date.now() < lastFri + 4 * 864e5;
+  const lsd = homeRead('lsToday'), lsOk = lsd && lsd.day === homeUtc(null) - 864e5 && lsd.list && lsd.list.length;
+  $('homeClocks').innerHTML = homeStat('Daily reset', '<span data-hcd="' + homeUtc(null) + '">' + homeLeft(homeUtc(null)) + '</span>', '', '', 'today.html') +
+    homeStat('Weekly reset', '<span data-hcd="' + homeUtc(2) + '">' + homeLeft(homeUtc(2)) + '</span>', '', '', 'today.html') +
+    homeStat(xur ? 'Xûr leaves in' : 'Xûr arrives in', '<span data-hcd="' + (xur ? lastFri + 4 * 864e5 : fri) + '">' + homeLeft(xur ? lastFri + 4 * 864e5 : fri) + '</span>', '', 'gold', 'vendors.html') +
+    homeStat('Lost sector today', lsOk ? '<span style="font-size:17px">' + esc(lsd.list.map(g => g.name).join(' / ')) + '</span>' : '—', lsOk ? '' : 'open Today signed in', '', 'today.html');
+}
+setInterval(() => document.querySelectorAll('[data-hcd]').forEach(e => e.textContent = homeLeft(+e.dataset.hcd)), 1000);
+window.addEventListener('storage', renderHome);
+route();
 $('tagLockSync').checked = ls.get('tagLockSync') !== '0';
 $('tagLockSync').onchange = () => ls.set('tagLockSync', $('tagLockSync').checked ? '1' : '0');
 wireBulkBar();
