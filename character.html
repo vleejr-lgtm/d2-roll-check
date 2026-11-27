@@ -106,7 +106,8 @@
   .cmode button.on{background:var(--accent); color:#0b0d10; font-weight:700}
   /* All + vault view (DIM style): one column per character, the vault on the right, drag items between them */
   .dwrap{overflow-x:auto; padding-bottom:10px}
-  .dgrid{display:grid; gap:0 16px; min-width:max-content}
+  .dgrid{display:grid; gap:0 16px}
+  .dgrid > *{min-width:0}
   .dhead{display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:6px; background:linear-gradient(90deg,#1d2430,#151a22); border:1px solid var(--line); background-size:cover; background-position:center; min-height:52px}
   .dhead img{width:36px; height:36px; border-radius:4px} .dhead b{display:block; font-size:15px} .dhead span{font-size:12px; color:var(--dim)}
   .dhead .dpow{margin-left:auto; color:#E2B74B; font-weight:800; font-size:17px}
@@ -121,8 +122,12 @@
   .dpm{display:flex; flex-wrap:wrap; gap:3px} .dpm .ctile{width:40px; height:40px}
   .ctile[draggable=true]{cursor:grab} .ctile.dragging{opacity:.35} .ctile.busy{opacity:.4; pointer-events:none}
   .ctile.dimmed{opacity:.18}
+  .cvtab .cvicon{font-size:24px; width:36px; text-align:center}
+  .ctabs.dropping .ctab:not(.on){outline:1px dashed #E2B74B; outline-offset:2px}
+  .ctab.dover{background:rgba(226,183,75,.18)!important; outline:2px solid #E2B74B!important}
   .dtools{display:flex; gap:12px; align-items:center; margin:4px 0 10px; flex-wrap:wrap}
   .dtools input{width:280px; max-width:100%}
+  .dshow{margin-left:0}
   .cpop{position:fixed; z-index:60; width:330px; max-height:85vh; overflow:auto; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius-sm); box-shadow:0 14px 40px rgba(0,0,0,.55); padding:14px}
   .cpop h4{margin:0 0 2px; font-size:15px} .cpop .cmeta{font-size:12px; color:var(--dim); margin-bottom:10px}
   .cpop .cacts{display:flex; flex-wrap:wrap; gap:6px} .cpop .cacts button{font-size:12px; padding:4px 10px}
@@ -432,6 +437,7 @@ async function scan(opts = {}){
     await loadStatDefs();
     state.lastScan = Date.now();
     render();
+    if (!state.labelTried){ state.labelTried = true; setTimeout(() => autoLabel(), 1500); }
     if (!opts.silent) setStatus(''); else setStatus(prev);
   } catch (e){ setStatus(e.message, true); }
   finally { state.scanning = false; tickRefresh(); }
@@ -471,6 +477,33 @@ function verdictOf(i){
   }
   return null;
 }
+
+// When a page's labels are missing or old, load that page in a hidden frame. It scans on load (same sign-in, same
+// storage) and saves verdicts:weapons / verdicts:armor; the storage event below redraws this page with the labels.
+const LABEL_SRC = { w: ['verdicts:weapons', 'index.html#weapons', 'weapons'], a: ['verdicts:armor', 'armor.html', 'armor'] };
+const labeling = {};
+function autoLabel(force){
+  if (!auth.valid() || ls.get('charLabels') === '0') return;
+  try { const a = JSON.parse(ls.get('auth') || 'null'); if (a && a.exp && a.exp - Date.now() < 5 * 60e3) return; } catch {}   // never let a frame start a sign-in renewal
+  const M = verdictMaps();
+  for (const k of ['w', 'a']){
+    if (labeling[k]) continue;
+    const have = M[k], old = !have || Date.now() - have.at > 6 * 3600e3;
+    if (!force && !old) continue;
+    const f = document.createElement('iframe');
+    f.src = LABEL_SRC[k][1]; f.title = 'labeler'; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+    f.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0';
+    labeling[k] = { f, at: Date.now() };
+    document.body.appendChild(f);
+    setTimeout(() => endLabel(k), 150e3);
+  }
+  if (labeling.w || labeling.a) redrawBar();
+}
+function endLabel(k){ const L = labeling[k]; if (!L) return; delete labeling[k]; try { L.f.remove(); } catch {} redrawBar(); }
+function redrawBar(){ VMAP = null; const c = barChar(); const el = document.querySelector('.clabels'); if (el && c) el.outerHTML = labelsBar(c); const cb = $('cLabels'); if (cb) cb.onchange = () => { ls.set('charLabels', cb.checked ? '1' : '0'); render(); if (cb.checked) autoLabel(); }; const rl = $('cRelabel'); if (rl) rl.onclick = e => { e.preventDefault(); autoLabel(true); }; }
+window.addEventListener('storage', e => {
+  for (const k of ['w', 'a']) if (e.key === LABEL_SRC[k][0]){ VMAP = null; endLabel(k); if (!dragging) render(); }
+});
 function vtag(i){ const v = verdictOf(i); return v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : ''; }
 function ago(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
 function labelsBar(c){
@@ -478,12 +511,13 @@ function labelsBar(c){
   const cnt = {}; for (const i of c.items){ const v = verdictOf(i); if (v) cnt[v.cls] = (cnt[v.cls] || 0) + 1; }
   const NAMES = { trash: 'Trash', old: 'Old gear', oldx: 'Old exotics', god: 'God rolls', close: 'Close', keep: 'Keep', review: 'Review' };
   const counts = Object.keys(NAMES).filter(k => cnt[k]).map(k => '<span class="ccount"><span class="vb ' + k + '">' + NAMES[k] + '</span><b>' + cnt[k] + '</b></span>').join('');
-  const src = [M.w ? 'Weapons scan ' + ago(M.w.at) : '<a href="index.html">Scan weapons</a> to label weapons', M.a ? 'Armor scan ' + ago(M.a.at) : '<a href="armor.html">Run Armor triage</a> to label armor'].join(' · ');
+  const one = (k, name) => labeling[k] ? 'Labeling ' + name + '…' : M[k] ? name.charAt(0).toUpperCase() + name.slice(1) + ' scan ' + ago(M[k].at) : 'No ' + name + ' labels yet';
+  const src = one('w', 'weapons') + ' · ' + one('a', 'armor') + (labeling.w || labeling.a ? '' : ' · <a href="#" id="cRelabel">Refresh labels</a>');
   return '<div class="clabels"><label><input type="checkbox" id="cLabels"' + (on ? ' checked' : '') + '> Keep / trash labels</label>' + (on ? counts : '') + '<span>' + src + '</span></div>';
 }
 function tile(i, big){
-  const v = verdictOf(i);
-  return '<button class="ctile r' + i.rar + (big ? ' big' : '') + (v && v.cls === 'trash' ? ' vtrash' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + (v ? ' · ' + v.label : '')) + '">' +
+  const v = verdictOf(i), drag = auth.valid() && i.id && !i.equipped && i.charId ? ' draggable="true"' : '';
+  return '<button' + drag + ' class="ctile r' + i.rar + (big ? ' big' : '') + (v && v.cls === 'trash' ? ' vtrash' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + (v ? ' · ' + v.label : '')) + '">' +
     (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') +
     (i.gearTier ? '<span class="tr">T' + i.gearTier + '</span>' : '') + (i.locked ? '<span class="lk">🔒</span>' : '') +
     (i.power ? '<span class="pw">' + i.power + '</span>' : '') + (v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : '') + '</button>';
@@ -505,6 +539,7 @@ function pmHtml(c){
     c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + vtag(i) + '</button>').join('') +
     Array.from({ length: Math.max(0, 21 - n) }, () => '<span class="ctile empty none"></span>').join('') + '</div></div>';
 }
+function barChar(){ const fs = state.full || []; return fs.find(x => x.id === view) || fs[0]; }
 let mode = ls.get('charMode') === 'all' ? 'all' : 'one', dragging = null, renderLater = false;
 document.querySelectorAll('#cMode [data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; ls.set('charMode', mode); closePop(); render(); });
 function render(){
@@ -515,7 +550,9 @@ function render(){
   $('cSignin').classList.toggle('hidden', auth.valid());
   if (!state.full || !state.full.length){ $('cTabs').innerHTML = ''; $('cView').innerHTML = ''; return; }
   $('cTabs').innerHTML = state.full.map(c => '<button class="ctab' + (c.id === view ? ' on' : '') + '" data-c="' + esc(c.id) + '">' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>Power ' + (c.light || '—') + '</span></div></button>').join('');
+  $('cTabs').insertAdjacentHTML('beforeend', '<button class="ctab cvtab" data-vtab="1" title="Drop an item here to send it to the vault. Click to see the vault next to your characters."><span class="cvicon">🏦</span><div><b>Vault</b><span>' + state.vault.length + ' items · drop here</span></div></button>');
   $('cTabs').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { view = b.dataset.c; ls.set('charView', view); closePop(); render(); });
+  $('cTabs').querySelector('[data-vtab]').onclick = () => { mode = 'all'; ls.set('charMode', mode); closePop(); render(); };
   $('cTabs').classList.toggle('hidden', mode === 'all');
   if (mode === 'all') return renderAll();
   const c = state.full.find(x => x.id === view) || state.full[0];
@@ -531,7 +568,8 @@ function render(){
   $('cView').querySelectorAll('[data-item]').forEach(t => t.onclick = e => openItem(t.dataset.item, t, c));
   $('cView').querySelectorAll('[data-fill]').forEach(t => t.onclick = () => openPicker(+t.dataset.fill, t, c));
   $('cView').querySelectorAll('[data-pm]').forEach(t => t.onclick = () => openPm(t.dataset.pm, t, c));
-  if ($('cLabels')) $('cLabels').onchange = () => { ls.set('charLabels', $('cLabels').checked ? '1' : '0'); render(); };
+  redrawBar();
+  wireDragOne(c);
   if ($('cPmAll')) $('cPmAll').onclick = () => { const b = document.getElementById('btnPM'); if (b) b.click(); };
 }
 
@@ -546,15 +584,19 @@ function findAny(key){
   const v = state.vault.find(x => keyOf(x) === key); return v ? { i: v, c: null } : null;
 }
 function dtile(i, eq){
-  const t = tile(i, false), drag = auth.valid() && i.id && !i.equipped ? ' draggable="true"' : '';
-  return t.replace('<button class="ctile', '<button' + drag + ' class="ctile' + (eq ? ' deq' : ''));
+  const t = tile(i, false), drag = auth.valid() && i.id && !i.equipped && !i.charId ? ' draggable="true"' : '';
+  return t.replace(/^<button( draggable="true")? class="ctile/, (m, d) => '<button' + (d || drag) + ' class="ctile' + (eq ? ' deq' : ''));
 }
+let allShow = ls.get('charAllShow') || 'all';
 function renderAll(){
-  const chars = state.full, cols = 'repeat(' + chars.length + ', 232px) minmax(420px, 1fr)';
+  if (allShow !== 'all' && !state.full.some(c => c.id === allShow)) allShow = 'all';
+  const chars = allShow === 'all' ? state.full : state.full.filter(c => c.id === allShow), cols = 'repeat(' + chars.length + ', 232px) minmax(300px, 1fr)', minW = chars.length * 248 + 300;
   const vCount = state.vault.length;
   let h = '<div class="dtools"><input type="search" id="dSearch" placeholder="Search name, type, trash, god, old, t5…" autocomplete="off" value="' + esc(state.dq || '') + '">' +
-    '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + labelsBar(chars.find(x => x.id === view) || chars[0]) +
-    '<div class="dwrap"><div class="dgrid" style="grid-template-columns:' + cols + '">';
+    '<div class="cmode dshow"><button data-show="all"' + (allShow === 'all' ? ' class="on"' : '') + '>All characters</button>' +
+      state.full.map((c, n) => '<button data-show="' + esc(c.id) + '"' + (allShow === c.id ? ' class="on"' : '') + ' title="' + (n === 0 ? 'Last played' : '') + '">' + esc(c.name) + (n === 0 ? ' (active)' : '') + ' + vault</button>').join('') + '</div>' +
+    '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + labelsBar(allShow === 'all' ? barChar() : chars[0]) +
+    '<div class="dwrap"><div class="dgrid" style="grid-template-columns:' + cols + '; min-width:' + minW + 'px">';
   h += chars.map(c => '<div class="dhead"' + (c.banner ? ' style="background-image:linear-gradient(90deg,rgba(14,17,22,.55),rgba(14,17,22,.2)),url(\'' + img(c.banner) + '\')"' : '') + '>' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>' + c.items.length + ' items</span></div><div class="dpow">' + (c.light || '') + '</div></div>').join('') +
     '<div class="dhead"><div><b>Vault</b><span>' + vCount + ' items</span></div></div>';
   // postmaster row
@@ -576,7 +618,8 @@ function renderAll(){
   const root = $('cView');
   root.querySelectorAll('[data-item]').forEach(t => t.onclick = () => { const f = findAny(t.dataset.item); if (!f) return; f.c ? openItem(t.dataset.item, t, f.c) : openVaultItem(f.i, t); });
   root.querySelectorAll('[data-pm]').forEach(t => t.onclick = () => openPm(t.dataset.pm, t, state.full.find(c => c.id === t.dataset.pc)));
-  if ($('cLabels')) $('cLabels').onchange = () => { ls.set('charLabels', $('cLabels').checked ? '1' : '0'); render(); };
+  redrawBar();
+  root.querySelectorAll('[data-show]').forEach(b => b.onclick = () => { allShow = b.dataset.show; ls.set('charAllShow', allShow); if (allShow !== 'all'){ view = allShow; ls.set('charView', view); } closePop(); render(); });
   $('dSearch').oninput = () => { state.dq = $('dSearch').value; applySearch(); };
   applySearch(); wireDrag(root);
 }
@@ -630,6 +673,24 @@ async function moveItem(i, target, equip){
     render(); if (isGoneError(e)) scan({ silent: true });
     throw e;
   }
+}
+function wireDragOne(c){
+  const root = $('cView'), tabs = $('cTabs');
+  root.querySelectorAll('[draggable=true]').forEach(t => {
+    t.addEventListener('dragstart', e => { const f = findAny(t.dataset.item); if (!f) return e.preventDefault(); dragging = f; closePop(); t.classList.add('dragging'); tabs.classList.add('dropping'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t.dataset.item); } catch {} });
+    t.addEventListener('dragend', () => { t.classList.remove('dragging'); tabs.classList.remove('dropping'); tabs.querySelectorAll('.dover').forEach(x => x.classList.remove('dover')); dragging = null; if (renderLater){ renderLater = false; render(); } });
+  });
+  tabs.querySelectorAll('[data-c],[data-vtab]').forEach(z => {
+    const target = z.dataset.vtab ? null : z.dataset.c;
+    if (target === c.id) return;
+    z.addEventListener('dragover', e => { if (dragging){ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; z.classList.add('dover'); } });
+    z.addEventListener('dragleave', e => { if (!z.contains(e.relatedTarget)) z.classList.remove('dover'); });
+    z.addEventListener('drop', async e => {
+      e.preventDefault(); const f = dragging; dragging = null; renderLater = false; tabs.classList.remove('dropping'); z.classList.remove('dover'); if (!f) return;
+      const el = root.querySelector('[data-item="' + CSS.escape(keyOf(f.i)) + '"]'); if (el) el.classList.add('busy');
+      try { await moveItem(f.i, target, false); } catch {}
+    });
+  });
 }
 function wireDrag(root){
   const zones = root.querySelectorAll('[data-db]');
@@ -749,7 +810,7 @@ window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent:
 function tickRefresh(){
   const el = $('lastScan'); if (!el) return;
   if (!state.lastScan){ el.textContent = ''; return; }
-  el.textContent = 'Read ' + new Date(state.lastScan).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (ls.get('autoRefresh') !== '0' ? ' · auto-refresh on' : '') + ' · click an empty box to bring an item from the vault';
+  el.textContent = 'Read ' + new Date(state.lastScan).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (ls.get('autoRefresh') !== '0' ? ' · auto-refresh on' : '') + (mode === 'all' ? ' · drag items between columns' : ' · drag an item onto another character or the Vault tab · click an empty box to bring one from the vault');
   if (Date.now() - state.lastScan > REFRESH_SECS * 1000 && autoRefreshOk(REFRESH_SECS * 1000)) scan({ silent: true });
 }
 setInterval(tickRefresh, 5000);
