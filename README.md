@@ -11,6 +11,7 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | armor.html | Armor triage: ranks every armor piece keep or trash (open from the header) |
 | today.html | Today: this week's rotations, featured activities, weekly challenges and everything your character can play |
 | vendors.html | Vendors and Xûr: what's worth buying this week, where each vendor is, and when stock rotates |
+| theme.css | Shared look for every page: colors, header, spacing, cards. Keep it next to the .html files |
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
 | start-server.ps1 | Old http://localhost:8000 server. Works for scanning only, no sign-in |
 
@@ -29,6 +30,8 @@ A local page that grades your Destiny 2 weapons against several community god ro
 Sign-in lasts about an hour (Bungie gives this kind of app no refresh token). Click Sign in again when it expires.
 
 ## Using it
+
+* **Home** (click D2 ROLL CHECK in the header): connection status, weapon and armor counts from your last scans, shortcuts to every page, recent drops, and reset clocks.
 
 * **Cards**: verdict, score, Aegis tier, which lists matched, perks to swap, and duplicates ranked.
 * **Click a card**: full detail view. Click perks to preview, stats update live, hover for perk details and stat changes.

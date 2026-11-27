@@ -202,22 +202,23 @@
   details.skipped ul{columns:3 260px;font-size:13px;color:#c9d1db}
   .cbtn{display:inline-block;margin-top:6px;margin-right:6px;font-size:12px;color:#9fc6ef;text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:2px 8px}
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <header>
-  <h1>D2 Roll Check</h1>
-  <div class="tabs">
-    <a class="tab" href="today.html">Today</a>
-    <a class="tab" href="index.html">Weapons</a>
-    <a class="tab" href="armor.html">Armor triage</a>
-    <a class="tab active" href="vendors.html">Vendors &amp; Xûr</a>
-  </div>
+  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html">Today</a>
+    <a class="nav" href="index.html#weapons">Weapons</a>
+    <a class="nav" href="armor.html">Armor triage</a>
+    <a class="nav active" href="vendors.html">Vendors &amp; Xûr</a>
+  </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="ghost tab" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>

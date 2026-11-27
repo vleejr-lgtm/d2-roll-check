@@ -173,23 +173,24 @@
   .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
   .sb-new{background:#2fd3c8;color:#04201e}
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <header>
-  <h1>D2 Roll Check</h1>
-  <div class="tabs">
-    <a class="tab" href="today.html">Today</a>
-    <a class="tab" href="index.html">Weapons</a>
-    <a class="tab active" href="armor.html">Armor triage</a>
-    <a class="tab" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="tab" href="https://d2armorpicker.com/" target="_blank" rel="noopener" title="Build loadouts from the armor you keep">D2ArmorPicker ↗</a>
-  </div>
+  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html">Today</a>
+    <a class="nav" href="index.html#weapons">Weapons</a>
+    <a class="nav active" href="armor.html">Armor triage</a>
+    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
+    <a class="nav ext" href="https://d2armorpicker.com/" target="_blank" rel="noopener" title="Build loadouts from the armor you keep">D2ArmorPicker ↗</a>
+  </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull armor to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="ghost tab" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -210,8 +211,9 @@
       <span class="dim-lbl" id="lastScan"></span>
   </div>
 
-  <div class="panel">
-    <h3>Trash rules</h3>
+  <details class="panel drawer">
+    <summary>Trash rules <span class="dim-lbl">what counts as trash, 5 rules</span></summary>
+    <div class="drawer-body">
     <div class="rules">
       <label><input type="checkbox" id="rDupes" checked> Duplicates: same class, slot, set, archetype and tertiary stat. Keep the best, trash the rest</label>
       <label><input type="checkbox" id="rOutclassed" checked> Tier 1 and 2 pieces when you own a Tier 4+ with the same class, slot and archetype</label>
@@ -221,6 +223,7 @@
     </div>
     <div class="help">Stats are compared without mods, masterwork or tuning, so two pieces are judged on their real roll. "Best" means higher tier, then higher total stats, then higher power. Exotic class items are marked Review because their value is the perk pair, not stats.</div>
   </div>
+  </details>
 
   <div id="summary" class="summary hidden"></div>
 
@@ -244,14 +247,19 @@
     </div>
     <div id="fCount" class="dim-lbl" style="margin:8px 0 10px"></div>
     <div class="bar" style="margin:0">
-      <button class="primary" id="btnCsv">Export DIM tags (CSV)</button>
-      <button class="ghost" id="btnSearchTrash">Copy DIM search: trash armor</button>
-      <button class="ghost" id="btnSearchKeep">Copy DIM search: keepers</button>
-      <button class="primary needauth" id="btnPullTrash" title="Moves trash for the selected character's class to that character, up to 9 per slot, so you can dismantle it in game">⬇ Pull trash to character</button>
-      <button class="primary needauth" id="btnLockKeep">🔒 Lock all keepers</button>
-      <label class="dim-lbl"><input type="checkbox" id="tagLockSync"> Apply also locks favorite/keep, unlocks junk</label>
+      <button class="ghost needauth" id="btnPullTrash" title="Moves trash for the selected character's class to that character, up to 9 per slot, so you can dismantle it in game">⬇ Pull trash to character</button>
+      <button class="ghost needauth" id="btnLockKeep">🔒 Lock all keepers</button>
     </div>
-    <div class="help">Suggested tags: keepers get no tag (or what you set), trash gets <b>junk</b>. Tick tags on a card and click Apply to change them. To send tags to DIM: Export, then in DIM Settings → Spreadsheets → Import tags/notes from CSV. After clearing trash, open <a href="https://d2armorpicker.com/" target="_blank" rel="noopener" style="color:#9fc6ef">D2ArmorPicker</a> to build loadouts from what's left.</div>
+    <details class="drawer" style="margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-sm)">
+      <summary>DIM sync <span class="dim-lbl">CSV export for DIM, copy DIM searches</span></summary>
+      <div class="drawer-body">
+        <button class="ghost" id="btnCsv">Export DIM tags (CSV)</button>
+        <button class="ghost" id="btnSearchTrash">Copy DIM search: trash armor</button>
+        <button class="ghost" id="btnSearchKeep">Copy DIM search: keepers</button>
+        <label class="dim-lbl"><input type="checkbox" id="tagLockSync"> Apply also locks favorite/keep, unlocks junk</label>
+        <div class="help">Suggested tags: keepers get no tag (or what you set), trash gets <b>junk</b>. Tick tags on a card and click Apply to change them. To send tags to DIM: Export, then in DIM Settings → Spreadsheets → Import tags/notes from CSV. After clearing trash, open <a href="https://d2armorpicker.com/" target="_blank" rel="noopener" style="color:#9fc6ef">D2ArmorPicker</a> to build loadouts from what's left.</div>
+      </div>
+    </details>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -616,6 +624,7 @@ function triage(){
   } catch {}
   renderSummary(); renderChips(); renderGet(); render();
   const c = count();
+  try { ls.set('armorSummary', JSON.stringify({ at: Date.now(), total: state.items.length, c })); } catch {}   // for the Home page
   setStatus('Scanned ' + state.items.length + ' armor pieces: keep ' + c.keep + ', trash ' + c.trash + (c.legacy ? ', get newer ' + c.legacy : '') + (c.review ? ', review ' + c.review : '') + '.');
   $('toolbar').classList.remove('hidden');
 }
