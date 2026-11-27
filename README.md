@@ -9,6 +9,7 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | index.html | The app |
 | start-server-https.ps1 | Serves the app at https://localhost:8443 (needed for Sign in with Bungie). First run asks for admin once |
 | armor.html | Armor triage: ranks every armor piece keep or trash (open from the header) |
+| today.html | Today: this week's rotations, featured activities, weekly challenges and everything your character can play |
 | vendors.html | Vendors and Xûr: what's worth buying this week, where each vendor is, and when stock rotates |
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
 | start-server.ps1 | Old http://localhost:8000 server. Works for scanning only, no sign-in |
@@ -81,3 +82,18 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 * **Exotic Cipher** items are hidden by default. Untick the box to see them.
 * **Zavala and Shaxx** have their own panel. It tells you straight out what gear to grab from each one. If one of them only has random rolls that week (Shaxx often does), it says so and tells you to skip him unless you're farming a specific roll.
 * **Xûr** has his own panel at the top: arrives every Friday at reset (17:00 UTC), leaves at the Tuesday reset. His arrival follows that schedule, because his Strange Coin shop at Eternity shows up in Bungie's data all week. While he's here it lists his gear, exotics and engrams first (bounties and materials go in a fold). When he's gone it counts down to his next visit, and his all-week coin shop sits in a fold. The page reloads vendors by itself when stock rotates or Xûr arrives.
+
+## Today (today.html)
+
+A page like todayindestiny.com, built from Bungie's own data.
+
+* **Reset clocks**: daily reset, weekly reset, and Xûr's arrival or departure.
+* **Lost Sector today**: the daily rotating lost sector, with its Expert/Master difficulties and power, champion and shield modifiers, rewards (like the exotic armor slot) and location. Bungie only lists this rotation in your character's activities, so it needs Sign in once per day; after that it still shows when you're signed out until the next daily reset.
+* **This week**: the weekly rotations (Nightfall, featured raid and dungeon, events) with their modifiers, challenges and when they end. Works without signing in.
+* **Signed in**, for the character you pick:
+  * **Featured right now**: what the Portal is spotlighting.
+  * **Weekly challenges**: your progress on each, finished ones faded.
+  * **Everything you can play**, grouped by type (Raid, Dungeon, Lost Sector, Crucible...), with modifiers, power level, location and rewards.
+* **Search** across activity names, modifiers, rewards and places.
+
+The first visit downloads Bungie's activity definitions once (cached after that). Rotations reload by themselves at reset.
