@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check · Shaders</title>
+<style>
+  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body:not(.authed) .needauth{display:none!important}
+  .hidden{display:none!important}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);background:var(--keep);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+  .toast.show{opacity:1}
+  .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  #charSel{padding:6px 8px;font-size:13px}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  /* ---- shaders page ---- */
+  .shsum{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px}
+  .shsum .hstat{flex:1; min-width:180px}
+  .shtools{display:flex; flex-direction:column; gap:10px; padding:14px 16px}
+  .shrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .shrow #shSearch{flex:1; min-width:220px}
+  .shrow .chip b{opacity:.75}
+  .shrow select{min-width:190px}
+  .shcount{margin-left:auto}
+  .shgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:14px; margin-top:16px}
+  .shcard{position:relative; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; cursor:pointer;
+    transition:border-color .15s, transform .15s; content-visibility:auto; contain-intrinsic-size:260px; text-align:left; padding:0; font:inherit; color:inherit}
+  .shcard:hover,.shcard:focus-visible{border-color:var(--accent); transform:translateY(-1px); outline:none}
+  .shsw{position:relative; aspect-ratio:1/1; background:#0A0C0F; display:grid; place-items:center; border-bottom:1px solid var(--line)}
+  .shsw img.ic{width:100%; height:100%; object-fit:cover; image-rendering:auto}
+  .shsw img.wm{position:absolute; left:0; top:0; width:34%; height:auto; pointer-events:none}
+  .shsw .noimg{color:var(--faint); font-size:12px}
+  .shbody{padding:10px 11px 11px; display:flex; flex-direction:column; gap:4px; min-width:0}
+  .shname{font-weight:650; font-size:13.5px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .shsrc{font-size:11.5px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .shst{align-self:flex-start; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; margin-top:2px}
+  .shst.own{background:rgba(63,179,127,.14); color:#5FD39B; border:1px solid rgba(63,179,127,.4)}
+  .shst.need{background:var(--accent-soft); color:var(--accent); border:1px solid rgba(226,183,75,.4)}
+  .shst.unk{background:transparent; color:var(--faint); border:1px dashed rgba(255,255,255,.14)}
+  .shcard.owned .shsw{opacity:.92}
+  .chip.off{opacity:.5}
+  .shmore{display:flex; justify-content:center; margin:18px 0}
+  .shempty{padding:40px 20px; text-align:center; color:var(--dim)}
+  .shsignin{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 16px; border:1px solid rgba(226,183,75,.3); background:var(--accent-soft); border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px}
+  .shsignin b{color:var(--accent)}
+  /* detail */
+  .modal{align-items:center}
+  .shpanel{position:relative; width:min(720px,100%); background:#12161c; border:1px solid var(--line); border-radius:var(--radius); padding:24px; display:grid; grid-template-columns:220px 1fr; gap:24px}
+  .shbig{position:relative; width:220px; height:220px; border-radius:10px; overflow:hidden; background:#0A0C0F; border:1px solid var(--line2)}
+  .shbig img.ic{width:100%; height:100%; object-fit:cover} .shbig img.wm{position:absolute; left:0; top:0; width:30%}
+  .shinfo h2{margin:0 0 6px; font-size:22px} .shinfo .shst{font-size:11px}
+  .shk{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:14px 0 4px}
+  .shv{font-size:13.5px; line-height:1.5; color:#CBD5E1}
+  .shvend{margin-top:4px; font-size:13px} .shvend.yes{color:#5FD39B} .shvend.no{color:var(--dim)}
+  .shacts{display:flex; gap:8px; flex-wrap:wrap; margin-top:18px}
+  .shclose{position:absolute; right:14px; top:12px}
+  @media (max-width:640px){ .shpanel{grid-template-columns:1fr} .shbig{width:100%; height:auto; aspect-ratio:1/1} }
+</style>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<header>
+  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html">Today</a>
+    <a class="nav" href="index.html#weapons">Weapons</a>
+    <a class="nav" href="armor.html">Armor triage</a>
+    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
+    <a class="nav active" href="shaders.html">Shaders</a>
+  </nav>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull drops to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+</header>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <div id="status"></div>
+  <div class="sectionhead"><h2>Shaders</h2><span class="dim-lbl" id="lastScan"></span></div>
+  <div class="shsignin hidden" id="shSignin"><span><b>Signed out.</b> You can browse and search every shader. Sign in with Bungie to see which ones you own.</span><button class="primary" id="shSigninBtn">Sign in with Bungie</button></div>
+  <div class="shsum" id="shSum"></div>
+  <div class="panel shtools" id="shTools">
+    <div class="shrow">
+      <input id="shSearch" type="search" placeholder="Search shader name or source" autocomplete="off">
+      <div class="chips" id="shStatus"></div>
+    </div>
+    <div class="shrow">
+      <select id="shSource" title="Where it comes from"></select>
+      <select id="shSort" title="Sort">
+        <option value="new">Newest / Season</option>
+        <option value="name">Name A–Z</option>
+        <option value="owned">Owned first</option>
+        <option value="missing">Missing first</option>
+      </select>
+      <button class="ghost" id="btnScan" title="Re-read your collection from Bungie">↻ Refresh</button>
+      <span class="dim-lbl shcount" id="shCount"></span>
+    </div>
+  </div>
+  <div class="shgrid" id="shGrid"></div>
+  <div class="shmore hidden" id="shMoreWrap"><button class="ghost" id="shMore">Show more</button></div>
+</main>
+<div class="modal hidden" id="shModal" role="dialog" aria-modal="true"></div>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
+
+<script>
+/* ===================== shared helpers (same storage as the Weapons page) ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+function toast(msg){
+  let t = document.querySelector('.toast');
+  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+async function copyText(text, msg){ try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch { prompt('Copy this:', text); } }
+
+function idb(){ return new Promise((res, rej) => { const r = indexedDB.open('d2rollcheck', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
+async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+
+async function net(url, what, opts){
+  try { return await fetch(url, opts); }
+  catch (e){ console.error('Fetch failed for', what, url, e); throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nUsually an ad blocker, browser shield or firewall. Press F12, Console tab, for the exact reason.'); }
+}
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid(), a = auth.get();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.shaders.length){ if (!auth.valid()) state.owned = null; render(); } }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); updateAuthUi(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443/shaders.html', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'shaders.html'); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+async function bungie(path, body, plainBody){
+  const key = ls.get('apiKey');
+  if (!key) throw new Error('Add your Bungie API key in Settings on the Weapons page first.');
+  const headers = { 'X-API-Key': key };
+  if (body && !plainBody) headers['Content-Type'] = 'application/json';
+  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
+  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', { method: body ? 'POST' : 'GET', headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+  let j; try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
+  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
+  return j.Response;
+}
+async function bungieAction(path, body){
+  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
+  try { return await bungie(path, body); } catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+}
+const entMem = new Map();
+async function ent(type, hash){
+  const k = type + ':' + hash;
+  if (entMem.has(k)) return entMem.get(k);
+  const p = (async () => {
+    const c = await cacheGet('ent:' + k);
+    if (c && c.v === state.manVer) return c.d;
+    let d, lastErr;
+    for (const wait of [0, 1500, 4000]){
+      if (wait) await sleep(wait);
+      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
+      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
+    }
+    if (lastErr) throw lastErr;
+    await cacheSet('ent:' + k, { v: state.manVer, d });
+    return d;
+  })();
+  entMem.set(k, p);
+  try { return await p; } catch (e){ entMem.delete(k); throw e; }
+}
+async function entMany(type, hashes){
+  const out = {}, list = [...new Set(hashes.filter(Boolean))];
+  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
+  return out;
+}
+
+
+
+
+/* ===================== state ===================== */
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+const state = { defs: null, sets: {}, manVer: '', chars: [], acct: null, items: [], shaders: [], owned: null, scanning: false };
+const nameOf = h => (state.defs && state.defs[h] && state.defs[h].n) || '';
+const PM_BUCKET = 215593132;
+/* ---- account, characters, inventory (for the Activity stream) ---- */
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+function fillCharSel(p){
+  const acts = (p.characterActivities && p.characterActivities.data) || {};
+  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
+  state.activeChar = (live || state.chars[0] || {}).id;
+  const a = state.chars.find(c => c.id === state.activeChar);
+  const saved = ls.get('pullChar2') || 'auto';
+  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
+    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
+  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
+}
+$('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
+async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
+async function transfer(i, toVault, charId){ await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType }); }
+async function pullFromPostmaster(i){
+  await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
+}
+async function pullTo(i, target){
+  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }
+  if (i.charId === target) return;
+  if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
+  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
+}
+function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+
+async function getAccount(){
+  if (state.acct) return state.acct;
+  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const ms = me.destinyMemberships || [];
+  const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
+  if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
+  state.acct = { membershipType: a.membershipType, membershipId: a.membershipId };
+  return state.acct;
+}
+
+
+/* ===================== manifest: item names (shared with Armor/Vendors/Today) and shaders ===================== */
+/* Shaders: DestinyInventoryItemLiteDefinition rows with item category 41 (Shaders) or item sub type 20, that have a
+   collectible. Source text and visibility come from DestinyCollectibleDefinition. Cached in IndexedDB manifestShaders. */
+const SHADER_CAT = 41, SHADER_SUBTYPE = 20;
+async function loadManifest(){
+  if (state.shaders.length && state.defs) return;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version; updateFooter();
+  const [armor, shc] = await Promise.all([cacheGet('manifestArmor'), cacheGet('manifestShaders')]);
+  const haveDefs = armor && armor.version === man.version, haveSh = shc && shc.version === man.version && shc.v === 1;
+  if (haveDefs){ state.defs = armor.data; state.sets = armor.sets || {}; }
+  if (haveSh) state.shaders = shc.list;
+  if (haveDefs && haveSh) return;
+  const paths = man.jsonWorldComponentContentPaths.en;
+  setStatus('Downloading item definitions (first run only, about 30 to 60 MB)...');
+  const raw = await (await net('https://www.bungie.net' + paths.DestinyInventoryItemLiteDefinition, 'the Bungie item definitions file')).json();
+  if (!haveDefs){
+    const data = {};
+    for (const h in raw){ const d = raw[h], dp = d.displayProperties || {}, inv = d.inventory || {};
+      data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: inv.tierType || 0, b: inv.bucketTypeHash || 0, c: d.classType }; }
+    const sets = {};
+    if (paths.DestinyEquipableItemSetDefinition){
+      try { const sraw = await (await net('https://www.bungie.net' + paths.DestinyEquipableItemSetDefinition, 'armor set definitions')).json();
+        for (const h in sraw){ const sd = sraw[h]; for (const ih of (sd.setItems || [])) sets[ih] = (sd.displayProperties || {}).name || ''; } }
+      catch (e){ console.warn('Set definitions unavailable', e.message); }
+    }
+    await cacheSet('manifestArmor', { version: man.version, data, sets });
+    state.defs = data; state.sets = sets;
+  }
+  if (!haveSh){
+    setStatus('Downloading collection definitions (first run only)...');
+    const coll = paths.DestinyCollectibleDefinition ? await (await net('https://www.bungie.net' + paths.DestinyCollectibleDefinition, 'collection definitions')).json() : {};
+    const byKey = new Map();
+    for (const h in raw){
+      const d = raw[h], dp = d.displayProperties || {};
+      const isShader = (d.itemCategoryHashes || []).includes(SHADER_CAT) || (d.itemType === 19 && d.itemSubType === SHADER_SUBTYPE);
+      if (!isShader || !dp.name || d.redacted || d.blacklisted) continue;
+      const c = d.collectibleHash ? coll[d.collectibleHash] : null;
+      if (!c || c.redacted) continue;   // no collectible = default/dummy plug, nothing to collect
+      const cdp = c.displayProperties || {};
+      if (!cdp.name || /^classified$/i.test(cdp.name)) continue;
+      const row = { h: +h, ch: d.collectibleHash, n: dp.name, i: dp.icon || cdp.icon || '', wm: d.iconWatermark || '', src: (c.sourceString || '').trim(), x: d.index || 0, fl: d.flavorText || '', tier: (d.inventory || {}).tierTypeName || '' };
+      const prev = byKey.get(row.ch);
+      if (!prev || row.x > prev.x) byKey.set(row.ch, row);   // one card per collectible
+    }
+    // the same name under two collectibles: keep the newest
+    const byName = new Map();
+    for (const r of byKey.values()){ const k = r.n.toLowerCase(); const p = byName.get(k); if (!p || r.x > p.x) byName.set(k, r); }
+    state.shaders = [...byName.values()];
+    await cacheSet('manifestShaders', { version: man.version, v: 1, list: state.shaders });
+  }
+}
+
+/* ===================== sources ===================== */
+const SOURCES = [
+  ['all', 'All sources'],
+  ['ever', 'Ada-1 / Eververse', /eververse|ada-1|bright dust|silver|tess everis|season pass|seasonal pass|archive/i],
+  ['van', 'Vanguard / Nightfall', /vanguard|nightfall|strike|zavala|grandmaster|onslaught/i],
+  ['pvp', 'Crucible', /crucible|trials|osiris|iron banner|competitive|shaxx|saint-14|glory|valor/i],
+  ['gambit', 'Gambit', /gambit|drifter/i],
+  ['raid', 'Raids & Dungeons', /\braid\b|dungeon|vault of glass|last wish|garden of salvation|deep stone|vow of the disciple|king.?s fall|root of nightmares|crota|salvation.?s edge|desert perpetual|pantheon/i],
+  ['event', 'Events', /solstice|dawning|festival of the lost|guardian games|crimson days|revelry|event/i],
+  ['world', 'World & Destination', /patrol|lost sector|public event|destination|edz|european dead zone|cosmodrome|nessus|moon|europa|throne world|neomuna|pale heart|dreaming city|tangled shore|mars|io\b|titan\b|mercury|kepler|lawless frontier|world drop|exotic quest|quest/i],
+  ['other', 'Other / Unknown'],
+];
+const srcKey = s => { for (const [k, , re] of SOURCES) if (re && re.test(s || '')) return k; return 'other'; };
+const srcLabel = s => (s || '').replace(/^source:\s*/i, '') || 'Source unknown';
+
+/* ===================== owned status (collectibles, component 800) ===================== */
+// state bit 1 = NotAcquired. Owned when the profile or any character has the bit clear.
+function readOwned(p){
+  const own = new Set(), seen = new Set();
+  const take = list => { for (const ch in list || {}){ seen.add(+ch); if ((list[ch].state & 1) === 0) own.add(+ch); } };
+  take(((p.profileCollectibles || {}).data || {}).collectibles);
+  for (const cid in ((p.characterCollectibles || {}).data || {})) take(p.characterCollectibles.data[cid].collectibles);
+  return { own, seen };
+}
+const statusOf = s => !state.owned ? 'unk' : state.owned.own.has(s.ch) ? 'own' : 'need';
+
+/* ===================== load ===================== */
+$('btnScan').onclick = () => scan({ force: true });
+async function scan(opts = {}){
+  if (state.scanning) return;
+  state.scanning = true; $('btnScan').disabled = true;
+  const prev = $('status').textContent;
+  try {
+    await loadManifest();
+    if (auth.valid()){
+      const acct = await getAccount();
+      if (!opts.silent) setStatus('Reading your collection...');
+      const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,800');
+      const chars = (p.characters && p.characters.data) || {};
+      state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
+        .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
+      fillCharSel(p); updateAuthUi();
+      trackDrops(p);
+      const o = readOwned(p);
+      state.owned = o.seen.size ? o : null;
+      if (!state.owned) setStatus('Bungie returned no collection data. Your collections may be set to private in your Bungie privacy settings.', true);
+      state.lastScan = Date.now();
+    } else state.owned = null;
+    render();
+    if (state.owned && !opts.silent){ const own = state.shaders.filter(s => statusOf(s) === 'own').length; setStatus(own + ' of ' + state.shaders.length + ' shaders collected.'); }
+    else if (!auth.valid()) setStatus(state.shaders.length + ' shaders. Sign in with Bungie to see which ones you own.');
+    else if (opts.silent) setStatus(prev);
+  } catch (e){ setStatus(e.message, true); }
+  finally { state.scanning = false; $('btnScan').disabled = false; tickRefresh(); }
+}
+
+/* ===================== render ===================== */
+const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+const STATUS = [['all', 'All'], ['own', 'Owned'], ['need', 'Need to get']];
+let fStatus = ls.get('shStatus') || 'all', fSource = ls.get('shSource') || 'all', fSort = ls.get('shSort') || 'new', fText = '', shown = 120;
+const PAGE_SIZE = 120;
+$('shSource').innerHTML = SOURCES.map(([k, l]) => '<option value="' + k + '">' + esc(l) + '</option>').join('');
+$('shSource').value = SOURCES.some(s => s[0] === fSource) ? fSource : 'all';
+$('shSort').value = ['new', 'name', 'owned', 'missing'].includes(fSort) ? fSort : 'new';
+function filtered(){
+  const t = fText.trim().toLowerCase();
+  return state.shaders.filter(s => (fSource === 'all' || srcKey(s.src) === fSource) && (fStatus === 'all' || !state.owned || statusOf(s) === fStatus) &&
+    (!t || s.n.toLowerCase().includes(t) || s.src.toLowerCase().includes(t)));
+}
+function sorted(list){
+  const by = { own: 0, need: 1, unk: 2 };
+  const name = (a, b) => a.n.localeCompare(b.n);
+  return list.slice().sort(fSort === 'name' ? name
+    : fSort === 'owned' ? (a, b) => by[statusOf(a)] - by[statusOf(b)] || b.x - a.x
+    : fSort === 'missing' ? (a, b) => ({ need: 0, own: 1, unk: 2 })[statusOf(a)] - ({ need: 0, own: 1, unk: 2 })[statusOf(b)] || b.x - a.x
+    : (a, b) => b.x - a.x || name(a, b));
+}
+const badge = st => st === 'own' ? '<span class="shst own">Owned</span>' : st === 'need' ? '<span class="shst need">Need to get</span>' : '<span class="shst unk" title="Sign in to see if you own it">Sign in to check</span>';
+function render(){
+  const total = state.shaders.length, own = state.owned ? state.shaders.filter(s => statusOf(s) === 'own').length : null;
+  $('shSignin').classList.toggle('hidden', auth.valid() || !total);
+  $('shSum').innerHTML = total ? [
+    '<div class="hstat"><div class="k">Total shaders</div><div class="v">' + total + '</div><div class="s">Collectible shaders in the game</div></div>',
+    '<div class="hstat gold"><div class="k">Owned</div><div class="v">' + (own == null ? '—' : own) + '</div><div class="s">' + (own == null ? 'Sign in to check' : Math.round(own / total * 1000) / 10 + '% complete') + '</div></div>',
+    '<div class="hstat"><div class="k">Need to get</div><div class="v">' + (own == null ? '—' : total - own) + '</div><div class="s">' + (own == null ? 'Sign in to check' : 'Still to collect') + '</div></div>'].join('') : '';
+  const n = k => k === 'all' ? null : state.owned ? state.shaders.filter(s => statusOf(s) === k).length : null;
+  $('shStatus').innerHTML = STATUS.map(([k, l]) => '<span class="chip' + (fStatus === k ? ' on' : '') + (k !== 'all' && !state.owned ? ' off' : '') + '" data-st="' + k + '"' + (k !== 'all' && !state.owned ? ' title="Sign in to filter by owned"' : '') + '>' + l + (n(k) != null ? '<b>' + n(k) + '</b>' : '') + '</span>').join('');
+  $('shStatus').querySelectorAll('[data-st]').forEach(c => c.onclick = () => { fStatus = c.dataset.st; ls.set('shStatus', fStatus); shown = PAGE_SIZE; render(); });
+  const list = sorted(filtered());
+  $('shCount').textContent = total ? 'Showing ' + Math.min(shown, list.length) + ' of ' + list.length : '';
+  $('shGrid').innerHTML = !total ? '' : list.length ? list.slice(0, shown).map(s => { const st = statusOf(s);
+    return '<button class="shcard ' + (st === 'own' ? 'owned' : '') + '" data-sh="' + s.h + '"><div class="shsw">' + (s.i ? '<img class="ic" loading="lazy" onerror="this.remove()" src="' + img(s.i) + '" alt="">' : '<span class="noimg">No image</span>') +
+      (s.wm ? '<img class="wm" loading="lazy" onerror="this.remove()" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
+      '<div class="shbody"><div class="shname" title="' + esc(s.n) + '">' + esc(s.n) + '</div><div class="shsrc" title="' + esc(srcLabel(s.src)) + '">' + esc(srcLabel(s.src)) + '</div>' + badge(st) + '</div></button>'; }).join('')
+    : '<div class="shempty">No shaders match these filters.</div>';
+  $('shMoreWrap').classList.toggle('hidden', list.length <= shown);
+  $('shMore').textContent = 'Show ' + Math.min(PAGE_SIZE, list.length - shown) + ' more';
+  $('shGrid').querySelectorAll('[data-sh]').forEach(c => c.onclick = () => openShader(+c.dataset.sh));
+}
+let searchT;
+$('shSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(() => { fText = $('shSearch').value; shown = PAGE_SIZE; render(); }, 120); };
+$('shSource').onchange = () => { fSource = $('shSource').value; ls.set('shSource', fSource); shown = PAGE_SIZE; render(); };
+$('shSort').onchange = () => { fSort = $('shSort').value; ls.set('shSort', fSort); render(); };
+$('shMore').onclick = () => { shown += PAGE_SIZE; render(); };
+$('shSigninBtn').onclick = () => $('btnAuth').click();
+$('btnAuth').addEventListener('click', () => setTimeout(() => { if (!auth.valid() && state.owned){ state.owned = null; render(); } }, 0));
+
+/* ===================== detail ===================== */
+// vendors.html saves what every vendor sells in localStorage vendSales after each load
+function vendorCheck(h){
+  let v = null; try { v = JSON.parse(ls.get('vendSales') || 'null'); } catch {}
+  if (!v || !v.vendors) return { known: false };
+  const live = v.vendors.filter(x => !x.due || Date.parse(x.due) > Date.now());
+  const sellers = live.filter(x => x.h.includes(h)).map(x => x.n);
+  const ada = live.some(x => /ada-1|eververse|tess/i.test(x.n));
+  return { known: true, at: v.at, sellers, ada };
+}
+async function openShader(h){
+  const s = state.shaders.find(x => x.h === h); if (!s) return;
+  const st = statusOf(s), vc = vendorCheck(h);
+  const vendHtml = !vc.known ? '<div class="shvend no">No vendor data yet. Open <a href="vendors.html">Vendors &amp; Xûr</a> once (signed in) and this will show whether Ada-1 or Eververse is selling it.</div>'
+    : vc.sellers.length ? '<div class="shvend yes">On sale now: ' + vc.sellers.map(esc).join(', ') + '</div>'
+    : '<div class="shvend no">Not on sale at any vendor you loaded' + (vc.ada ? ' (Ada-1 and Eververse included)' : '') + ', checked ' + esc(new Date(vc.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '.</div>';
+  const m = $('shModal');
+  m.innerHTML = '<div class="shpanel"><button class="ghost shclose" id="shClose" aria-label="Close">✕</button>' +
+    '<div class="shbig">' + (s.i ? '<img class="ic" src="' + img(s.i) + '" alt="">' : '') + (s.wm ? '<img class="wm" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
+    '<div class="shinfo"><h2>' + esc(s.n) + '</h2>' + badge(st) +
+      (s.fl ? '<div class="shv" style="margin-top:10px;font-style:italic;color:var(--dim)">' + esc(s.fl) + '</div>' : '') +
+      '<div class="shk">How to get it</div><div class="shv">' + esc(srcLabel(s.src)) + '</div>' +
+      '<div class="shk">Category</div><div class="shv">' + esc((SOURCES.find(x => x[0] === srcKey(s.src)) || [])[1] || 'Other') + '</div>' +
+      '<div class="shk">Season / release</div><div class="shv" id="shSeason">Loading...</div>' +
+      '<div class="shk">Vendors right now</div>' + vendHtml +
+      '<div class="shacts"><button class="primary" id="shCopy">Copy name</button><a class="ghost" href="vendors.html">Open Vendors &amp; Xûr</a></div>' +
+    '</div></div>';
+  m.classList.remove('hidden');
+  $('shClose').onclick = closeShader;
+  $('shCopy').onclick = () => copyText(s.n, 'Copied ' + s.n);
+  m.onclick = e => { if (e.target === m) closeShader(); };
+  $('shClose').focus();
+  // season: from the full item definition (seasonHash), fetched once and cached
+  try {
+    const d = await ent('DestinyInventoryItemDefinition', h);
+    const sz = d && d.seasonHash ? await ent('DestinySeasonDefinition', d.seasonHash) : null;
+    const el = $('shSeason'); if (!el) return;
+    el.textContent = sz ? ((sz.displayProperties || {}).name || 'Season') + (sz.seasonNumber ? ' (Season ' + sz.seasonNumber + ')' : '') : 'Bungie doesn\'t list a season for this shader.';
+  } catch { const el = $('shSeason'); if (el) el.textContent = 'Could not load season info.'; }
+}
+function closeShader(){ $('shModal').classList.add('hidden'); $('shModal').innerHTML = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('shModal').classList.contains('hidden')) closeShader(); });
+
+/* ===================== footer, refresh ===================== */
+function updateFooter(){
+  $('sitefoot').innerHTML = ['<b>Shaders and sources:</b> Bungie manifest (DestinyInventoryItemDefinition, DestinyCollectibleDefinition) ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : '(loads on first visit)'),
+    '<b>Owned:</b> your Collections through the Bungie.net API (signed in) · <b>On sale:</b> the vendors you last loaded on the Vendors page',
+    'Not affiliated with Bungie'].join('<br>');
+}
+const REFRESH_SECS = 60;
+function autoRefreshOk(minAge){ return ls.get('autoRefresh') !== '0' && state.acct && auth.valid() && !state.scanning && !document.hidden && Date.now() - (state.lastScan || 0) > minAge; }
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+function tickRefresh(){
+  const el = $('lastScan'); if (!el) return;
+  if (!state.lastScan){ el.textContent = ''; return; }
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  el.textContent = 'Collection read ' + fmt(state.lastScan) + (ls.get('autoRefresh') !== '0' ? ' · auto-refresh on' : '');
+  if (Date.now() - state.lastScan > REFRESH_SECS * 1000 && autoRefreshOk(REFRESH_SECS * 1000)) scan({ silent: true });
+}
+setInterval(tickRefresh, 5000);
+
+/* ===================== activity stream hooks (stream.js) ===================== */
+const PAGE = 'shaders';
+const streamInfo = null, streamOpen = null;
+const byId = () => null;
+const runAction = () => {};
+
+updateFooter();
+updateAuthUi();
+render();
+if (ls.get('apiKey')) scan(); else setStatus('Add your Bungie API key in Settings (on the Weapons page) first. The shader list comes from Bungie\'s game data, which needs the key.', true);
+</script>
+<script src="stream.js"></script>
+</body>
+</html>

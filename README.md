@@ -11,6 +11,7 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | armor.html | Armor triage: ranks every armor piece keep or trash (open from the header) |
 | today.html | Today: this week's rotations, featured activities, weekly challenges and everything your character can play |
 | vendors.html | Vendors and Xûr: what's worth buying this week, where each vendor is, and when stock rotates |
+| shaders.html | Shaders: every shader in the game, which ones you own, and where to get the rest |
 | theme.css | Shared look for every page: colors, header, spacing, cards. Keep it next to the .html files |
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
 | start-server.ps1 | Old http://localhost:8000 server. Works for scanning only, no sign-in |
@@ -87,6 +88,13 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 * **Exotic Cipher** items are hidden by default. Untick the box to see them.
 * **Zavala and Shaxx** have their own panel. It tells you straight out what gear to grab from each one. If one of them only has random rolls that week (Shaxx often does), it says so and tells you to skip him unless you're farming a specific roll.
 * **Xûr** has his own panel at the top: arrives every Friday at reset (17:00 UTC), leaves at the Tuesday reset. His arrival follows that schedule, because his Strange Coin shop at Eternity shows up in Bungie's data all week. While he's here it lists his gear, exotics and engrams first (bounties and materials go in a fold). When he's gone it counts down to his next visit, and his all-week coin shop sits in a fold. The page reloads vendors by itself when stock rotates or Xûr arrives.
+
+## Shaders (shaders.html)
+
+* Lists every collectible shader from Bungie's game data, with its swatch, name and where it comes from.
+* Signed in, it reads your Collections and marks each one Owned or Need to get, with totals and your completion percentage at the top. Signed out you can still browse and search.
+* Search by name or source, filter by status and by source (Ada-1 / Eververse, Vanguard / Nightfall, Crucible, Gambit, Raids & Dungeons, Events, World & Destination), and sort by newest, name, owned first or missing first.
+* Click a shader for a larger swatch, how to get it, its season, and whether a vendor is selling it right now. The vendor check uses the last vendor load on the Vendors & Xûr page, so open that page once to turn it on.
 
 ## Today (today.html)
 

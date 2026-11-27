@@ -212,6 +212,7 @@
     <a class="nav" href="index.html#weapons">Weapons</a>
     <a class="nav" href="armor.html">Armor triage</a>
     <a class="nav active" href="vendors.html">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
@@ -652,7 +653,7 @@ async function loadVendors(cid){
   const statDefs = await entMany('DestinyStatDefinition', [...statHashes]);
   const statName = h => ((statDefs[h] || {}).displayProperties || {}).name || '';
 
-  const vendors = [], random = [], weaponHashes = new Set();
+  const vendors = [], random = [], weaponHashes = new Set(), salesLog = [];
   for (const vh of hashes){
     const def = vDefs[vh], vc = vData[vh]; if (!def) continue;
     const dp = def.displayProperties || {};
@@ -670,6 +671,7 @@ async function loadVendors(cid){
     const ic = (r.itemComponents || {})[vh] || {};
     const sk = (ic.sockets || {}).data || {}, st = (ic.stats || {}).data || {}, ins = (ic.instances || {}).data || {}, rp = (ic.reusablePlugs || {}).data || {};
     const sales = ((((r.sales || {}).data || {})[vh] || {}).saleItems) || {};
+    salesLog.push({ n: dp.name || 'Vendor', due: vc.nextRefreshDate || null, h: [...new Set(Object.values(sales).map(x => x.itemHash))] });
     const isXur = XUR_HASHES.has(vh) || isXurName(dp.name);
     const core = coreOf(vh, dp.name);
     const V0 = { hash: vh, name: dp.name || 'Vendor', icon: dp.smallTransparentIcon || dp.icon || '', where, refresh: vc.nextRefreshDate, enabled: vc.enabled !== false, isXur, core, items: [], rolls: [] };
@@ -722,6 +724,8 @@ async function loadVendors(cid){
   const xur = xurWindow();
   soon.push(xur.here ? xur.leaves : xur.arrives);
   state.vend[cid] = { at: Date.now(), due: Math.min(...soon) + 60e3, vendors, random, weaponHashes };
+  // slim copy of what every vendor sells, so other pages (Shaders) can say "Ada-1 has this now"
+  ls.set('vendSales', JSON.stringify({ at: Date.now(), vendors: salesLog.filter(v => v.h.length) }));
   if (weaponHashes.size) await loadWishlist(weaponHashes);
   rate();
   const n = vendors.reduce((a, v) => a + v.items.length, 0);
