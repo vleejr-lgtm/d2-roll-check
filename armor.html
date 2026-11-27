@@ -700,33 +700,47 @@ function render(){
     const archStats = i.arch ? ARCH[i.arch] : [];
     const statHtml = STATS.map(s => '<div class="st' + (archStats.includes(s) ? ' arch' : s === i.tert ? ' tert' : '') + '">' + SHORT[s] + '<b>' + i.base[s] + '</b><i><span style="width:' + Math.min(100, i.base[s] / 30 * 100) + '%"></span></i></div>').join('');
     const note = noteFor(i.id);
-    return '<div class="card ' + i.v + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for details and comparison">' +
+    const tags = tagFor(i);
+    const pullBtn = i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another piece for this slot so this one can be moved or dismantled">Unequip</button>' :
+      (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull' : '⬇ Pull') + '</button>' : '') +
+      (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '" title="Send to vault">To vault</button>' : '');
+    return '<div class="card wcard acard ' + i.v + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for details and comparison">' +
       '<label class="pickbox"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
-      '<img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
-      '<div class="body"><div class="top"><span class="name">' + esc(i.name) + '</span><span class="badge ' + i.v + '">' + LBL[i.v] + '</span></div>' +
-      '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · Power ' + i.power : '') + (i.locked ? ' · 🔒' : '') + '</div>' +
-      (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
-      (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
-      '<div class="pills">' + (i.legacy ? '<span class="pill old">Old armor</span>' : '<span class="pill new">Armor 3.0</span>') + (i.tier ? '<span class="pill' + (i.tier >= 5 ? ' tier5' : i.tier === 4 ? ' tier4' : '') + '">Tier ' + i.tier + '</span>' : '') +
-        (i.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (i.arch ? '<span class="pill">' + esc(i.arch) + '</span>' : '') +
-        (i.tert ? '<span class="pill">+' + esc(i.tert) + '</span>' : '') + (i.set ? '<span class="pill">' + esc(i.set) + '</span>' : '') +
-        '<span class="pill">Total ' + i.total + '</span></div>' +
-      '<div class="stats">' + statHtml + '</div>' +
-      '<div class="reason' + (i.v === 'trash' ? ' dismantle' : '') + '">' + esc(i.why) + '</div>' +
-      (note ? '<div class="mynote">📝 ' + esc(note) + '</div>' : '') +
-      '<div class="actions">' + tagBoxes(i.id, tagFor(i)) +
-        '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '">' + (i.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
-        (i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another piece for this slot so this one can be moved or dismantled">Unequip</button>' :
-          (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' : '') +
-          (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '">To vault</button>' : '')) +
-        '<button data-copy="id:' + esc(i.id) + '">Copy DIM search</button><button data-note="' + esc(i.id) + '">' + (note ? 'Edit note' : 'Add note') + '</button>' +
-      '</div></div></div>';
+      // header: icon, name + subtitle, tier and verdict on one row
+      '<div class="chead"><img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+        '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
+        '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
+        '<div class="cstats">' + (i.tier ? '<span class="ctier' + (i.tier >= 5 ? ' t5' : '') + '" title="Tier ' + i.tier + '">T' + i.tier + '</span>' : '') +
+          '<span class="badge ' + i.v + '">' + LBL[i.v] + '</span></div></div>' +
+      // middle: roll type, stats, and why
+      '<div class="body">' +
+        (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
+        (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
+        '<div class="pills">' + (i.legacy ? '<span class="pill old">Old armor</span>' : '') +
+          (i.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (i.arch ? '<span class="pill">' + esc(i.arch) + '</span>' : '') +
+          (i.tert ? '<span class="pill">+' + esc(i.tert) + '</span>' : '') + (i.set ? '<span class="pill">' + esc(i.set) + '</span>' : '') +
+          '<span class="pill">Total ' + i.total + '</span></div>' +
+        '<div class="stats">' + statHtml + '</div>' +
+        '<div class="reason' + (i.v === 'trash' ? ' dismantle' : '') + '">' + esc(i.why) + '</div>' +
+        (note ? '<div class="mynote">📝 ' + esc(note) + '</div>' : '') +
+      '</div>' +
+      // footer: one tag menu, then compact actions
+      '<div class="cfoot">' +
+        '<details class="tagpop"><summary title="DIM tags (sent to DIM with the CSV export)">🏷 ' + (tags.length ? esc(tags.join(' + ')) : 'Tag') + '</summary><div class="tagmenu">' + tagBoxes(i.id, tags) + '</div></details>' +
+        '<span class="cacts">' +
+          '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '" title="' + (i.locked ? 'Unlock' : 'Lock') + ' in game">' + (i.locked ? '🔒' : '🔓') + '</button>' +
+          pullBtn +
+          '<button data-copy="id:' + esc(i.id) + '" title="Copy a DIM search for this exact piece">Copy DIM</button>' +
+          '<button data-note="' + esc(i.id) + '" title="' + (note ? 'Edit your note' : 'Add a note (sent to DIM on export)') + '">📝</button>' +
+        '</span>' +
+      '</div>' +
+      '</div>';
   }).join('') + (list.length > 600 ? '<div class="dim-lbl">Showing 600 of ' + list.length + '. Use the filters to narrow it down.</div>' : '') || '<div class="dim-lbl">Nothing to show.</div>';
   wireTagBoxes($('grid'), render);
   $('grid').querySelectorAll('[data-pick]').forEach(cb => cb.onchange = () => { cb.checked ? state.picked.add(cb.dataset.pick) : state.picked.delete(cb.dataset.pick); cb.closest('.card').classList.toggle('picked', cb.checked); updateBulkBar(); });
   $('grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => runAction(b.dataset.act, b.dataset.id, b));
   $('grid').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText(b.dataset.copy, 'Copied. Paste it into the DIM search bar.'));
-  $('grid').querySelectorAll('.card[data-open]').forEach(c => c.onclick = e => { if (e.target.closest('button,select,label,input,a,textarea')) return; openArmor(byId(c.dataset.open)); });
+  $('grid').querySelectorAll('.card[data-open]').forEach(c => c.onclick = e => { if (e.target.closest('button,select,label,input,a,textarea,details,summary')) return; openArmor(byId(c.dataset.open)); });
   $('grid').querySelectorAll('[data-note]').forEach(b => b.onclick = () => {
     const id = b.dataset.note, t = prompt('Note for this piece (shown on the card and sent to DIM on export). Leave empty to clear:', noteFor(id));
     if (t !== null){ setNote(id, t.trim()); render(); }

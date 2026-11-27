@@ -312,3 +312,42 @@ a.hstat:hover{border-color:var(--line2)}
 
 /* aegis tier in the card header */
 .wcard .cstats .aegis{font-size:11px; padding:1px 6px; border-radius:6px}
+
+
+/* ---------- Armor: same card as Weapons, plus the stat bars ---------- */
+.acard .stats{margin:4px 0 0}
+.acard .ctier.t5{color:var(--accent); border-color:rgba(226,183,75,.5)}
+.acard .reason{font-size:12.5px; line-height:1.5}
+.acard .reason.dismantle{color:#F2A09B}
+.acard .pills{margin:0}
+.acard .cacts button[data-note]{padding:0 8px}
+
+
+/* ---------- floating notices (bottom-right): toast + status line ---------- */
+#noticeStack{
+  position:fixed; bottom:20px; right:20px; z-index:1000;
+  display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  max-width:min(440px, calc(100vw - 40px)); pointer-events:none;
+}
+body.streampinned #noticeStack{right:410px}
+#noticeStack .toast{
+  position:static; transform:translateY(8px); left:auto; top:auto;
+  background:var(--panel3); color:var(--text); border:1px solid var(--line2); border-left:3px solid var(--keep);
+  border-radius:10px; padding:10px 14px; font-weight:500; font-size:13.5px; box-shadow:0 10px 30px rgba(0,0,0,.45);
+  opacity:0; transition:opacity .2s, transform .2s; pointer-events:none;
+}
+#noticeStack .toast.show{opacity:1; transform:none}
+#noticeStack .statusbox{
+  position:relative; background:var(--panel2); border:1px solid var(--line2); border-left:3px solid var(--faint);
+  border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.45);
+  opacity:0; transform:translateY(8px); transition:opacity .25s, transform .25s; pointer-events:none;
+}
+#noticeStack .statusbox.live{opacity:1; transform:none; pointer-events:auto}
+#noticeStack .statusbox.err{border-left-color:var(--trash)}
+#noticeStack #status{display:block!important; margin:0!important; min-height:0; color:var(--dim); padding:10px 34px 10px 14px; font-size:13px; line-height:1.45; white-space:pre-line}
+#noticeStack #status.err{color:#FCA5A5}
+#noticeStack .stclose{
+  position:absolute; top:6px; right:6px; width:22px; height:22px; border:0; background:none; color:var(--faint);
+  font-size:16px; line-height:1; cursor:pointer; border-radius:6px; padding:0;
+}
+#noticeStack .stclose:hover{color:var(--text); background:rgba(255,255,255,.06)}
