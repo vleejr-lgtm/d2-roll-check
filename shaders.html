@@ -99,6 +99,7 @@
     <a class="nav" href="today.html">Today</a>
     <a class="nav" href="index.html#weapons">Weapons</a>
     <a class="nav" href="armor.html">Armor triage</a>
+    <a class="nav" href="vault.html">Vault</a>
     <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
     <a class="nav active" href="shaders.html">Shaders</a>
   </nav>
@@ -199,7 +200,7 @@ function updateAuthUi(){
 $('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
 setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.shaders.length){ if (!auth.valid()) state.owned = null; render(); } }, 20e3);
 $('btnAuth').onclick = () => {
-  if (auth.valid()){ auth.set(null); updateAuthUi(); setStatus('Signed out.'); return; }
+  if (auth.valid()){ auth.set(null); ls.set('authAuto', ''); updateAuthUi(); setStatus('Signed out.'); return; }
   const cid = ls.get('clientId');
   if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
   if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Open the hosted site, or run start-server-https.ps1 and use https://localhost:8443 on this PC.', true); return; }
@@ -522,6 +523,34 @@ function tickRefresh(){
 setInterval(tickRefresh, 5000);
 
 /* ===================== activity stream hooks (stream.js) ===================== */
+/* ---- keep the Bungie sign-in going ----
+   Public Bungie apps get about 1 hour tokens and no refresh token. After someone has signed in once (localStorage
+   authAuto = '1'), an expired or nearly expired token is renewed with a quick trip through bungie.net, which skips the
+   Approve screen for apps the user already approved. Never mid-scan, never in a hidden tab, and at most once every
+   3 minutes per tab (sessionStorage renewAt) so a Bungie problem can't cause a redirect loop. Sign out clears authAuto. */
+let lastInput = Date.now();
+['pointerdown', 'keydown', 'wheel'].forEach(t => addEventListener(t, () => { lastInput = Date.now(); }, { passive: true }));
+function autoRenew(){
+  if (ls.get('authAuto') !== '1' || location.protocol !== 'https:' || document.hidden) return false;
+  if (/[?&]code=/.test(location.search)) return false;           // finishing a sign-in right now
+  const a = auth.get(); if (!a || !a.token) return false;
+  const expired = !auth.valid(), idle = Date.now() - lastInput > 60e3;
+  if (!expired && !(a.exp - Date.now() < 4 * 60e3 && idle)) return false;   // renew early only when nobody is clicking
+  if (state.scanning) return false;
+  let last = 0; try { last = +sessionStorage.getItem('renewAt') || 0; } catch {}
+  if (Date.now() - last < 3 * 60e3) return false;
+  const cid = ls.get('clientId'); if (!cid) return false;
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const page = (location.pathname.split('/').pop() || 'index.html') + (/^#[a-z]+$/.test(location.hash) ? location.hash : '');
+  try { sessionStorage.setItem('renewAt', String(Date.now())); sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', page); } catch {}
+  setStatus('Renewing your Bungie sign-in...');
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+  return true;
+}
+setInterval(autoRenew, 30e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoRenew(); });
+autoRenew();
+
 const PAGE = 'shaders';
 const streamInfo = null, streamOpen = null;
 const byId = () => null;

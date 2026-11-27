@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check · Vault</title>
+<style>
+  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body:not(.authed) .needauth{display:none!important}
+  .hidden{display:none!important}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);background:var(--keep);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+  .toast.show{opacity:1}
+  .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  #charSel{padding:6px 8px;font-size:13px}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+
+  /* ---- vault page ---- */
+  .vsum{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px} .vsum .hstat{flex:1; min-width:150px}
+  .vtools{display:flex; flex-direction:column; gap:10px; padding:14px 16px}
+  .vrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .vrow #vSearch{flex:1; min-width:240px}
+  .vrow .flbl{width:auto; min-width:64px}
+  .vcount{margin-left:auto}
+  .vgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:14px}
+  .vit{display:flex; gap:10px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; content-visibility:auto; contain-intrinsic-size:66px; min-width:0}
+  .vit:hover{border-color:var(--line2)}
+  .vit.r6{border-left:3px solid var(--exotic)} .vit.r5{border-left:3px solid #8a5cf6} .vit.r4{border-left:3px solid #4aa3e8}
+  .vit img{width:46px; height:46px; border-radius:4px; flex:none; background:#0A0C0F}
+  .vbody{flex:1; min-width:0}
+  .vname{font-weight:650; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .vmeta{font-size:11.5px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .vloc{font-size:11.5px; color:#9fe7ff} .vloc.pm{color:#ffd27a}
+  .vqty{font-weight:700; font-size:12px; color:var(--text)}
+  .vacts{display:flex; gap:4px; flex:none}
+  .vacts button{font-size:11.5px; padding:3px 8px}
+  .vacts button.on{color:var(--accent); border-color:rgba(226,183,75,.5)}
+  .vmore{display:flex; justify-content:center; margin:18px 0}
+  .vempty{padding:40px 20px; text-align:center; color:var(--dim)}
+  .vgroup{margin:18px 0 0} .vgroup h3{font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin:0 0 8px}
+  .shsignin{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 16px; border:1px solid rgba(226,183,75,.3); background:var(--accent-soft); border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px}
+  .shsignin b{color:var(--accent)}
+</style>
+<link rel="stylesheet" href="theme.css">
+<script src="config.js" onerror="this.remove()"></script>
+</head>
+<body>
+<header>
+  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html">Today</a>
+    <a class="nav" href="index.html#weapons">Weapons</a>
+    <a class="nav" href="armor.html">Armor triage</a>
+    <a class="nav active" href="vault.html">Vault</a>
+    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html">Shaders</a>
+  </nav>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull drops to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+</header>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <div id="status"></div>
+  <div class="sectionhead"><h2>Vault &amp; inventory</h2><span class="dim-lbl" id="lastScan"></span></div>
+  <div class="shsignin hidden" id="vSignin"><span><b>Sign in to see your items.</b> Your vault and inventory are private, so Bungie only shares them when you're signed in.</span><button class="primary" id="vSigninBtn">Sign in with Bungie</button></div>
+  <div class="vsum" id="vSum"></div>
+  <div class="panel vtools" id="vTools">
+    <div class="vrow">
+      <input id="vSearch" type="search" placeholder="Search name, type, rarity, tier, class or place: hand cannon, exotic, t5, titan, vault, locked" autocomplete="off">
+      <select id="vSort" title="Sort">
+        <option value="type">Sort: type</option>
+        <option value="name">Name A–Z</option>
+        <option value="power">Power (high first)</option>
+        <option value="rarity">Rarity</option>
+        <option value="loc">Location</option>
+      </select>
+      <button class="ghost" id="btnScan" title="Re-read your items from Bungie">↻ Refresh</button>
+    </div>
+    <div class="vrow"><span class="flbl">Where</span><div class="chips" id="vWhere"></div></div>
+    <div class="vrow"><span class="flbl">What</span><div class="chips" id="vKind"></div><span class="dim-lbl vcount" id="vCount"></span></div>
+  </div>
+  <div id="vList"></div>
+  <div class="vmore hidden" id="vMoreWrap"><button class="ghost" id="vMore">Show more</button></div>
+</main>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
+
+<script>
+/* ===================== shared helpers (same storage as the Weapons page) ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+// Hosted site: config.js (written by the deploy workflow from repo secrets) supplies the shared Bungie app's key and client_id.
+// When it's there it wins over anything saved in this browser; without it (localhost) Settings works as before.
+const SITE_CFG = window.D2RC_CONFIG || {};
+const SHARED_APP = !!(SITE_CFG.apiKey && SITE_CFG.clientId);
+const ls = { get: k => { if (SHARED_APP && (k === 'apiKey' || k === 'clientId')) return SITE_CFG[k]; try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+function toast(msg){
+  let t = document.querySelector('.toast');
+  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+async function copyText(text, msg){ try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch { prompt('Copy this:', text); } }
+
+function idb(){ return new Promise((res, rej) => { const r = indexedDB.open('d2rollcheck', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
+async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+
+async function net(url, what, opts){
+  try { return await fetch(url, opts); }
+  catch (e){ console.error('Fetch failed for', what, url, e); throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nUsually an ad blocker, browser shield or firewall. Press F12, Console tab, for the exact reason.'); }
+}
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid(), a = auth.get();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.shaders.length){ if (!auth.valid()) state.owned = null; render(); } }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); ls.set('authAuto', ''); updateAuthUi(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Open the hosted site, or run start-server-https.ps1 and use https://localhost:8443 on this PC.', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'vault.html'); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+async function bungie(path, body, plainBody){
+  const key = ls.get('apiKey');
+  if (!key) throw new Error('Add your Bungie API key in Settings on the Weapons page first.');
+  const headers = { 'X-API-Key': key };
+  if (body && !plainBody) headers['Content-Type'] = 'application/json';
+  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
+  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', { method: body ? 'POST' : 'GET', headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+  let j; try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
+  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
+  return j.Response;
+}
+async function bungieAction(path, body){
+  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
+  try { return await bungie(path, body); } catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+}
+const entMem = new Map();
+async function ent(type, hash){
+  const k = type + ':' + hash;
+  if (entMem.has(k)) return entMem.get(k);
+  const p = (async () => {
+    const c = await cacheGet('ent:' + k);
+    if (c && c.v === state.manVer) return c.d;
+    let d, lastErr;
+    for (const wait of [0, 1500, 4000]){
+      if (wait) await sleep(wait);
+      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
+      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
+    }
+    if (lastErr) throw lastErr;
+    await cacheSet('ent:' + k, { v: state.manVer, d });
+    return d;
+  })();
+  entMem.set(k, p);
+  try { return await p; } catch (e){ entMem.delete(k); throw e; }
+}
+async function entMany(type, hashes){
+  const out = {}, list = [...new Set(hashes.filter(Boolean))];
+  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
+  return out;
+}
+
+
+
+
+
+/* ===================== state ===================== */
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+const state = { defs: null, sets: {}, manVer: '', chars: [], acct: null, items: [], scanning: false };
+const nameOf = h => (state.defs && state.defs[h] && state.defs[h].n) || '';
+const PM_BUCKET = 215593132;
+/* ---- account, characters, inventory (for the Activity stream) ---- */
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+function fillCharSel(p){
+  const acts = (p.characterActivities && p.characterActivities.data) || {};
+  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
+  state.activeChar = (live || state.chars[0] || {}).id;
+  const a = state.chars.find(c => c.id === state.activeChar);
+  const saved = ls.get('pullChar2') || 'auto';
+  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
+    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
+  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
+}
+$('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
+async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
+async function transfer(i, toVault, charId){ await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType }); }
+async function pullFromPostmaster(i){
+  await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
+}
+async function pullTo(i, target){
+  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }
+  if (i.charId === target) return;
+  if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
+  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
+}
+function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+
+async function getAccount(){
+  if (state.acct) return state.acct;
+  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const ms = me.destinyMemberships || [];
+  const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
+  if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
+  state.acct = { membershipType: a.membershipType, membershipId: a.membershipId };
+  return state.acct;
+}
+
+
+/* ===================== item names (shared manifestArmor cache with Armor, Vendors, Today, Shaders) ===================== */
+async function loadDefs(){
+  if (state.defs) return;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version; updateFooter();
+  const cached = await cacheGet('manifestArmor');
+  if (cached && cached.version === man.version){ state.defs = cached.data; state.sets = cached.sets || {}; return; }
+  const paths = man.jsonWorldComponentContentPaths.en;
+  setStatus('Downloading item definitions (first run only, about 30 to 60 MB)...');
+  const raw = await (await net('https://www.bungie.net' + paths.DestinyInventoryItemLiteDefinition, 'the Bungie item definitions file')).json(), data = {};
+  for (const h in raw){ const d = raw[h], dp = d.displayProperties || {}, inv = d.inventory || {};
+    data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: inv.tierType || 0, b: inv.bucketTypeHash || 0, c: d.classType }; }
+  const sets = {};
+  if (paths.DestinyEquipableItemSetDefinition){
+    try { const sraw = await (await net('https://www.bungie.net' + paths.DestinyEquipableItemSetDefinition, 'armor set definitions')).json();
+      for (const h in sraw){ const sd = sraw[h]; for (const ih of (sd.setItems || [])) sets[ih] = (sd.displayProperties || {}).name || ''; } }
+    catch (e){ console.warn('Set definitions unavailable', e.message); }
+  }
+  await cacheSet('manifestArmor', { version: man.version, data, sets });
+  state.defs = data; state.sets = sets;
+}
+
+/* ===================== items: vault, every character, equipped, postmaster ===================== */
+// item type -> group (DestinyItemType)
+const KINDS = [
+  ['weapons', 'Weapons', [3]],
+  ['armor', 'Armor', [2]],
+  ['mods', 'Mods & shaders', [19]],
+  ['mats', 'Consumables & materials', [1, 8, 9, 10, 25, 27]],
+  ['cosm', 'Ghosts & cosmetics', [14, 17, 18, 21, 22, 23, 24, 29]],
+  ['quests', 'Quests & bounties', [12, 13, 15, 26]],
+  ['other', 'Other', []],
+];
+const kindOf = it => (KINDS.find(k => k[2].includes(it)) || KINDS[KINDS.length - 1])[0];
+const RARITY = { 6: 'Exotic', 5: 'Legendary', 4: 'Rare', 3: 'Uncommon', 2: 'Common', 1: 'Basic' };
+const SKIP_TYPES = new Set([16]);   // subclasses
+function readItems(p){
+  const chars = (p.characters && p.characters.data) || {}, inst = ((p.itemComponents || {}).instances || {}).data || {};
+  const out = [];
+  const add = (list, cid, eq) => { for (const it of list || []){
+    const d = state.defs[it.itemHash]; if (!d || !d.n || SKIP_TYPES.has(d.it)) continue;
+    const ins = it.itemInstanceId ? inst[it.itemInstanceId] || {} : {};
+    const pm = it.bucketHash === PM_BUCKET, who = cid ? (CLASS[(chars[cid] || {}).classType] || 'Character') : 'Vault';
+    out.push({ id: it.itemInstanceId || null, hash: it.itemHash, name: d.n, icon: d.i, type: d.t, it: d.it, kind: kindOf(d.it), rar: d.tier, cls: d.c,
+      qty: it.quantity || 1, charId: cid || null, equipped: !!eq, postmaster: pm, locked: !!(it.state & 1),
+      loc: pm ? 'Postmaster (' + who + ')' : who + (eq ? ' (equipped)' : ''), where: pm ? 'pm' : cid || 'vault',
+      power: ins.primaryStat ? ins.primaryStat.value : 0, gearTier: ins.gearTier || 0, set: state.sets[it.itemHash] || '' });
+  } };
+  add(((p.profileInventory || {}).data || {}).items, null, false);
+  for (const cid in ((p.characterInventories || {}).data || {})) add(p.characterInventories.data[cid].items, cid, false);
+  for (const cid in ((p.characterEquipment || {}).data || {})) add(p.characterEquipment.data[cid].items, cid, true);
+  return out;
+}
+
+$('btnScan').onclick = () => scan({ force: true });
+$('vSigninBtn').onclick = () => $('btnAuth').click();
+async function scan(opts = {}){
+  if (state.scanning) return;
+  if (!auth.valid()){ render(); setStatus('Sign in with Bungie (top right) to see your vault and inventory.'); return; }
+  state.scanning = true; $('btnScan').disabled = true;
+  const prev = $('status').textContent;
+  try {
+    await loadDefs();
+    const acct = await getAccount();
+    if (!opts.silent) setStatus('Reading your vault and characters...');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300');
+    const chars = (p.characters && p.characters.data) || {};
+    state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
+      .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
+    fillCharSel(p); updateAuthUi();
+    trackDrops(p);
+    if (!p.profileInventory || !p.profileInventory.data) setStatus('Bungie didn\'t return your vault. Check that you\'re signed in with the right account.', true);
+    state.items = readItems(p);
+    state.lastScan = Date.now();
+    render();
+    if (!opts.silent) setStatus(state.items.length + ' items across your vault and ' + state.chars.length + ' characters.');
+    else setStatus(prev);
+  } catch (e){ setStatus(e.message, true); }
+  finally { state.scanning = false; $('btnScan').disabled = false; tickRefresh(); }
+}
+
+/* ===================== render ===================== */
+const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+let fWhere = ls.get('vaultWhere') || 'all', fKind = ls.get('vaultKind') || 'all', fSort = ls.get('vaultSort') || 'type', fText = '', shown = 200;
+const PAGE_SIZE = 200;
+$('vSort').value = ['type', 'name', 'power', 'rarity', 'loc'].includes(fSort) ? fSort : 'type';
+// search words all have to match: name, type, location, rarity, class, tier ("t5"), set, "locked", "equipped"
+const hay = i => [i.name, i.type, i.loc, RARITY[i.rar] || '', CLASS[i.cls] || '', i.gearTier ? 't' + i.gearTier + ' tier ' + i.gearTier : '', i.set, i.locked ? 'locked' : '', i.equipped ? 'equipped' : '', i.postmaster ? 'postmaster' : '', (KINDS.find(k => k[0] === i.kind) || [])[1]].join(' ').toLowerCase();
+function filtered(){
+  const words = fText.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return state.items.filter(i => (fWhere === 'all' || i.where === fWhere) && (fKind === 'all' || i.kind === fKind) && (!words.length || (h => words.every(w => h.includes(w)))(hay(i))));
+}
+function sorted(list){
+  const name = (a, b) => a.name.localeCompare(b.name);
+  const ko = i => KINDS.findIndex(k => k[0] === i.kind);
+  return list.slice().sort(fSort === 'name' ? name
+    : fSort === 'power' ? (a, b) => b.power - a.power || name(a, b)
+    : fSort === 'rarity' ? (a, b) => b.rar - a.rar || name(a, b)
+    : fSort === 'loc' ? (a, b) => a.loc.localeCompare(b.loc) || name(a, b)
+    : (a, b) => ko(a) - ko(b) || a.type.localeCompare(b.type) || b.rar - a.rar || name(a, b));
+}
+function chips(el, opts, cur, attr, key, set){
+  el.innerHTML = opts.map(([k, l, n]) => '<span class="chip' + (cur === k ? ' on' : '') + '" ' + attr + '="' + esc(k) + '">' + esc(l) + (n != null ? '<b>' + n + '</b>' : '') + '</span>').join('');
+  el.querySelectorAll('[' + attr + ']').forEach(c => c.onclick = () => { set(c.getAttribute(attr)); ls.set(key, c.getAttribute(attr)); shown = PAGE_SIZE; render(); });
+}
+function itemHtml(i){
+  const canMove = !!i.id && auth.valid() && state.acct, target = selChar();
+  const acts = canMove ? [
+    (i.charId !== target || i.postmaster) && !i.equipped ? '<button class="ghost" data-act="pull" data-id="' + esc(i.id) + '" title="Move to your ' + esc(((state.chars.find(c => c.id === target) || {}).name) || 'character') + ' (Pull to: menu, top right)">' + (i.postmaster ? '📬 Pull' : '⬇ Pull') + '</button>' : '',
+    i.charId && !i.equipped && !i.postmaster ? '<button class="ghost" data-act="vault" data-id="' + esc(i.id) + '" title="Send to the vault">Vault</button>' : '',
+    (i.kind === 'weapons' || i.kind === 'armor') ? '<button class="ghost' + (i.locked ? ' on' : '') + '" data-act="lock" data-id="' + esc(i.id) + '" title="' + (i.locked ? 'Unlock' : 'Lock') + '">' + (i.locked ? '🔒' : '🔓') + '</button>' : ''].join('') : '';
+  return '<div class="vit r' + i.rar + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '<span class="pmnoimg"></span>') +
+    '<div class="vbody"><div class="vname" title="' + esc(i.name) + '">' + esc(i.name) + (i.qty > 1 ? ' <span class="vqty">×' + i.qty + '</span>' : '') + '</div>' +
+    '<div class="vmeta">' + esc([i.type, RARITY[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</div>' +
+    '<div class="vloc' + (i.postmaster ? ' pm' : '') + '">' + esc(i.loc) + (i.locked && !(i.kind === 'weapons' || i.kind === 'armor') ? ' · 🔒' : '') + '</div></div>' +
+    (acts ? '<div class="vacts">' + acts + '</div>' : '') + '</div>';
+}
+function render(){
+  const authed = auth.valid();
+  $('vSignin').classList.toggle('hidden', authed);
+  $('vTools').classList.toggle('hidden', !state.items.length);
+  if (!state.items.length){ $('vSum').innerHTML = ''; $('vList').innerHTML = authed && !state.scanning ? '' : ''; $('vMoreWrap').classList.add('hidden'); $('vCount').textContent = ''; return; }
+  const n = w => state.items.filter(i => i.where === w).length;
+  const vaultGear = state.items.filter(i => i.where === 'vault' && (i.kind === 'weapons' || i.kind === 'armor')).length;
+  $('vSum').innerHTML = [['Vault', n('vault'), vaultGear + ' weapons and armor']].concat(state.chars.map(c => [c.name, n(c.id), c.light ? 'Power ' + c.light : '']))
+    .concat([['Postmaster', n('pm'), n('pm') ? 'Open 📬 to pull them' : 'Empty']])
+    .map(([k, v, s]) => '<div class="hstat' + (k === 'Postmaster' && v >= 18 ? ' gold' : '') + '"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div><div class="s">' + esc(s) + '</div></div>').join('');
+  chips($('vWhere'), [['all', 'Everywhere', state.items.length], ['vault', 'Vault', n('vault')]].concat(state.chars.map(c => [c.id, c.name, n(c.id)])).concat([['pm', 'Postmaster', n('pm')]]), fWhere, 'data-w', 'vaultWhere', v => fWhere = v);
+  const inWhere = state.items.filter(i => fWhere === 'all' || i.where === fWhere);
+  chips($('vKind'), [['all', 'All', inWhere.length]].concat(KINDS.map(([k, l]) => [k, l, inWhere.filter(i => i.kind === k).length]).filter(x => x[2] || x[0] === fKind)), fKind, 'data-k', 'vaultKind', v => fKind = v);
+  const list = sorted(filtered()), page = list.slice(0, shown);
+  $('vCount').textContent = 'Showing ' + page.length + ' of ' + list.length;
+  if (!list.length){ $('vList').innerHTML = '<div class="vempty">Nothing matches. Try fewer words, or set Where and What back to All.</div>'; $('vMoreWrap').classList.add('hidden'); return; }
+  // group by kind when sorting by type, so the list reads like an inventory
+  if (fSort === 'type'){
+    const groups = []; for (const i of page){ const g = groups[groups.length - 1]; if (g && g.k === i.kind) g.items.push(i); else groups.push({ k: i.kind, items: [i] }); }
+    $('vList').innerHTML = groups.map(g => '<div class="vgroup"><h3>' + esc((KINDS.find(k => k[0] === g.k) || [])[1]) + ' <span class="dim-lbl">' + list.filter(i => i.kind === g.k).length + '</span></h3><div class="vgrid">' + g.items.map(itemHtml).join('') + '</div></div>').join('');
+  } else $('vList').innerHTML = '<div class="vgrid">' + page.map(itemHtml).join('') + '</div>';
+  $('vMoreWrap').classList.toggle('hidden', list.length <= shown);
+  $('vMore').textContent = 'Show ' + Math.min(PAGE_SIZE, list.length - shown) + ' more';
+  $('vList').querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act, b.dataset.id, b));
+}
+async function act(a, id, btn){
+  const i = state.items.find(x => x.id === id); if (!i) return;
+  btn.disabled = true;
+  try {
+    if (a === 'pull'){ const t = selChar(); await pullTo(i, t); i.where = t; i.loc = (state.chars.find(c => c.id === t) || {}).name || 'Character'; toast('Moved ' + i.name + ' to your ' + i.loc); }
+    else if (a === 'vault'){ await transfer(i, true, i.charId); i.charId = null; i.where = 'vault'; i.loc = 'Vault'; toast('Sent ' + i.name + ' to the vault'); }
+    else if (a === 'lock'){ await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); }
+  } catch (e){ setStatus(isGoneError(e) ? i.name + ' is no longer there. Refresh to update the list.' : e.message, true); }
+  render();
+}
+let searchT;
+$('vSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(() => { fText = $('vSearch').value; shown = PAGE_SIZE; render(); }, 120); };
+$('vSort').onchange = () => { fSort = $('vSort').value; ls.set('vaultSort', fSort); render(); };
+$('vMore').onclick = () => { shown += PAGE_SIZE; render(); };
+$('charSel').addEventListener('change', render);
+// "/" jumps to the search box
+document.addEventListener('keydown', e => { if (e.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName)){ e.preventDefault(); $('vSearch').focus(); } });
+
+/* ===================== footer, refresh ===================== */
+function updateFooter(){
+  $('sitefoot').innerHTML = ['<b>Your items:</b> Bungie.net API (vault, character inventories, equipped and postmaster, signed in)',
+    '<b>Names and icons:</b> Bungie manifest ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : '(loads on first visit)'),
+    'Not affiliated with Bungie'].join('<br>');
+}
+const REFRESH_SECS = 60;
+function autoRefreshOk(minAge){ return ls.get('autoRefresh') !== '0' && state.acct && auth.valid() && !state.scanning && !document.hidden && Date.now() - (state.lastScan || 0) > minAge; }
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+function tickRefresh(){
+  const el = $('lastScan'); if (!el) return;
+  if (!state.lastScan){ el.textContent = ''; return; }
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  el.textContent = 'Read ' + fmt(state.lastScan) + (ls.get('autoRefresh') !== '0' ? ' · auto-refresh on' : '') + ' · press / to search';
+  if (Date.now() - state.lastScan > REFRESH_SECS * 1000 && autoRefreshOk(REFRESH_SECS * 1000)) scan({ silent: true });
+}
+setInterval(tickRefresh, 5000);
+
+/* ---- keep the Bungie sign-in going ----
+   Public Bungie apps get about 1 hour tokens and no refresh token. After someone has signed in once (localStorage
+   authAuto = '1'), an expired or nearly expired token is renewed with a quick trip through bungie.net, which skips the
+   Approve screen for apps the user already approved. Never mid-scan, never in a hidden tab, and at most once every
+   3 minutes per tab (sessionStorage renewAt) so a Bungie problem can't cause a redirect loop. Sign out clears authAuto. */
+let lastInput = Date.now();
+['pointerdown', 'keydown', 'wheel'].forEach(t => addEventListener(t, () => { lastInput = Date.now(); }, { passive: true }));
+function autoRenew(){
+  if (ls.get('authAuto') !== '1' || location.protocol !== 'https:' || document.hidden) return false;
+  if (/[?&]code=/.test(location.search)) return false;           // finishing a sign-in right now
+  const a = auth.get(); if (!a || !a.token) return false;
+  const expired = !auth.valid(), idle = Date.now() - lastInput > 60e3;
+  if (!expired && !(a.exp - Date.now() < 4 * 60e3 && idle)) return false;   // renew early only when nobody is clicking
+  if (state.scanning) return false;
+  let last = 0; try { last = +sessionStorage.getItem('renewAt') || 0; } catch {}
+  if (Date.now() - last < 3 * 60e3) return false;
+  const cid = ls.get('clientId'); if (!cid) return false;
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const page = (location.pathname.split('/').pop() || 'index.html') + (/^#[a-z]+$/.test(location.hash) ? location.hash : '');
+  try { sessionStorage.setItem('renewAt', String(Date.now())); sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', page); } catch {}
+  setStatus('Renewing your Bungie sign-in...');
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+  return true;
+}
+
+/* ===================== activity stream hooks (stream.js) ===================== */
+const PAGE = 'vault';
+const streamInfo = null, streamOpen = null;
+const byId = id => state.items.find(i => i.id === id) || null;
+const runAction = () => {};
+
+updateFooter();
+updateAuthUi();
+render();
+if (!ls.get('apiKey')) setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
+else scan();
+</script>
+<script src="stream.js"></script>
+</body>
+</html>

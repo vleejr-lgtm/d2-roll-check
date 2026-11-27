@@ -1,7 +1,8 @@
 /* Activity stream, shared by the Weapons, Armor and Vendors pages.
    Every refresh reads the whole profile, so this tracks weapons AND armor no matter which page is open.
    The page that loads this file provides: PAGE, streamInfo, streamOpen, byId, runAction, pullTo, setLock,
-   selChar, setStatus, isGoneError, ent, state, ls, esc, toast, $. */
+   selChar, setStatus, isGoneError, ent, state, ls, esc, toast, $, auth, bungieAction, scan (and optionally render).
+   It also adds the Postmaster button and panel to every page. */
 (function(){
   const PM = 215593132;   // Lost Items (postmaster)
   const ARMOR_BUCKETS = new Set([3448274439, 3551918588, 14239492, 20886954, 1585787867]);
@@ -56,6 +57,7 @@
   let openedFromHash = false;
 
   window.trackDrops = function(p){
+    try { pmCapture(p); } catch (e){ console.warn('postmaster', e); }
     if (!p || !p.profileInventory || !p.profileInventory.data) return;   // vault hidden: everything there would look dismantled
     const gear = gearFromProfile(p);
     state.gear = new Map(gear.map(g => [g.id, g]));
@@ -167,6 +169,100 @@
   setInterval(renderStream, 30e3);
   window.addEventListener('storage', e => { if (e.key === 'stream') renderStream(); });
   renderStream();
+
+
+  /* ---- Postmaster: every character's Lost Items, on every page ----
+     Read from the same profile refresh (characterInventories, bucket 215593132). Pull one stack or everything for a
+     character with PullFromPostmaster. The postmaster holds 21 items per character; past that, new drops are lost. */
+  const PM_CAP = 21;
+  let pm = null;                       // { at, chars: [{ id, name, items: [{ id, hash, qty }] }] }
+  const pmNames = {};
+  function pmCapture(p){
+    const chars = (p.characters && p.characters.data) || {}, inv = (p.characterInventories && p.characterInventories.data) || {};
+    if (!Object.keys(chars).length) return;
+    pm = { at: Date.now(), chars: Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed)).map(c => ({
+      id: c.characterId, name: CLS[c.classType] || 'Character',
+      items: ((inv[c.characterId] || {}).items || []).filter(it => it.bucketHash === PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1 })) })) };
+    pmButton(); if (!$('pmPanel').classList.contains('hidden')) pmRender();
+  }
+  const pmTotal = () => pm ? pm.chars.reduce((n, c) => n + c.items.length, 0) : 0;
+  const pmFull = () => pm ? Math.max(0, ...pm.chars.map(c => c.items.length)) : 0;
+  function pmDef(h){
+    const d = state.defs && state.defs[h];
+    if (d && d.n) return { n: d.n, i: d.i };
+    if (pmNames[h]) return pmNames[h];
+    pmNames[h] = { n: 'Loading…', i: '' };
+    ent('DestinyInventoryItemDefinition', h).then(x => { const dp = (x && x.displayProperties) || {}; pmNames[h] = { n: dp.name || 'Item ' + h, i: dp.icon || '' }; if (!$('pmPanel').classList.contains('hidden')) pmRender(); })
+      .catch(() => { pmNames[h] = { n: 'Item ' + h, i: '' }; });
+    return pmNames[h];
+  }
+  // header button, next to Activity
+  const pmBtn = document.createElement('button');
+  pmBtn.className = 'ghost needauth hidden'; pmBtn.id = 'btnPM'; pmBtn.type = 'button'; pmBtn.title = 'Postmaster: pull lost items to your characters';
+  $('btnStream').insertAdjacentElement('beforebegin', pmBtn);
+  function pmButton(){
+    const n = pmTotal(), full = pmFull();
+    pmBtn.classList.toggle('hidden', !pm);
+    pmBtn.classList.toggle('pmwarn', full >= PM_CAP - 3);
+    pmBtn.innerHTML = '📬' + (n ? '<b class="scount' + (full >= PM_CAP - 3 ? ' pmhot' : '') + '">' + n + '</b>' : '');
+    pmBtn.title = n ? n + ' item' + (n > 1 ? 's' : '') + ' in your postmaster' + (full >= PM_CAP - 3 ? '. Almost full: new drops will be lost past ' + PM_CAP + '.' : '') : 'Postmaster is empty';
+  }
+  // panel
+  const panel = document.createElement('div');
+  panel.id = 'pmPanel'; panel.className = 'stream pmpanel hidden';
+  panel.innerHTML = '<div class="stream-head"><b>📬 Postmaster</b><span style="flex:1"></span><button class="ghost" id="pmRefresh" title="Re-read from Bungie">↻</button><button class="ghost" id="pmClose">✕</button></div>' +
+    '<div class="dim-lbl" style="padding:0 14px 8px">Lost items on each character. Each postmaster holds ' + PM_CAP + '; anything past that is gone. Pulling needs room in that character\'s inventory.</div><div id="pmList"></div>';
+  document.body.appendChild(panel);
+  pmBtn.onclick = () => { panel.classList.toggle('hidden'); if (!panel.classList.contains('hidden')){ $('stream').classList.add('hidden'); pmRender(); } };
+  $('pmClose').onclick = () => panel.classList.add('hidden');
+  $('pmRefresh').onclick = () => { if (typeof scan === 'function') scan({ silent: true }); };
+  const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+  function pmRender(){
+    const list = $('pmList');
+    if (!pm){ list.innerHTML = '<div class="sev info">Sign in and load the page to read your postmaster.</div>'; return; }
+    list.innerHTML = pm.chars.map(c => {
+      const n = c.items.length, hot = n >= PM_CAP - 3;
+      return '<div class="pmchar"><div class="pmhead"><b>' + esc(c.name) + '</b><span class="pmcount' + (hot ? ' hot' : '') + '">' + n + ' / ' + PM_CAP + '</span><span style="flex:1"></span>' +
+        (n ? '<button class="ghost pmall" data-pmall="' + esc(c.id) + '">Pull all</button>' : '') + '</div>' +
+        (n ? c.items.map((it, ix) => { const d = pmDef(it.hash);
+          return '<div class="pmrow">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + '</span>' +
+            '<button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmi="' + ix + '">Pull</button></div>'; }).join('')
+          : '<div class="dim-lbl pmempty">Empty</div>') + '</div>';
+    }).join('') + '<div class="dim-lbl" style="padding:6px 4px">Read ' + new Date(pm.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>';
+    list.querySelectorAll('[data-pmi]').forEach(b => b.onclick = () => pmPull(b.dataset.pmc, [c => c.items[+b.dataset.pmi]], b));
+    list.querySelectorAll('[data-pmall]').forEach(b => b.onclick = () => pmPull(b.dataset.pmall, null, b));
+  }
+  let pmBusy = false;
+  async function pmPull(cid, pick, btn){
+    if (pmBusy) return;
+    if (!state.acct || !auth.valid()){ setStatus('Sign in with Bungie (top right) to pull from the postmaster.', true); return; }
+    const ch = pm.chars.find(c => c.id === cid); if (!ch) return;
+    const items = pick ? pick.map(f => f(ch)).filter(Boolean) : ch.items.slice();
+    pmBusy = true; btn.disabled = true; btn.textContent = '…';
+    let ok = 0; const fails = [];
+    for (const it of items){
+      try {
+        await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: it.hash, stackSize: it.qty, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
+        ch.items = ch.items.filter(x => x !== it); ok++;
+        const g = it.id !== '0' && state.gear && state.gear.get(it.id); if (g){ g.postmaster = false; g.loc = ch.name; }
+        const own = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (own){ own.postmaster = false; own.loc = ch.name; }
+      } catch (e){
+        const m = e.message || '';
+        fails.push(pmDef(it.hash).n + ': ' + (/NoRoom|no room|full/i.test(m) ? 'no room on your ' + ch.name : /cannot|not allowed|NotTransferrable/i.test(m) ? 'can\'t be pulled (pick it up in game)' : m));
+        if (/NoRoom|no room|full/i.test(m)) break;   // the rest won't fit either
+      }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    pmBusy = false; pmButton(); pmRender();
+    if (ok) toast('Pulled ' + ok + ' item' + (ok > 1 ? 's' : '') + ' to your ' + ch.name);
+    if (fails.length) setStatus('Some items stayed in the postmaster:\n' + fails.slice(0, 6).join('\n') + (fails.length > 6 ? '\n+' + (fails.length - 6) + ' more' : ''), true);
+    if (ok && typeof render === 'function') try { render(); } catch {}
+  }
+  pmButton();
+  // the "Signed in until" text is hidden to save header room: show it on the Sign out button instead
+  (function authTip(){ const a = $('authStatus'), b = $('btnAuth'); if (!a || !b) return;
+    const sync = () => { b.title = a.textContent ? a.textContent + '. Click to sign out.' : 'Sign in with your Bungie account'; };
+    new MutationObserver(sync).observe(a, { childList: true, characterData: true, subtree: true }); sync(); })();
 
   // status line and toasts float in the bottom-right corner instead of pushing the page down
   (function notices(){

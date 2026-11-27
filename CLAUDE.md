@@ -10,6 +10,7 @@ Personal Destiny 2 tool, run locally at `https://localhost:8443/` (`start-server
 | `armor.html` | Armor triage (Armor 3.0 archetype/tier/tertiary rules, Gear to get, mods) |
 | `vendors.html` | Vendors, Zavala & Shaxx panel, Xûr panel |
 | `today.html` | Lost sector of the day, weekly milestones, featured activities, challenges |
+| `vault.html` | Everything you own: vault, every character, equipped, postmaster. Search, filters, pull / vault / lock |
 | `shaders.html` | Every collectible shader, owned vs missing (Collections), source, detail modal with vendor check |
 | `stream.js` | Shared Activity stream, tag-menu behavior, bottom-right notices. Loaded **after** each page's inline script |
 | `theme.css` | Shared visual theme. Loaded **after** each page's inline `<style>` |
@@ -21,7 +22,7 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor vendSales shStatus shSource shSort enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor authAuto vendSales shStatus shSource shSort vaultWhere vaultKind vaultSort enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
   - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `manifestShaders` (shader list), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
@@ -129,6 +130,20 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - Xûr: schedule-based (Fri 17:00 UTC → Tue 17:00 UTC). His Strange Coin shop is in vendor data all week, so presence in the data doesn't mean he's arrived.
 - Wishlists (DIM format) from `PRESETS` in `index.html`: Community (voltron), Aegis Endgame PvE, Monument PvE/PvP, optional trash list. Footer roll counts = lines starting with `dimwishlist:`.
 
+## Vault (vault.html)
+
+- Nav order on every page: Today, Weapons, Armor triage, Vault, Vendors & Xûr, Shaders. Home Jump to has a Vault card.
+- Profile `components=102,200,201,204,205,300`; names/icons from the shared `manifestArmor` cache (`loadDefs`). `readItems()` turns vault + character inventories + equipment into rows `{id, hash, name, icon, type, it, kind, rar, cls, qty, charId, equipped, postmaster, locked, loc, where, power, gearTier, set}`. Subclasses (itemType 16) are skipped. `where` is `vault`, a character id, or `pm`.
+- Groups (`KINDS` by DestinyItemType): Weapons, Armor, Mods & shaders, Consumables & materials, Ghosts & cosmetics, Quests & bounties, Other.
+- Filters: chips Where (`vaultWhere`) and What (`vaultKind`), sort (`vaultSort`), search box (not saved). Search is every word must match across name, type, location, rarity, class, `t5`/`tier 5`, set, `locked`, `equipped`, `postmaster`. `/` focuses the search box. 200 rows per page with Show more.
+- Actions only on instanced items when signed in: Pull (to the header Pull-to character, uses `pullTo`, handles postmaster), Vault (`transfer`), Lock for weapons/armor (`setLock`).
+
+## Postmaster (stream.js, every page)
+
+- `trackDrops(p)` also calls `pmCapture(p)`: Lost Items (bucket 215593132) per character from `characterInventories`. Header button `#btnPM` (📬 + count, red when a character has 18+ of 21) opens `#pmPanel` (styled like the Activity panel).
+- Pull one stack or Pull all per character: `PullFromPostmaster` with `stackSize = quantity` and `itemId` = instance id or `'0'` for stacks. Stops Pull all on a no-room error; other failures are listed in the status box. Item names come from `state.defs`, else `ent('DestinyInventoryItemDefinition', hash)`.
+- Pages must provide `auth`, `bungieAction`, `scan`, and may provide `render`. The `#authStatus` text is hidden by theme.css to keep the header on one line; stream.js copies it into the Sign out button tooltip.
+
 ## Shaders (shaders.html)
 
 - Nav: every page's header has `Shaders` after `Vendors & Xûr`; Home has a Shaders card in Jump to. Same header, stream panel, auth banner and `stream.js` hooks as Today (`PAGE = 'shaders'`). OAuth `returnTo` = `shaders.html`.
@@ -146,6 +161,13 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - `config.js` sets `window.D2RC_CONFIG = { apiKey, clientId }`. Every page loads it in `<head>` (`onerror` removes the tag, so a missing file on localhost is harmless). `SHARED_APP` is true when both values are present; then `ls.get('apiKey' | 'clientId')` returns the config values and ignores localStorage, Settings hides `#keyFields` / `#keyHelp` and shows `#sharedApp`, and Save doesn't write the key fields.
 - `config.js` is in `.gitignore`. Never commit it, and never put keys in any other file. Locally (no config.js) Settings works as before with your own localhost Bungie app.
 - Each address needs its own Bungie app (one Origin + one Redirect URL per app). localStorage is per origin, so tags and notes don't carry between localhost and the hosted site.
+
+## Sign-in renewal
+
+- Public Bungie clients get ~1 hour access tokens and no refresh token. Each page has `autoRenew()` (just above `const PAGE`): if the user has signed in before (localStorage `authAuto = '1'`, set in `handleOAuthRedirect`, cleared by Sign out), it sends them through bungie.net/en/OAuth/Authorize again, which returns straight away for an app already approved.
+- Triggers: page load, every 30 s, and when the tab becomes visible. Renews when the token has expired, or has under 4 minutes left and there was no input for 60 s. Skips while `state.scanning`, in hidden tabs, on http, and while a `?code=` is being finished.
+- Loop guard: sessionStorage `renewAt`, at most one renewal per tab every 3 minutes. `returnTo` is the current page plus a simple `#hash`; `handleOAuthRedirect` accepts `^[a-z]+\.html(#[a-z]+)?$`.
+- Moving to a Confidential client with refresh tokens would need a server (e.g. a Cloudflare Worker) to hold the client secret. Never put a client secret in config.js.
 
 ## Testing
 
