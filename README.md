@@ -97,6 +97,7 @@ A page like todayindestiny.com, built from Bungie's own data.
   * **Featured right now**: what the Portal is spotlighting.
   * **Weekly challenges**: your progress on each, finished ones faded.
   * **Everything you can play**, grouped by type (Raid, Dungeon, Lost Sector, Crucible...), with modifiers, power level, location and rewards.
-* **Search** across activity names, modifiers, rewards and places.
+* **Search** across activity names, modifiers, rewards and places, plus category pills with live counts: Lost Sector, Strikes / Nightfall, Raids, Dungeons, Crucible, Weekly / Portal.
+* If no character shows today's lost sector, the page offers to check your other characters, lists the lost sectors you can run, and links to a full rotation calendar.
 
 The first visit downloads Bungie's activity definitions once (cached after that). Rotations reload by themselves at reset.

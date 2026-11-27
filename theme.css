@@ -13,6 +13,8 @@
   --edge:max(var(--gutter), calc((100% - var(--wrap)) / 2 + var(--gutter)));
 }
 
+@media (max-width:640px){ :root{ --gutter:16px; } }   /* same side padding on every page; tighter on phones */
+
 /* ---------- base ---------- */
 html{background:var(--bg); overflow-x:clip}
 body{overflow-x:clip}   /* clip, not hidden: hidden would break the sticky header and toolbar */
@@ -59,7 +61,7 @@ header button,header a.navbtn{height:34px; white-space:nowrap}
 /* ---------- page container and rhythm ---------- */
 main{
   max-width:var(--wrap); margin:0 auto; overflow-x:hidden; overflow-x:clip;
-  padding:24px var(--gutter) 64px;
+  padding:24px var(--gutter) 64px; padding-inline:var(--gutter); box-sizing:border-box;
   display:flex; flex-direction:column; gap:28px;
 }
 main > section:not(.settings), #view-scan, #view-lookup{display:flex; flex-direction:column; gap:16px}
