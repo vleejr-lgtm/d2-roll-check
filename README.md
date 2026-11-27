@@ -67,7 +67,7 @@ Open **Armor triage** in the header. It reads every armor piece and judges its r
 * **Legacy** (pre Edge of Fate, no archetype): flagged, optionally trash.
 * **Locked** pieces are never trashed unless you untick that rule.
 
-**Gear to get** shows community PvE and PvP priority badges for each archetype (hover for why), plus **Top PvE picks** / **Top PvP picks** filters that highlight the slots where you still need a Tier 5. **Set progress** marks notable sets with PvE/PvP pills and a one-line summary of the bonus, and lists notable sets you don't have yet. These rankings are community opinion as of November 2026, not Bungie data.
+**Gear to get** shows community PvE and PvP priority badges for each archetype (hover for why), plus **Top PvE picks** / **Top PvP picks** filters that highlight the slots where you still need a Tier 5. **Set progress** shows every set you own with PvE and PvP community tiers (or Not rated when no guide has ranked it), where it drops, and the exact 2-piece and 4-piece bonus text from Bungie. Sort it by community rank or by pieces owned. **Top sets to get** lists the top rated sets you have no pieces of, with source and the reason they rank. Duplicate old exotics are grouped with a count. These rankings are community opinion as of November 2026, not Bungie data.
 
 Trash gets a suggested **junk** tag. Use tick boxes, bulk select, Lock all keepers, Pull/To vault, and Export DIM tags the same way as weapons. When your vault is clean, open D2ArmorPicker from the header to build loadouts.
 
