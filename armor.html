@@ -186,20 +186,33 @@
   .setmiss{margin-top:10px; padding-top:8px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px}
   .setmrow{font-size:12.5px}
   .setbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px} .setbar h4{margin:0} .setbar .chips{margin-left:auto; display:flex; gap:4px} .setbar .chip{font-size:11px; padding:2px 8px}
-  .getbox ul.setprog{list-style:none; padding:0; margin:0} .setrow{padding:6px 0; border-top:1px solid var(--line)} .setrow:first-child{border-top:0; padding-top:2px}
+  .getbox ul.setprog{list-style:none; padding:0; margin:0} .setrow{padding:12px 0; border-top:1px solid var(--line); margin:0} .setrow:first-child{border-top:0; padding-top:4px} .setrow.hidden{display:none}
   .sethead{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap} .setcount{font-variant-numeric:tabular-nums; font-weight:700}
   .setbadges{display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin:4px 0 3px} .setsrc{font-size:11.5px}
   .sbadge{display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:6px; white-space:nowrap; cursor:help; border:1px solid transparent}
   .mt-none{background:transparent; color:#64748B; border:1px dashed rgba(255,255,255,.14); font-weight:600}
   .setbonus{display:flex; flex-direction:column; gap:1px; font-size:12px; color:#AEB8C6; margin:2px 0} .setbonus b{color:#E2E8F0; font-size:11px; margin-right:2px}
   @media (min-width:900px){ .getcols{grid-template-columns:repeat(2,minmax(0,1fr))} }
-  @media (min-width:1400px){ .getcols{grid-template-columns:minmax(0,.75fr) minmax(0,1.45fr) minmax(0,1.45fr) minmax(0,.85fr)} }
+  @media (min-width:1200px){ .getcols{grid-template-columns:minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.8fr)} }
+  .getcols{gap:20px; margin-top:16px; align-items:start} .getcols>.getbox{padding:20px}
+  .getcols .getbox h4{font-size:14px}
+  .noT5{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px; padding:10px 14px; border:1px solid rgba(226,183,75,.3); background:rgba(226,183,75,.06); border-radius:8px; font-size:13px}
+  .noT5 b{margin-right:4px; color:#E2B74B} .noT5s{padding:2px 9px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid var(--line); font-size:12px}
+  .setfilt{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:4px 0 8px} .setfilt input{flex:1; min-width:120px; padding:5px 9px; font-size:12.5px} .setfilt .chip{font-size:11px; padding:2px 8px}
+  .sname{cursor:help; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  ul.toplist{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px}
+  .toprow{padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.02); margin:0}
+  .toprow .twhy{margin:6px 0 6px} .tfoot{display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--dim)} .tfoot .setcount{font-weight:600}
+  .shint{margin-top:10px; font-size:11.5px}
+  .oxslot{margin-top:12px} .oxslot:first-of-type{margin-top:4px}
+  .oxhead{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); padding-bottom:4px; border-bottom:1px solid var(--line); margin-bottom:4px}
+  .oxrow{display:flex; align-items:center; gap:6px; padding:5px 0; font-size:13px}
   .getcols>.getbox{min-width:0}
   .sethead .setcount{margin-left:2px} .setcount.c4{color:var(--keep)} .setcount.c2{color:#8CC8FF} .setcount.c1{color:#CBD5E1} .setcount.c0{color:#64748B}
   .sready{font-size:11.5px} .sready.c4{color:var(--keep)} .sready.c2{color:#8CC8FF} .sready.c1{color:var(--dim)}
   .spills{margin-left:auto; display:inline-flex; gap:3px; white-space:nowrap} .spills .mpill{margin-left:0}
   .setbon1{font-size:11.5px; color:#AEB8C6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:help; margin-top:2px} .setbon1 b{color:#E2E8F0; font-size:10.5px}
-  .smiss{font-size:11.5px; margin-top:1px}
+  .smiss{font-size:11.5px; margin-top:4px; color:var(--dim)}
   .twhy{font-size:12px; color:#CBD5E1; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; margin-top:2px; cursor:help}
   .tmeta{display:flex; gap:8px; min-width:0; white-space:nowrap} .tmeta .tsrc{flex:none} .tmeta .setbon1{margin:0; min-width:0} .tmeta .tsrc + .setbon1::before{content:'·'; margin-right:8px; color:var(--dim)}
   .trank{display:inline-grid; place-items:center; min-width:18px; height:18px; border-radius:5px; background:rgba(255,255,255,.06); font-size:11px; font-weight:700; color:#CBD5E1}
@@ -527,8 +540,6 @@ const SET_RANK = t => t ? { S: 0, A: 1, B: 2, C: 3 }[t] : 4;
 const setRank = (m, mode) => !m ? 9 : mode ? SET_RANK(m[mode]) : Math.min(SET_RANK(m.pve), SET_RANK(m.pvp)) + (m.pve && m.pvp ? -0.1 : 0);
 const setBonusLine = n => { const p = (state.setInfo || {})[n]; if (!p || !p.length) return '';
   return '<div class="setbonus">' + p.map(x => '<span title="' + esc(x.d) + '"><b>' + x.c + 'pc</b> ' + esc(x.n || '') + (x.d ? ': ' + esc(shortTxt(x.d)) : '') + '</span>').join('') + '</div>'; };
-const bonusCompact = (n, inline) => { const p = (state.setInfo || {})[n]; if (!p || !p.length) return '';
-  return '<' + (inline ? 'span' : 'div') + ' class="setbon1" title="' + esc(p.map(x => x.c + '-piece ' + (x.n || '') + ': ' + (x.d || '')).join('\n')) + '">' + p.map(x => '<b>' + x.c + 'pc</b> ' + esc(x.n || shortTxt(x.d))).join(' · ') + '</' + (inline ? 'span' : 'div') + '>'; };
 const shortTxt = t => { t = String(t).replace(/\s+/g, ' ').trim(); const one = t.split(/(?<=\.)\s/)[0]; return one.length > 110 ? one.slice(0, 107).replace(/\s\S*$/, '') + '...' : one; };
 let setSort = (() => { try { return localStorage.getItem('armorSetSort') || 'rank'; } catch { return 'rank'; } })();
 const metaPill = (mode, t) => t ? '<span class="mpill mt-' + t + '" title="Community ' + mode + ' priority: ' + t + ' · ' + META_TIER[t] + '">' + mode + ' ' + t + '</span>' : '';
@@ -1087,6 +1098,7 @@ $('btnCsv').onclick = () => {
 
 /* ===================== gear to get (per character class) ===================== */
 let getCls = null, getAll = false;
+let setQ = '', setFil = (() => { try { return localStorage.getItem('armorSetFilter') || 'all'; } catch { return 'all'; } })();
 let topMode = (() => { try { return localStorage.getItem('armorTopSets') || 'all'; } catch { return 'all'; } })();
 function renderGet(){
   const classes = [0, 1, 2].filter(c => state.items.some(i => i.cls === c));
@@ -1131,40 +1143,55 @@ function renderGet(){
                                         : (setRank(a.m, metaMode) - setRank(b.m, metaMode)) || (b.have.length - a.have.length) || a.n.localeCompare(b.n));
   const pill = (mode, t, why) => '<span class="mpill mt-' + (t || 'none') + '" title="' + esc(t ? 'Community ' + mode + ': ' + t + ' · ' + SET_TIER[t] + (why ? '. ' + why : '') : 'No published ' + mode + ' verdict for this set yet') + '">' + mode + ' ' + (t || '–') + '</span>';
   const cntCls = c => c >= 4 ? 'c4' : c >= 2 ? 'c2' : c ? 'c1' : 'c0';
+  const bonusTip = n => { const p = (state.setInfo || {})[n]; return p && p.length ? p.map(x => x.c + '-piece ' + (x.n || '') + ': ' + (x.d || '')).join('\n') : (state.setInfo ? 'No set bonus text from Bungie' : 'Loading set bonus text...'); };
+  // set progress: 2 lines per set; bonus text lives in the hover tooltip
   const setLi = r => { const m = r.m || {}, c = r.have.length, miss = slots.filter(s => !r.have.includes(s));
-    return '<li class="setrow" data-set-row="' + esc(r.n) + '"><div class="sethead"><b>' + esc(r.n) + '</b><span class="setcount ' + cntCls(c) + '">' + c + '/5</span>' +
-      (c >= 4 ? '<span class="sready c4">4-piece ready</span>' : c >= 2 ? '<span class="sready c2">2-piece ready</span>' : '<span class="sready c1">' + (2 - c) + ' more for 2-piece</span>') +
-      '<span class="spills">' + pill('PvE', m.pve, m.why) + pill('PvP', m.pvp, m.why) + '</span></div>' +
-      bonusCompact(r.n) +
-      '<div class="dim-lbl smiss">' + (miss.length ? 'Missing: ' + miss.join(', ') : 'All 5 slots') + (r.low.length ? ' · below T4: ' + r.low.join(', ') : '') + (m.src ? ' · ' + esc(m.src) : '') + '</div></li>'; };
+    return '<li class="setrow" data-set-row="' + esc(r.n) + '" data-cnt="' + c + '" data-q="' + esc((r.n + ' ' + (m.src || '')).toLowerCase()) + '">' +
+      '<div class="sethead"><b class="sname" title="' + esc(bonusTip(r.n)) + '">' + esc(r.n) + '</b><span class="setcount ' + cntCls(c) + '" title="' + (c >= 4 ? '4-piece ready' : c >= 2 ? '2-piece ready' : (2 - c) + ' more for 2-piece') + '">' + c + '/5</span>' +
+        (c >= 4 ? '<span class="sready c4">4pc ready</span>' : c >= 2 ? '<span class="sready c2">2pc ready</span>' : '') +
+        '<span class="spills">' + pill('PvE', m.pve, m.why) + pill('PvP', m.pvp, m.why) + '</span></div>' +
+      '<div class="smiss">' + [miss.length ? 'Missing: ' + miss.join(', ') : 'All 5 slots', r.low.length ? 'below T4: ' + r.low.join(', ') : '', m.src ? esc(m.src) : ''].filter(Boolean).join(' · ') + '</div></li>'; };
   // top community sets: S and A for the chosen mode (or either), ranked, with how many pieces you own
   const tm = topMode === 'pve' || topMode === 'pvp' ? topMode : '';
   const top = META_SETS.filter(m => tm ? m[tm] && 'SA'.includes(m[tm]) : 'SA'.includes(m.pve || 'x') || 'SA'.includes(m.pvp || 'x'))
     .map(m => { const r = setRows.find(r => m.re.test(r.n)); return { m, own: r ? r.have.length : 0, setName: r ? r.n : Object.keys(state.setInfo || {}).find(n => m.re.test(n)) }; })
     .sort((a, b) => setRank(a.m, tm) - setRank(b.m, tm) || b.own - a.own || a.m.name.localeCompare(b.m.name));
-  const topLi = (x, i) => '<li class="setrow toprow" data-top="' + esc(x.m.name) + '"><div class="sethead"><span class="trank">' + (i + 1) + '</span><b>' + esc(x.m.name) + '</b><span class="setcount ' + cntCls(x.own) + '" title="Pieces you own for this class">' + x.own + '/5</span>' +
-      '<span class="spills">' + pill('PvE', x.m.pve, x.m.why) + pill('PvP', x.m.pvp, x.m.why) + '</span></div>' +
+  const topLi = (x, i) => '<li class="toprow" data-top="' + esc(x.m.name) + '">' +
+      '<div class="sethead"><span class="trank">' + (i + 1) + '</span><b class="sname"' + (x.setName ? ' title="' + esc(bonusTip(x.setName)) + '"' : '') + '>' + esc(x.m.name) + '</b><span class="spills">' + pill('PvE', x.m.pve, x.m.why) + pill('PvP', x.m.pvp, x.m.why) + '</span></div>' +
       '<div class="twhy" title="' + esc(x.m.why) + '">' + esc(x.m.why) + '</div>' +
-      '<div class="dim-lbl smiss tmeta">' + (x.m.src ? '<span class="tsrc">' + esc(x.m.src) + '</span>' : '') + (x.setName ? bonusCompact(x.setName, true) : '') + '</div></li>';
-  // 4. old exotics to replace (duplicates grouped), and old legendary armor still in use
+      '<div class="tfoot"><span>' + esc(x.m.src || 'Source not listed') + '</span><span class="setcount ' + cntCls(x.own) + '" title="Pieces you own for this class">You own ' + x.own + '/5</span></div></li>';
+  // 4. old exotics to replace (duplicates grouped), by slot
   const oldEx = [...state.items.filter(i => i.cls === getCls && i.exotic && i.legacy && i.v !== 'trash')
     .reduce((g, i) => { const k = i.name + '|' + i.slot; g.set(k, { name: i.name, slot: i.slot, n: (g.has(k) ? g.get(k).n : 0) + 1 }); return g; }, new Map()).values()]
     .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot) || a.name.localeCompare(b.name));
+  const oldBySlot = SLOT_ORDER.map(sl => [sl, oldEx.filter(i => i.slot === sl)]).filter(([, l]) => l.length);
   const oldSlots = slots.filter(s => mine.some(i => i.legacy && !i.exotic && i.slot === s) && !mine.some(i => !i.legacy && i.slot === s));
+  const chip = (attr, k, l, on) => '<span class="chip' + (on ? ' on' : '') + '" ' + attr + '="' + k + '">' + l + '</span>';
   $('getBody').innerHTML =
     '<div class="dim-lbl">Your best ' + CLASS[getCls] + ' piece for each archetype and slot (keepers only). <span style="color:#e8b84a">T5</span> = done, <span style="color:#8cc8ff">T4</span> = fine, grey = worth upgrading, — = you have none. Click a cell to see those pieces.</div>' + grid +
+    (noT5.length ? '<div class="noT5" id="noT5"><b>Slots with no Tier 5 yet</b>' + noT5.map(s => '<span class="noT5s">' + s + '</span>').join('') + '</div>' : '') +
     '<div class="getcols">' +
-      '<div class="getbox"><h4>Slots with no Tier 5 yet</h4>' + (noT5.length ? '<ul>' + noT5.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<span class="dim-lbl">Every slot has a Tier 5 piece.</span>') + '</div>' +
-      '<div class="getbox setbox"><div class="setbar"><h4>Set progress <span class="dim-lbl">(' + setRows.length + ')</span></h4><span class="chips" id="setSortChips">' +
-        [['rank', 'Community rank'], ['owned', 'Pieces owned']].map(([k, l]) => '<span class="chip' + (setSort === k ? ' on' : '') + '" data-ssort="' + k + '">' + l + '</span>').join('') + '</span></div>' +
-        (setRows.length ? '<ul class="setprog">' + setRows.map(setLi).join('') + '</ul>' : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') +
-        (state.setInfo ? '' : '<div class="dim-lbl" style="margin-top:6px">Loading set bonus text from Bungie...</div>') + '</div>' +
-      '<div class="getbox setbox" id="topSets"><div class="setbar"><h4>Top Community Sets <span class="dim-lbl" title="Sets rated S or A by published community guides (Nov 2026). X/5 = pieces you own for this class.">ⓘ</span></h4><span class="chips" id="topModeChips">' +
-        [['all', 'Both'], ['pve', 'PvE'], ['pvp', 'PvP']].map(([k, l]) => '<span class="chip' + ((tm || 'all') === k ? ' on' : '') + '" data-topm="' + k + '">' + l + '</span>').join('') + '</span></div>' +
-        '<ul class="setprog">' + top.map(topLi).join('') + '</ul></div>' +
-      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldEx.length ? '<ul class="oldex">' + oldEx.map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + i.slot + ')</span>' + (i.n > 1 ? ' <span class="dupn" title="' + i.n + ' copies">×' + i.n + '</span>' : '') + '</li>').join('') + '</ul>' : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
-        (oldSlots.length ? '<h4 style="margin-top:10px">Slots still on old armor only</h4><ul>' + oldSlots.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '') + '</div>' +
+      '<div class="getbox setbox"><div class="setbar"><h4>Set progress <span class="dim-lbl">' + setRows.length + '</span></h4><span class="chips" id="setSortChips">' +
+        [['rank', 'Community rank'], ['owned', 'Pieces owned']].map(([k, l]) => chip('data-ssort', k, l, setSort === k)).join('') + '</span></div>' +
+        (setRows.length ? '<div class="setfilt"><input id="setFilter" type="search" placeholder="Filter sets" autocomplete="off"><span class="chips">' +
+          [['all', 'All'], ['inc', 'Incomplete'], ['ready4', '4pc Ready']].map(([k, l]) => chip('data-sfil', k, l, setFil === k)).join('') + '</span></div>' +
+          '<ul class="setprog" id="setProg">' + setRows.map(setLi).join('') + '</ul><div class="dim-lbl hidden" id="setNone">No sets match.</div>' +
+          '<div class="dim-lbl shint">Hover a set name for its 2-piece and 4-piece bonus.</div>'
+          : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') + '</div>' +
+      '<div class="getbox setbox" id="topSets"><div class="setbar"><h4>Top Community Sets <span class="dim-lbl" title="Sets rated S or A by published community guides (Nov 2026). Owned = pieces you have for this class.">ⓘ</span></h4><span class="chips" id="topModeChips">' +
+        [['all', 'Both'], ['pve', 'PvE'], ['pvp', 'PvP']].map(([k, l]) => chip('data-topm', k, l, (tm || 'all') === k)).join('') + '</span></div>' +
+        '<ul class="toplist">' + top.map(topLi).join('') + '</ul></div>' +
+      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldBySlot.length ? oldBySlot.map(([sl, l]) => '<div class="oxslot"><div class="oxhead">' + sl + '</div>' +
+          l.map(i => '<div class="oxrow">' + esc(i.name) + (i.n > 1 ? '<span class="dupn" title="' + i.n + ' copies">×' + i.n + '</span>' : '') + '</div>').join('') + '</div>').join('')
+          : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
+        (oldSlots.length ? '<div class="oxslot"><div class="oxhead">Slots still on old armor only</div>' + oldSlots.map(s => '<div class="oxrow">' + s + '</div>').join('') + '</div>' : '') + '</div>' +
     '</div>';
+  // set filter works on the rendered rows, so typing keeps focus
+  const applySetFilter = () => { const t = ($('setFilter') || {}).value ? $('setFilter').value.trim().toLowerCase() : ''; let n = 0;
+    document.querySelectorAll('#setProg .setrow').forEach(li => { const c = +li.dataset.cnt, ok = (setFil === 'inc' ? c < 5 : setFil === 'ready4' ? c >= 4 : true) && (!t || li.dataset.q.includes(t)); li.classList.toggle('hidden', !ok); if (ok) n++; });
+    if ($('setNone')) $('setNone').classList.toggle('hidden', n > 0); };
+  if ($('setFilter')){ $('setFilter').value = setQ; $('setFilter').oninput = e => { setQ = e.target.value; applySetFilter(); }; applySetFilter(); }
+  $('getBody').querySelectorAll('[data-sfil]').forEach(c => c.onclick = () => { setFil = c.dataset.sfil; try { localStorage.setItem('armorSetFilter', setFil); } catch {} $('getBody').querySelectorAll('[data-sfil]').forEach(x => x.classList.toggle('on', x === c)); applySetFilter(); });
   $('getBody').querySelectorAll('[data-ssort]').forEach(c => c.onclick = () => { setSort = c.dataset.ssort; try { localStorage.setItem('armorSetSort', setSort); } catch {} renderGet(); });
   $('getBody').querySelectorAll('[data-topm]').forEach(c => c.onclick = () => { topMode = c.dataset.topm; try { localStorage.setItem('armorTopSets', topMode); } catch {} renderGet(); });
   if ($('getAllBtn')) $('getAllBtn').onclick = () => { getAll = !getAll; renderGet(); };
