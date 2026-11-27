@@ -20,7 +20,7 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday enhPerks` (legacy `known:weapons`/`known:armor` are only read for migration)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday enhPerks armorMeta` (legacy `known:weapons`/`known:armor` are only read for migration)
   - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
@@ -53,6 +53,45 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 - Masterwork list only shows stats in the weapon's stat group (`scaledStats`), so a hand cannon never offers Blast Radius, Velocity, Charge/Draw Time or Shield Duration.
 - Verdict badges carry the mode (`it.r.mlabel`): the dropdown's mode when it's PvE only / PvP only, otherwise the tags of the matched rolls (`modeLabelOf`). Shown as `GOD ROLL · PvE`, `CLOSE · PvP` on cards and in the detail header. Changing the dropdown re-rates cards and refreshes an open detail view.
 - Header subtitle: item type · intrinsic frame · damage type (`defaultDamageTypeHash`) · ammo (`equippingBlock.ammoType` 1/2/3 = Primary/Special/Heavy); status badge = copy location/power/tier or "Not in inventory".
+
+## Armor community meta (armor.html: `META_ARCH`, `META_SETS`)
+
+Community opinion, not Bungie data. Derived Nov 2026 (after Monument of Triumph 9.7.0) from published stat priorities and verdicts. Keep these tables in sync with this section; update both when the meta moves.
+
+- PvE basis: Powerhouse is the consensus best endgame DPS archetype (Weapons + Super); Weapons is the most useful PvE stat; Class + Weapon for high-tier raids, Class + Melee for high-tier solo, Super + Grenade for regular raids; Health is mostly ignored in PvE.
+- PvP basis: Weapons 150+, then Super 70-100, then Health 120-150, then Class / Grenade / Melee by playstyle.
+- Tier labels: `S · Top Pick`, `A · Strong`, `B · Niche`, `C · Skip`. Each badge has a hover reason.
+
+| Archetype | Stats | PvE | PvP |
+|---|---|---|---|
+| Powerhouse | Weapons / Super | S | S |
+| Gunner | Weapons / Grenade | S | S |
+| Specialist | Class / Weapons | A | A |
+| Grenadier | Grenade / Super | A | B |
+| Reaver | Class / Melee | A | C |
+| Demolitionist | Grenade / Class | B | C |
+| Paragon | Super / Melee | B | B |
+| Skirmisher | Melee / Weapons | B | A |
+| Brawler | Melee / Health | B | B |
+| Colossus | Super / Health | C | A |
+| Bulwark | Health / Class | C | B |
+| Siegebreaker | Health / Grenade | C | B |
+
+| Set | PvE | PvP | Why |
+|---|---|---|---|
+| Shattered Throne | S | | Best early PvE set, top solo survival |
+| Iron Battalion | S | B | Best Super uptime; 2-piece damage vs non-bosses scales with Weapons |
+| Exodus Down | S | | Armor charge healing and damage resistance |
+| The Lament | A | | Solo survival |
+| CODA | A | | Generalist PvE |
+| Cruel Electrum | | S | Best Trials set |
+| Twofold Crown | | A | Ammo pickup restores health |
+| New Demotic | | A | Sliding gives primary flinch resistance |
+| Last Discipline | B | B | Freshly drawn or reloaded weapons heal |
+| SRL | B | B | Best movement set |
+
+- Gear to get: columns `PvE` and `PvP` sit between `Stats` and the slot columns. Filter chips `All archetypes` / `Top PvE picks` / `Top PvP picks` (localStorage `armorMeta`). Top picks = every S and A archetype for that mode (owned or not), in `META_ARCH` order; slots without a Tier 5 get the `want` highlight and a count line.
+- Set progress: owned sets that match `META_SETS` (by name regex) get PvE/PvP pills and a one-line bonus summary; a "Notable sets you don't have" list follows (filtered to top S/A sets for the active mode).
 
 ## Data sources
 

@@ -172,6 +172,19 @@
   .sum b{font-size:18px;display:block}
   .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
   .sb-new{background:#2fd3c8;color:#04201e}
+  .metabar{display:flex; gap:6px; align-items:center; margin:10px 0 8px}
+  .metanote{margin-left:auto; cursor:help}
+  .mt{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; white-space:nowrap; cursor:help; border:1px solid transparent}
+  .mt-S{background:rgba(226,183,75,.16); color:#E2B74B; border-color:rgba(226,183,75,.45)}
+  .mt-A{background:rgba(63,179,127,.14); color:#5FD39B; border-color:rgba(63,179,127,.4)}
+  .mt-B{background:rgba(91,168,230,.12); color:#8CC8FF; border-color:rgba(91,168,230,.35)}
+  .mt-C{background:rgba(255,255,255,.04); color:#94A3B8; border-color:rgba(255,255,255,.12)}
+  .mpill{display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px; margin-left:4px; border:1px solid transparent; vertical-align:1px; cursor:help}
+  table.cov.spot td.want{box-shadow:inset 0 0 0 2px rgba(226,183,75,.55); background:rgba(226,183,75,.08); color:#E2B74B}
+  .metasum{margin:6px 0 2px; color:#E2B74B}
+  .setwhy{font-size:12px; color:#CBD5E1; margin:2px 0}
+  .setmiss{margin-top:10px; padding-top:8px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px}
+  .setmrow{font-size:12.5px}
 </style>
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -387,6 +400,57 @@ const ARCH = { Siegebreaker: ['Health', 'Grenade'], Bulwark: ['Health', 'Class']
   Reaver: ['Class', 'Melee'], Specialist: ['Class', 'Weapons'], Gunner: ['Weapons', 'Grenade'], Powerhouse: ['Weapons', 'Super'] };
 const SLOT = { 3448274439: 'Helmet', 3551918588: 'Arms', 14239492: 'Chest', 20886954: 'Legs', 1585787867: 'Class item' };
 const SLOT_ORDER = ['Helmet', 'Arms', 'Chest', 'Legs', 'Class item'];
+
+/* ===================== community meta (PvE / PvP) =====================
+   Opinion, not Bungie data. Derived Nov 2026 from published stat priorities and verdicts after Monument of Triumph (9.7.0):
+   PvE: Powerhouse called the consensus best archetype for endgame DPS (Weapons + Super); Weapons the most useful PvE stat;
+        Class + Weapon for high-tier raids, Class + Melee for high-tier solo, Super + Grenade for regular raids; Health mostly ignored in PvE.
+   PvP: Weapons 150+, then Super 70-100, then Health 120-150, then Class / Grenade / Melee by playstyle.
+   Update these tables when the meta moves; CLAUDE.md documents them. */
+const META_TIER = { S: 'Top Pick', A: 'Strong', B: 'Niche', C: 'Skip' };
+const META_ARCH = {
+  Powerhouse:    { pve: ['S', 'Weapons + Super: the consensus best endgame PvE DPS pairing. More weapon damage and faster Super.'],
+                   pvp: ['S', 'Weapons + Super are the top two PvP stats: gunfight damage and handling, plus a Super you actually get in Trials.'] },
+  Gunner:        { pve: ['S', 'Weapons is the most useful PvE stat; Grenade adds ability uptime for add clear.'],
+                   pvp: ['S', 'Weapons primary is the core of the PvP meta (150+ recommended); Grenade is a nice extra.'] },
+  Specialist:    { pve: ['A', 'Class + Weapons is the high-tier raid pairing: class ability uptime for survival plus weapon damage.'],
+                   pvp: ['A', 'Weapons secondary plus Class for dodge, barricade or rift uptime (60-80 is the usual target).'] },
+  Grenadier:     { pve: ['A', 'Grenade + Super is the regular-raid pairing: fast Supers and grenade loops. Less dominant since ability spam was reduced.'],
+                   pvp: ['B', 'Super helps; Grenade fits grenade or grapple builds, but no Weapons stat for gunfights.'] },
+  Reaver:        { pve: ['A', 'Class + Melee is the high-tier solo pairing: class ability and melee uptime for solo survival.'],
+                   pvp: ['C', 'Neither Weapons, Super nor Health. Skip unless you run a melee or class ability build.'] },
+  Demolitionist: { pve: ['B', 'Grenade + Class suits grenade-loop builds that lean on class ability uptime.'],
+                   pvp: ['C', 'Misses all three core PvP stats (Weapons, Super, Health).'] },
+  Paragon:       { pve: ['B', 'Super primary is good for burst damage phases; Melee secondary only helps melee builds.'],
+                   pvp: ['B', 'Super is the second PvP priority, but Melee secondary adds little to gunfights.'] },
+  Skirmisher:    { pve: ['B', 'Melee + Weapons for melee builds that still shoot; weapons only at 25.'],
+                   pvp: ['A', 'Weapons secondary plus Melee for smoke or melee-heavy PvP builds.'] },
+  Brawler:       { pve: ['B', 'Melee primary for melee builds; Health secondary is mostly wasted in PvE.'],
+                   pvp: ['B', 'Health helps regeneration and flinch; Melee fits melee builds. No Weapons.'] },
+  Colossus:      { pve: ['C', 'Super is useful but Health is mostly ignored in PvE endgame.'],
+                   pvp: ['A', 'Super + Health are PvP priorities two and three: Super uptime and faster regeneration.'] },
+  Bulwark:       { pve: ['C', 'Health primary is the least valued PvE stat; only for survival-first builds.'],
+                   pvp: ['B', 'Health 120-150 is a PvP target and Class helps, but no Weapons or Super.'] },
+  Siegebreaker:  { pve: ['C', 'Health primary wastes the biggest stat on the least valued PvE stat.'],
+                   pvp: ['B', 'Health for regeneration and flinch plus Grenade; no Weapons or Super.'] },
+};
+// notable sets: matched by name against your armor's set; short value summary
+const META_SETS = [
+  { re: /shattered throne/i, name: 'Shattered Throne', pve: 'S', pvp: '', why: 'Best early PvE set and a top solo-survival pick.' },
+  { re: /iron battalion/i, name: 'Iron Battalion', pve: 'S', pvp: 'B', why: 'Best Super uptime set; 2-piece adds damage against non-boss enemies that scales with Weapons.' },
+  { re: /exodus down/i, name: 'Exodus Down', pve: 'S', pvp: '', why: 'Survival: armor charge healing and damage resistance. A top generalist PvE set.' },
+  { re: /the lament|^lament/i, name: 'The Lament', pve: 'A', pvp: '', why: 'Solo survival pick.' },
+  { re: /\bcoda\b/i, name: 'CODA', pve: 'A', pvp: '', why: 'One of the best generalist PvE sets.' },
+  { re: /cruel electrum/i, name: 'Cruel Electrum', pve: '', pvp: 'S', why: 'Best Trials set.' },
+  { re: /twofold crown/i, name: 'Twofold Crown', pve: '', pvp: 'A', why: 'Picking up ammo instantly restores part of your health.' },
+  { re: /new demotic/i, name: 'New Demotic', pve: '', pvp: 'A', why: 'Sliding grants flinch resistance for primary weapons.' },
+  { re: /last discipline/i, name: 'Last Discipline', pve: 'B', pvp: 'B', why: '2-piece: freshly drawn or reloaded weapons heal you.' },
+  { re: /\bsrl\b|sparrow racing/i, name: 'SRL', pve: 'B', pvp: 'B', why: 'Best movement set.' },
+];
+const metaSet = n => META_SETS.find(m => m.re.test(n || ''));
+const metaBadge = (t, why, mode) => t ? '<span class="mt mt-' + t + '" title="' + esc(mode + ': ' + why) + '">' + t + ' · ' + META_TIER[t] + '</span>' : '';
+const metaPill = (mode, t) => t ? '<span class="mpill mt-' + t + '" title="Community ' + mode + ' priority: ' + t + ' · ' + META_TIER[t] + '">' + mode + ' ' + t + '</span>' : '';
+let getMeta = (() => { try { return localStorage.getItem('armorMeta') || 'all'; } catch { return 'all'; } })();
 const CLASS = ['Titan', 'Hunter', 'Warlock'];
 const state = { defs: null, sets: {}, manVer: '', items: [], chars: [], acct: null, picked: new Set(), vFilter: new Set(['keep', 'trash', 'legacy', 'review']), cFilter: '' };
 const nameOf = h => (state.defs[h] && state.defs[h].n) || '';
@@ -936,13 +1000,24 @@ function renderGet(){
   // 1. archetype x slot grid: best tier you own (keepers only)
   const best = (arch, slot) => mine.filter(i => !i.exotic && !i.legacy && i.arch === arch && i.slot === slot).sort(better)[0];
   const owned = Object.keys(ARCH).filter(a => mine.some(i => i.arch === a));
-  const usedArch = getAll ? owned.concat(Object.keys(ARCH).filter(a => !owned.includes(a))) : owned;
-  const grid = '<table class="cov"><tr><th>Archetype</th><th>Stats</th>' + slots.map(s => '<th>' + s + '</th>').join('') + '</tr>' +
-    usedArch.map(a => '<tr><td>' + a + '</td><td class="dim-lbl">' + ARCH[a].join(' / ') + '</td>' + slots.map(s => {
+  const TR = { S: 0, A: 1, B: 2, C: 3 };
+  // Top PvE / Top PvP: every S and A archetype for that mode (owned or not), best first, missing Tier 5 slots spotlighted
+  const metaMode = getMeta === 'pve' || getMeta === 'pvp' ? getMeta : '';
+  const usedArch = metaMode ? Object.keys(META_ARCH).filter(a => TR[META_ARCH[a][metaMode][0]] <= 1).sort((x, y) => TR[META_ARCH[x][metaMode][0]] - TR[META_ARCH[y][metaMode][0]])
+    : getAll ? owned.concat(Object.keys(ARCH).filter(a => !owned.includes(a))) : owned;
+  let gaps = 0;
+  const grid = '<div class="metabar chips" id="metaChips">' + [['all', 'All archetypes'], ['pve', 'Top PvE picks'], ['pvp', 'Top PvP picks']].map(([k, l]) => '<span class="chip' + (getMeta === k ? ' on' : '') + '" data-meta="' + k + '">' + l + '</span>').join('') +
+      '<span class="dim-lbl metanote" title="Community opinion, not Bungie data. Derived from published PvE and PvP stat priorities after Monument of Triumph (Nov 2026).">Community meta ⓘ</span></div>' +
+    '<table class="cov' + (metaMode ? ' spot' : '') + '"><tr><th>Archetype</th><th>Stats</th><th>PvE</th><th>PvP</th>' + slots.map(s => '<th>' + s + '</th>').join('') + '</tr>' +
+    usedArch.map(a => '<tr' + (metaMode ? ' class="metarow"' : '') + '><td>' + a + '</td><td class="dim-lbl">' + ARCH[a].join(' / ') + '</td>' +
+      '<td>' + metaBadge(META_ARCH[a].pve[0], META_ARCH[a].pve[1], 'PvE') + '</td><td>' + metaBadge(META_ARCH[a].pvp[0], META_ARCH[a].pvp[1], 'PvP') + '</td>' + slots.map(s => {
       const b = best(a, s);
-      return b ? '<td class="' + (b.tier >= 5 ? 't5' : b.tier === 4 ? 't4' : 'tlow') + '" data-f="' + a + '|' + s + '" title="' + esc(b.name + ', +' + (b.tert || '-') + (b.set ? ', ' + b.set : '')) + '">T' + b.tier + '</td>' : '<td class="none">—</td>';
+      if (metaMode && (!b || b.tier < 5)) gaps++;
+      const want = metaMode && (!b || b.tier < 5) ? ' want' : '';
+      return b ? '<td class="' + (b.tier >= 5 ? 't5' : b.tier === 4 ? 't4' : 'tlow') + want + '" data-f="' + a + '|' + s + '" title="' + esc(b.name + ', +' + (b.tert || '-') + (b.set ? ', ' + b.set : '')) + '">T' + b.tier + '</td>' : '<td class="none' + want + '"' + (want ? ' title="No ' + a + ' ' + s.toLowerCase() + ' yet: worth farming"' : '') + '>—</td>';
     }).join('') + '</tr>').join('') + '</table>' +
-    '<button class="ghost" id="getAllBtn" style="font-size:12px;padding:4px 10px">' + (getAll ? 'Show only archetypes I own' : 'Show all 12 archetypes (' + (12 - owned.length) + ' you have none of)') + '</button>';
+    (metaMode ? '<div class="dim-lbl metasum">' + (gaps ? gaps + ' slot' + (gaps > 1 ? 's' : '') + ' without a Tier 5 across the top ' + (metaMode === 'pve' ? 'PvE' : 'PvP') + ' archetypes (highlighted). Farm these first.' : 'You have Tier 5 in every slot of the top ' + (metaMode === 'pve' ? 'PvE' : 'PvP') + ' archetypes.') + '</div>'
+      : '<button class="ghost" id="getAllBtn" style="font-size:12px;padding:4px 10px">' + (getAll ? 'Show only archetypes I own' : 'Show all 12 archetypes (' + (12 - owned.length) + ' you have none of)') + '</button>');
   // 2. slots with no Tier 5
   const noT5 = slots.filter(s => !mine.some(i => !i.legacy && i.slot === s && i.tier >= 5));
   // 3. set progress (pieces you keep, Armor 3.0)
@@ -956,13 +1031,17 @@ function renderGet(){
     '<div class="dim-lbl">Your best ' + CLASS[getCls] + ' piece for each archetype and slot (keepers only). <span style="color:#e8b84a">T5</span> = done, <span style="color:#8cc8ff">T4</span> = fine, grey = worth upgrading, — = you have none. Click a cell to see those pieces.</div>' + grid +
     '<div class="getcols">' +
       '<div class="getbox"><h4>Slots with no Tier 5 yet</h4>' + (noT5.length ? '<ul>' + noT5.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<span class="dim-lbl">Every slot has a Tier 5 piece.</span>') + '</div>' +
-      '<div class="getbox"><h4>Set progress</h4>' + (setRows.length ? '<ul>' + setRows.slice(0, 12).map(r => '<li><b>' + esc(r.n) + '</b>: ' + r.have.length + '/5 ' +
+      '<div class="getbox"><h4>Set progress</h4>' + (setRows.length ? '<ul>' + setRows.slice(0, 12).map(r => { const m = metaSet(r.n); return '<li><b>' + esc(r.n) + '</b>' + (m ? ' ' + metaPill('PvE', m.pve) + metaPill('PvP', m.pvp) : '') + ': ' + r.have.length + '/5 ' +
         (r.have.length >= 4 ? '<span style="color:var(--keep)">(4-piece ready)</span>' : r.have.length >= 2 ? '<span style="color:#8cc8ff">(2-piece ready, need ' + (4 - r.have.length) + ' more for 4)</span>' : '<span class="dim-lbl">(need ' + (2 - r.have.length) + ' more for 2-piece)</span>') +
-        '<div class="dim-lbl">Missing: ' + (slots.filter(s => !r.have.includes(s)).join(', ') || 'none') + (r.low.length ? ' · below Tier 4: ' + r.low.join(', ') : '') + '</div></li>').join('') + '</ul>' : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') + '</div>' +
+        (m ? '<div class="setwhy">' + esc(m.why) + '</div>' : '') +
+        '<div class="dim-lbl">Missing: ' + (slots.filter(s => !r.have.includes(s)).join(', ') || 'none') + (r.low.length ? ' · below Tier 4: ' + r.low.join(', ') : '') + '</div></li>'; }).join('') + '</ul>' : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') +
+        (() => { const miss = META_SETS.filter(m => !setRows.some(r => m.re.test(r.n)) && (metaMode ? m[metaMode] && 'SA'.includes(m[metaMode]) : true));
+          return miss.length ? '<div class="setmiss"><div class="dim-lbl">Notable sets you don\'t have' + (metaMode ? ' (top ' + (metaMode === 'pve' ? 'PvE' : 'PvP') + ')' : '') + ':</div>' + miss.map(m => '<div class="setmrow" title="' + esc(m.why) + '"><b>' + esc(m.name) + '</b> ' + metaPill('PvE', m.pve) + metaPill('PvP', m.pvp) + '<span class="dim-lbl"> ' + esc(m.why) + '</span></div>').join('') + '</div>' : ''; })() + '</div>' +
       '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldEx.length ? '<ul>' + oldEx.map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + i.slot + ')</span></li>').join('') + '</ul>' : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
         (oldSlots.length ? '<h4 style="margin-top:10px">Slots still on old armor only</h4><ul>' + oldSlots.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '') + '</div>' +
     '</div>';
-  $('getAllBtn').onclick = () => { getAll = !getAll; renderGet(); };
+  if ($('getAllBtn')) $('getAllBtn').onclick = () => { getAll = !getAll; renderGet(); };
+  $('getBody').querySelectorAll('[data-meta]').forEach(c => c.onclick = () => { getMeta = c.dataset.meta; try { localStorage.setItem('armorMeta', getMeta); } catch {} renderGet(); });
   $('getBody').querySelectorAll('[data-f]').forEach(td => td.onclick = () => {
     const [a, s] = td.dataset.f.split('|');
     Object.values(F).forEach(x => x.clear()); F.cls.add(String(getCls)); F.arch.add(a); F.slot.add(s);
