@@ -179,10 +179,16 @@
   const pmNames = {};
   function pmCapture(p){
     const chars = (p.characters && p.characters.data) || {}, inv = (p.characterInventories && p.characterInventories.data) || {};
+    const insts = ((p.itemComponents || {}).instances || {}).data || {};
     if (!Object.keys(chars).length) return;
-    pm = { at: Date.now(), chars: Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed)).map(c => ({
-      id: c.characterId, name: CLS[c.classType] || 'Character',
-      items: ((inv[c.characterId] || {}).items || []).filter(it => it.bucketHash === PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1 })) })) };
+    pm = { at: Date.now(), chars: Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed)).map(c => {
+      const all = (inv[c.characterId] || {}).items || [];
+      return { id: c.characterId, name: CLS[c.classType] || 'Character',
+        items: all.filter(it => it.bucketHash === PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1 })),
+        // what's in this character's inventory (not equipped), so a full bucket can be emptied into the vault
+        inv: all.filter(it => it.bucketHash !== PM).map(it => ({ id: it.itemInstanceId || '0', hash: it.itemHash, qty: it.quantity || 1, bucket: it.bucketHash,
+          locked: !!(it.state & 1), power: ((insts[it.itemInstanceId] || {}).primaryStat || {}).value || 0 })) };
+    }) };
     pmButton(); if (!$('pmPanel').classList.contains('hidden')) pmRender();
   }
   const pmTotal = () => pm ? pm.chars.reduce((n, c) => n + c.items.length, 0) : 0;
@@ -211,10 +217,13 @@
   const panel = document.createElement('div');
   panel.id = 'pmPanel'; panel.className = 'stream pmpanel hidden';
   panel.innerHTML = '<div class="stream-head"><b>📬 Postmaster</b><span style="flex:1"></span><button class="ghost" id="pmRefresh" title="Re-read from Bungie">↻</button><button class="ghost" id="pmClose">✕</button></div>' +
-    '<div class="dim-lbl" style="padding:0 14px 8px">Lost items on each character. Each postmaster holds ' + PM_CAP + '; anything past that is gone. Pulling needs room in that character\'s inventory.</div><div id="pmList"></div>';
+    '<div class="dim-lbl" style="padding:0 14px 8px">Lost items on each character. Each postmaster holds ' + PM_CAP + '; anything past that is gone.</div>' +
+    '<label class="pmroom" title="When a slot is full, move the lowest rarity, lowest power unlocked item in that slot to the vault, then pull. Locked items are never moved."><input type="checkbox" id="pmMakeRoom"> Make room: move an unlocked item to the vault when a slot is full</label><div id="pmList"></div>';
   document.body.appendChild(panel);
   pmBtn.onclick = () => { panel.classList.toggle('hidden'); if (!panel.classList.contains('hidden')){ $('stream').classList.add('hidden'); pmRender(); } };
   $('pmClose').onclick = () => panel.classList.add('hidden');
+  $('pmMakeRoom').checked = ls.get('pmMakeRoom') !== '0';
+  $('pmMakeRoom').onchange = () => ls.set('pmMakeRoom', $('pmMakeRoom').checked ? '1' : '0');
   $('pmRefresh').onclick = () => { if (typeof scan === 'function') scan({ silent: true }); };
   const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
   function pmRender(){
@@ -233,30 +242,66 @@
     list.querySelectorAll('[data-pmall]').forEach(b => b.onclick = () => pmPull(b.dataset.pmall, null, b));
   }
   let pmBusy = false;
+  const NO_ROOM = /no item slots|NoRoomInDestination|no room/i;
+  // buckets whose items can't go to the vault: Engrams, Pursuits (quests and bounties), Subclass, Clan banners
+  const NO_VAULT = new Set([375726501, 1345459588, 3284755031, 4292445962]);
+  const makeRoomOn = () => ls.get('pmMakeRoom') !== '0';
+  // which inventory bucket a postmaster item goes to
+  async function destBucket(h){
+    const d = state.defs && state.defs[h];
+    if (d && d.b) return d.b;
+    try { const x = await ent('DestinyInventoryItemDefinition', h); return ((x && x.inventory) || {}).bucketTypeHash || 0; } catch { return 0; }
+  }
+  // free one slot in that bucket: move the least valuable unlocked item there to the vault
+  async function makeRoom(ch, bucket){
+    if (!bucket || NO_VAULT.has(bucket)) return { err: bucket === 375726501 ? 'your engrams are full (open some in game)' : 'that slot can\'t be emptied into the vault' };
+    const rank = x => { const d = state.defs && state.defs[x.hash]; return [(d && d.tier) || 0, x.power]; };
+    const cands = ch.inv.filter(x => x.bucket === bucket && !x.locked)
+      .sort((a, b) => { const ra = rank(a), rb = rank(b); return ra[0] - rb[0] || ra[1] - rb[1]; });
+    if (!cands.length) return { err: 'everything in that slot on your ' + ch.name + ' is locked' };
+    const x = cands[0];
+    try {
+      await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: x.hash, stackSize: x.qty, transferToVault: true, itemId: x.id, characterId: ch.id, membershipType: state.acct.membershipType });
+    } catch (e){ return { err: NO_ROOM.test(e.message || '') ? 'your vault is full too' : 'couldn\'t move ' + pmDef(x.hash).n + ' to the vault (' + e.message + ')' }; }
+    ch.inv = ch.inv.filter(y => y !== x);
+    const g = x.id !== '0' && state.gear && state.gear.get(x.id); if (g){ g.charId = null; g.loc = 'Vault'; }
+    const own = x.id !== '0' && typeof byId === 'function' ? byId(x.id) : null; if (own){ own.charId = null; own.loc = 'Vault'; if ('where' in own) own.where = 'vault'; }
+    return { moved: pmDef(x.hash).n + (x.qty > 1 ? ' ×' + x.qty : '') };
+  }
   async function pmPull(cid, pick, btn){
     if (pmBusy) return;
     if (!state.acct || !auth.valid()){ setStatus('Sign in with Bungie (top right) to pull from the postmaster.', true); return; }
     const ch = pm.chars.find(c => c.id === cid); if (!ch) return;
     const items = pick ? pick.map(f => f(ch)).filter(Boolean) : ch.items.slice();
     pmBusy = true; btn.disabled = true; btn.textContent = '…';
-    let ok = 0; const fails = [];
+    let ok = 0; const fails = [], moved = [];
+    const pull = it => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: it.hash, stackSize: it.qty, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
     for (const it of items){
       try {
-        await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: it.hash, stackSize: it.qty, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
+        try { await pull(it); }
+        catch (e){
+          if (!NO_ROOM.test(e.message || '') || !makeRoomOn()) throw e;
+          const r = await makeRoom(ch, await destBucket(it.hash));
+          if (r.err) throw new Error('NoRoom: ' + r.err);
+          moved.push(r.moved);
+          await new Promise(res => setTimeout(res, 300));
+          await pull(it);
+        }
         ch.items = ch.items.filter(x => x !== it); ok++;
         const g = it.id !== '0' && state.gear && state.gear.get(it.id); if (g){ g.postmaster = false; g.loc = ch.name; }
-        const own = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (own){ own.postmaster = false; own.loc = ch.name; }
+        const own = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (own){ own.postmaster = false; own.loc = ch.name; if ('where' in own) own.where = cid; }
       } catch (e){
         const m = e.message || '';
-        fails.push(pmDef(it.hash).n + ': ' + (/NoRoom|no room|full/i.test(m) ? 'no room on your ' + ch.name : /cannot|not allowed|NotTransferrable/i.test(m) ? 'can\'t be pulled (pick it up in game)' : m));
-        if (/NoRoom|no room|full/i.test(m)) break;   // the rest won't fit either
+        const why = /^NoRoom: /.test(m) ? m.slice(8) : NO_ROOM.test(m) ? 'no room on your ' + ch.name + (makeRoomOn() ? '' : ' (turn on "Make room" to move something to the vault)') : /cannot|not allowed|NotTransferrable/i.test(m) ? 'can\'t be pulled (pick it up in game)' : m;
+        fails.push(pmDef(it.hash).n + ': ' + why);
       }
       await new Promise(r => setTimeout(r, 250));
     }
     pmBusy = false; pmButton(); pmRender();
-    if (ok) toast('Pulled ' + ok + ' item' + (ok > 1 ? 's' : '') + ' to your ' + ch.name);
-    if (fails.length) setStatus('Some items stayed in the postmaster:\n' + fails.slice(0, 6).join('\n') + (fails.length > 6 ? '\n+' + (fails.length - 6) + ' more' : ''), true);
-    if (ok && typeof render === 'function') try { render(); } catch {}
+    if (ok) toast('Pulled ' + ok + ' item' + (ok > 1 ? 's' : '') + ' to your ' + ch.name + (moved.length ? ', moved ' + moved.length + ' to the vault to make room' : ''));
+    if (fails.length) setStatus((moved.length ? 'Moved to the vault to make room: ' + moved.join(', ') + '\n' : '') + 'Some items stayed in the postmaster:\n' + fails.slice(0, 6).join('\n') + (fails.length > 6 ? '\n+' + (fails.length - 6) + ' more' : ''), true);
+    else if (moved.length) setStatus('Moved to the vault to make room: ' + moved.join(', '));
+    if ((ok || moved.length) && typeof render === 'function') try { render(); } catch {}
   }
   pmButton();
   // the "Signed in until" text is hidden to save header room: show it on the Sign out button instead
