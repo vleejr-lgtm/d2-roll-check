@@ -81,3 +81,5 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 * **Exotic Cipher** items are hidden by default. Untick the box to see them.
 * **Zavala and Shaxx** have their own panel. It tells you straight out what gear to grab from each one. If one of them only has random rolls that week (Shaxx often does), it says so and tells you to skip him unless you're farming a specific roll.
 * **Xûr** has his own panel at the top: arrives every Friday at reset (17:00 UTC), leaves at the Tuesday reset. His arrival follows that schedule, because his Strange Coin shop at Eternity shows up in Bungie's data all week. While he's here it lists his gear, exotics and engrams first (bounties and materials go in a fold). When he's gone it counts down to his next visit, and his all-week coin shop sits in a fold. The page reloads vendors by itself when stock rotates or Xûr arrives.
+
+Test line
