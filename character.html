@@ -121,6 +121,14 @@
   .dblbl{grid-column:1/-1; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); padding-top:8px}
   .dpm{display:flex; flex-wrap:wrap; gap:3px} .dpm .ctile{width:40px; height:40px}
   .ctile[draggable=true]{cursor:grab} .ctile.dragging{opacity:.35} .ctile.busy{opacity:.4; pointer-events:none}
+  .vspace{display:flex; flex-wrap:wrap; gap:14px 28px; align-items:center; padding:14px 16px; margin-bottom:14px}
+  .vmoney{display:flex; flex-wrap:wrap; gap:8px 20px}
+  .vcur{display:inline-flex; align-items:center; gap:6px; font-size:13px} .vcur img{width:20px; height:20px} .vcur b{font-variant-numeric:tabular-nums}
+  .vcaps{display:flex; flex-wrap:wrap; gap:14px; margin-left:auto}
+  .vcap{min-width:150px} .vcap-top{display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--dim)} .vcap-top b{color:var(--text); font-variant-numeric:tabular-nums}
+  .vbar{height:6px; border-radius:3px; background:rgba(255,255,255,.07); overflow:hidden; margin:5px 0 3px} .vbar i{display:block; height:100%; background:#3FB37F}
+  .vcap.warn .vbar i{background:#E2B74B} .vcap.full .vbar i{background:#E5534B} .vcap.full .vfree{color:#FFB4B0; font-weight:700} .vcap.warn .vfree{color:#E2B74B}
+  .vfree{font-size:11.5px; color:var(--dim)}
   .ctile.dimmed{opacity:.18}
   .cvtab .cvicon{font-size:24px; width:36px; text-align:center}
   .ctabs.dropping .ctab:not(.on){outline:1px dashed #E2B74B; outline-offset:2px}
@@ -141,6 +149,7 @@
 </style>
 <link rel="stylesheet" href="theme.css">
 <script src="config.js" onerror="this.remove()"></script>
+<script src="rating.js"></script>
 </head>
 <body>
 <header>
@@ -434,10 +443,12 @@ async function scan(opts = {}){
     fillCharSel(p); updateAuthUi();
     trackDrops(p);
     readChars(p);
+    try { await readSpace(p); } catch {}
     await loadStatDefs();
     state.lastScan = Date.now();
     render();
     if (!state.labelTried){ state.labelTried = true; setTimeout(() => autoLabel(), 1500); }
+    else setTimeout(() => labelNew(), 1500);
     if (!opts.silent) setStatus(''); else setStatus(prev);
   } catch (e){ setStatus(e.message, true); }
   finally { state.scanning = false; tickRefresh(); }
@@ -490,14 +501,34 @@ function autoLabel(force){
     if (labeling[k]) continue;
     const have = M[k], old = !have || Date.now() - have.at > 6 * 3600e3;
     if (!force && !old) continue;
-    const f = document.createElement('iframe');
-    f.src = LABEL_SRC[k][1]; f.title = 'labeler'; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
-    f.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0';
-    labeling[k] = { f, at: Date.now() };
-    document.body.appendChild(f);
-    setTimeout(() => endLabel(k), 150e3);
+    startLabel(k);
   }
   if (labeling.w || labeling.a) redrawBar();
+}
+// fresh drops (postmaster included) have no label yet: rescan that page in the background, at most every 3 minutes
+function labelNew(){
+  if (labeling.w || labeling.a || ls.get('charLabels') === '0') return;
+  const all = (state.full || []).flatMap(c => c.items.concat(c.pm)).concat(state.vault || []).filter(i => i.id);
+  const M = verdictMaps(), miss = { w: false, a: false };
+  for (const i of all){ const b = i.defB || i.b; if (WEAP_B.has(b) && M.w && !M.w.m[i.id]) miss.w = true; if (ARMOR_B.has(b) && M.a && !M.a.m[i.id]) miss.a = true; }
+  for (const k of ['w', 'a']){
+    if (!miss[k]) continue;
+    const key = 'relabelAt:' + k, last = +(sessionStorage.getItem(key) || 0);
+    if (Date.now() - last < 180e3) continue;
+    sessionStorage.setItem(key, String(Date.now()));
+    startLabel(k);
+  }
+}
+function startLabel(k){
+  if (labeling[k] || !auth.valid() || document.querySelector('iframe[data-lbl="' + k + '"]')) return;
+  try { const a = JSON.parse(ls.get('auth') || 'null'); if (a && a.exp && a.exp - Date.now() < 5 * 60e3) return; } catch {}
+  const f = document.createElement('iframe');
+  f.src = LABEL_SRC[k][1]; f.title = 'labeler'; f.dataset.lbl = k; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+  f.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0';
+  labeling[k] = { f, at: Date.now() };
+  document.body.appendChild(f);
+  setTimeout(() => endLabel(k), 150e3);
+  redrawBar();
 }
 function endLabel(k){ const L = labeling[k]; if (!L) return; delete labeling[k]; try { L.f.remove(); } catch {} redrawBar(); }
 function redrawBar(){ VMAP = null; const c = barChar(); const el = document.querySelector('.clabels'); if (el && c) el.outerHTML = labelsBar(c); const cb = $('cLabels'); if (cb) cb.onchange = () => { ls.set('charLabels', cb.checked ? '1' : '0'); render(); if (cb.checked) autoLabel(); }; const rl = $('cRelabel'); if (rl) rl.onclick = e => { e.preventDefault(); autoLabel(true); }; }
@@ -519,7 +550,7 @@ function tile(i, big){
   const v = verdictOf(i), drag = auth.valid() && i.id && !i.equipped && i.charId ? ' draggable="true"' : '';
   return '<button' + drag + ' class="ctile r' + i.rar + (big ? ' big' : '') + (v && v.cls === 'trash' ? ' vtrash' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + (v ? ' · ' + v.label : '')) + '">' +
     (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') +
-    (i.gearTier ? '<span class="tr">T' + i.gearTier + '</span>' : '') + (i.locked ? '<span class="lk">🔒</span>' : '') +
+    tierPips(i.gearTier) + (i.locked ? '<span class="lk">🔒</span>' : '') +
     (i.power ? '<span class="pw">' + i.power + '</span>' : '') + (v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : '') + '</button>';
 }
 function slotHtml([label, b], c){
@@ -536,7 +567,7 @@ function pmHtml(c){
   const n = c.pm.length, lvl = typeof pmLevel === 'function' ? pmLevel(n) : (n >= 21 ? 'full' : n >= 15 ? 'almost' : '');
   const lbl = (lvl === 'full' ? 'FULL! ' : lvl === 'almost' ? 'ALMOST FULL! ' : '') + '(' + n + '/21)';
   return '<div class="cpm ' + lvl + '"><div class="cslot-lbl">Postmaster <span class="pmlvl">' + lbl + '</span>' + (n ? ' <button class="ghost cpm-all" id="cPmAll">Pull all</button>' : '') + '</div><div class="cpm-row">' +
-    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + vtag(i) + '</button>').join('') +
+    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') +
     Array.from({ length: Math.max(0, 21 - n) }, () => '<span class="ctile empty none"></span>').join('') + '</div></div>';
 }
 function barChar(){ const fs = state.full || []; return fs.find(x => x.id === view) || fs[0]; }
@@ -561,7 +592,7 @@ function render(){
     '<div class="chero" style="' + (c.banner ? 'background-image:url(\'' + img(c.banner) + '\')' : '') + '"><div><div class="cname">' + esc(state.bnetName || c.name) + '</div><div class="csub">' + esc([c.race, c.name].filter(Boolean).join(' ')) + '</div></div>' +
       '<div class="cpow"><span>POWER</span><b>' + (c.light || '—') + '</b></div></div>' +
     '<div class="panel cinfo">' + (stats.length ? '<div class="cstats">' + stats.map(s => '<span class="cstat" title="' + esc(s.n) + '">' + (s.i ? '<img src="' + img(s.i) + '" alt="">' : '') + esc(s.n) + ' <b>' + s.v + '</b></span>').join('') + '</div>' : '') +
-      (state.money.length ? '<div class="cmoney">' + state.money.map(m => '<span title="' + esc(m.n) + '">' + (m.i ? '<img src="' + img(m.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + m.q.toLocaleString() + '</b></span>').join('') + '</div>' : '') + '</div>' +
+      '</div>' + spaceHtml() +
     pmHtml(c) + labelsBar(c) +
     '<div class="cgrid"><div class="ccol">' + LEFT.map(s => slotHtml(s, c)).join('') + '</div><div class="ccol">' + RIGHT.map(s => slotHtml(s, c)).join('') + '</div></div>' +
     '<div class="cgrid cextra"><div class="ccol">' + EXTRA.map(s => slotHtml(s, c)).join('') + '</div></div>';
@@ -573,6 +604,31 @@ function render(){
   if ($('cPmAll')) $('cPmAll').onclick = () => { const b = document.getElementById('btnPM'); if (b) b.click(); };
 }
 
+
+/* ===================== vault space and currencies (same as the Vault page) ===================== */
+const VAULT_LABEL = { 138197802: 'Vault', 1469714392: 'Consumables', 3313201758: 'Modifications' };
+async function readSpace(p){
+  const used = {};
+  for (const it of ((p.profileInventory || {}).data || {}).items || []) used[it.bucketHash] = (used[it.bucketHash] || 0) + 1;
+  const hashes = Object.keys(used).map(Number);
+  let defs = {};
+  try { defs = await entMany('DestinyInventoryBucketDefinition', hashes); } catch {}
+  state.space = hashes.map(h => { const d = defs[h] || {}; return { h, name: VAULT_LABEL[h] || (d.displayProperties || {}).name || 'Bucket', used: used[h], cap: d.itemCount || 0 }; })
+    .filter(b => b.cap > 1 || VAULT_LABEL[b.h])
+    .sort((a, b) => (a.h === 138197802 ? -1 : b.h === 138197802 ? 1 : b.used - a.used));
+  state.vmoney = (((p.profileCurrencies || {}).data || {}).items || []).map(c => { const d = state.defs[c.itemHash] || {}; return { h: c.itemHash, n: d.n || 'Currency', i: d.i || '', q: c.quantity || 0 }; })
+    .filter(c => c.q > 0);
+}
+function spaceHtml(){
+  const sp = state.space || [], money = state.vmoney || [];
+  if (!sp.length && !money.length) return '';
+  const meter = b => { const pct = b.cap ? Math.min(100, Math.round(b.used / b.cap * 100)) : 0, free = b.cap ? b.cap - b.used : null;
+    const lvl = pct >= 95 ? 'full' : pct >= 85 ? 'warn' : '';
+    return '<div class="vcap ' + lvl + '" title="' + esc(b.name + ': ' + b.used + (b.cap ? ' of ' + b.cap + ' slots used, ' + free + ' free' : ' slots used')) + '"><div class="vcap-top"><span>' + esc(b.name) + '</span><b>' + b.used.toLocaleString() + (b.cap ? '<span class="dim-lbl">/' + b.cap.toLocaleString() + '</span>' : '') + '</b></div>' +
+      (b.cap ? '<div class="vbar"><i style="width:' + pct + '%"></i></div><div class="vfree">' + (free > 0 ? free.toLocaleString() + ' free' : 'Full') + '</div>' : '') + '</div>'; };
+  return '<div class="panel vspace">' + (money.length ? '<div class="vmoney">' + money.map(c => '<span class="vcur" title="' + esc(c.n) + '">' + (c.i ? '<img src="' + img(c.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + c.q.toLocaleString() + '</b><span class="dim-lbl">' + esc(c.n) + '</span></span>').join('') + '</div>' : '') +
+    (sp.length ? '<div class="vcaps">' + sp.map(meter).join('') + '</div>' : '') + '</div>';
+}
 
 /* ===================== All + vault view (DIM style) ===================== */
 const ALL_SECS = [['Weapons', [['Kinetic', B.kin], ['Energy', B.ene], ['Power', B.pow]]],
@@ -592,15 +648,15 @@ function renderAll(){
   if (allShow !== 'all' && !state.full.some(c => c.id === allShow)) allShow = 'all';
   const chars = allShow === 'all' ? state.full : state.full.filter(c => c.id === allShow), cols = 'repeat(' + chars.length + ', 232px) minmax(300px, 1fr)', minW = chars.length * 248 + 300;
   const vCount = state.vault.length;
-  let h = '<div class="dtools"><input type="search" id="dSearch" placeholder="Search name, type, trash, god, old, t5…" autocomplete="off" value="' + esc(state.dq || '') + '">' +
+  let h = '<div class="dtools"><input type="search" id="dSearch" placeholder="Search: trash, god, old, t5, keep for pvp, pve a…" autocomplete="off" value="' + esc(state.dq || '') + '">' +
     '<div class="cmode dshow"><button data-show="all"' + (allShow === 'all' ? ' class="on"' : '') + '>All characters</button>' +
       state.full.map((c, n) => '<button data-show="' + esc(c.id) + '"' + (allShow === c.id ? ' class="on"' : '') + ' title="' + (n === 0 ? 'Last played' : '') + '">' + esc(c.name) + (n === 0 ? ' (active)' : '') + ' + vault</button>').join('') + '</div>' +
-    '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + labelsBar(allShow === 'all' ? barChar() : chars[0]) +
+    '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + spaceHtml() + labelsBar(allShow === 'all' ? barChar() : chars[0]) +
     '<div class="dwrap"><div class="dgrid" style="grid-template-columns:' + cols + '; min-width:' + minW + 'px">';
   h += chars.map(c => '<div class="dhead"' + (c.banner ? ' style="background-image:linear-gradient(90deg,rgba(14,17,22,.55),rgba(14,17,22,.2)),url(\'' + img(c.banner) + '\')"' : '') + '>' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>' + c.items.length + ' items</span></div><div class="dpow">' + (c.light || '') + '</div></div>').join('') +
     '<div class="dhead"><div><b>Vault</b><span>' + vCount + ' items</span></div></div>';
   // postmaster row
-  h += '<div class="dsec">Postmaster</div>' + chars.map(c => '<div class="dcell"><div class="dpm">' + (c.pm.length ? c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(keyOf(i)) + '" data-pc="' + esc(c.id) + '" title="' + esc(i.name) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : '') + '</button>').join('') : '<span class="dim-lbl">Empty (0/21)</span>') + '</div></div>').join('') + '<div></div>';
+  h += '<div class="dsec">Postmaster</div>' + chars.map(c => '<div class="dcell"><div class="dpm">' + (c.pm.length ? c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(keyOf(i)) + '" data-pc="' + esc(c.id) + '" title="' + esc(i.name) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') : '<span class="dim-lbl">Empty (0/21)</span>') + '</div></div>').join('') + '<div></div>';
   for (const [sec, buckets] of ALL_SECS){
     h += '<div class="dsec">' + sec + '</div>';
     for (const [lbl, b] of buckets){
@@ -628,8 +684,11 @@ function applySearch(){
   $('cView').querySelectorAll('[data-item]').forEach(t => {
     if (!w.length){ t.classList.remove('dimmed'); return; }
     const f = findAny(t.dataset.item); if (!f) return;
-    const v = verdictOf(f.i), hay = (f.i.name + ' ' + f.i.type + ' ' + (RAR[f.i.rar] || '') + (f.i.gearTier ? ' t' + f.i.gearTier : '') + (v ? ' ' + v.tag + ' ' + v.label : '') + (f.i.locked ? ' locked' : '')).toLowerCase();
-    t.classList.toggle('dimmed', !w.every(x => hay.includes(x)));
+    const sp = typeof savedSplit === 'function' && f.i.id ? savedSplit(f.i.id) : null;
+    const v = verdictOf(f.i), hay = (f.i.name + ' ' + f.i.type + ' ' + (RAR[f.i.rar] || '') + (f.i.gearTier ? ' t' + f.i.gearTier : '') + (v ? ' ' + v.tag + ' ' + v.label : '') + (f.i.locked ? ' locked' : '') +
+      (sp ? ' ' + modeShort(sp) + ' ' + modeDecide(sp).text : '')).toLowerCase();
+    const q = w.join(' '), phrase = /^(keep for|maybe|trash in|pv[ep] [sabcdf]$)/.test(q);
+    t.classList.toggle('dimmed', !(phrase ? hay.includes(q) : w.every(x => hay.includes(x))));
   });
 }
 function openVaultItem(i, anchor){

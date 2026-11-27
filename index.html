@@ -184,6 +184,7 @@
 </style>
 <link rel="stylesheet" href="theme.css">
 <script src="config.js" onerror="this.remove()"></script>
+<script src="rating.js"></script>
 </head>
 <body>
 <header>
@@ -325,6 +326,8 @@
         <option value="type">Sort: weapon type</option>
         <option value="dupes">Sort: duplicates, best copy first</option>
         <option value="score">Sort: roll score</option>
+        <option value="pve">Sort: best for PvE</option>
+        <option value="pvp">Sort: best for PvP</option>
       </select>
       <label class="dim-lbl"><input type="checkbox" id="onlyDupes"> only duplicates</label>
     </div>
@@ -920,6 +923,8 @@ function rerate(){
     }
     it.r.mlabel = it.r.isMine || it.r.verdict === 'exotic' || it.r.verdict === 'unrated' ? '' : mode === 'pve' ? 'PvE' : mode === 'pvp' ? 'PvP'
       : modeLabelOf(it.r.verdict === 'god' ? it.r.full : it.r.entry ? [it.r.entry] : []);
+    // PvE and PvP scored separately (rating.js), whatever the overall verdict says
+    it.split = typeof modeSplit === 'function' ? modeSplit(it.hash, it.have, nameOf, h => (state.defs[h] || {}).t, state.wl) : null;
     // perks from the matched roll that are on the gun but not currently selected
     it.swap = (it.r.verdict === 'god' || it.r.verdict === 'close') && it.r.entry ? swapsFor(it.r.entry) : [];
   }
@@ -944,7 +949,7 @@ function rerate(){
   // per item verdicts, so the Character page can label every weapon the same way
   try {
     const vm = {};
-    for (const it of state.items) if (it.id) vm[it.id] = [it.r.verdict, (it.r.reason || '').slice(0, 110), it.dupCount > 1 ? it.dupRank + '/' + it.dupCount : '', it.tier !== 6 && !it.gearTier ? 1 : 0];
+    for (const it of state.items) if (it.id) vm[it.id] = [it.r.verdict, (it.r.reason || '').slice(0, 110), it.dupCount > 1 ? it.dupRank + '/' + it.dupCount : '', it.tier !== 6 && !it.gearTier ? 1 : 0, it.split || null];
     ls.set('verdicts:weapons', JSON.stringify({ at: Date.now(), m: vm }));
   } catch {}
   const c = {}; state.items.forEach(i => c[i.r.verdict] = (c[i.r.verdict] || 0) + 1);
@@ -976,6 +981,7 @@ function perkChips(entry, have, sel){
   }).join('') + '</div>';
 }
 
+function modeVal(i, m){ const x = i.split && i.split[m]; return !x ? -1 : x[4] ? 0 : x[0]; }
 function render(){
   const q = $('filterText').value.trim().toLowerCase();
   const sort = $('sort').value;
@@ -985,6 +991,7 @@ function render(){
     : sort === 'type' ? a.type.localeCompare(b.type) || a.name.localeCompare(b.name)
     : sort === 'dupes' ? (b.dupCount > 1) - (a.dupCount > 1) || a.name.localeCompare(b.name) || a.dupRank - b.dupRank
     : sort === 'score' ? (b.score ?? -1) - (a.score ?? -1) || a.name.localeCompare(b.name)
+    : sort === 'pve' || sort === 'pvp' ? modeVal(b, sort) - modeVal(a, sort) || a.name.localeCompare(b.name)
     : VERDICT_ORDER[a.r.verdict] - VERDICT_ORDER[b.r.verdict] || a.name.localeCompare(b.name));
   $('grid').innerHTML = list.map(i => {
     const r = i.r, note = r.entry ? state.wl.notes[r.entry.n] : '';
@@ -1001,7 +1008,7 @@ function render(){
     return '<div class="card wcard ' + r.verdict + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for perks and stats">' +
       '<label class="pickbox" title="Select for bulk actions"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
       // header: icon, name + subtitle, then score / tier / verdict on one row
-      '<div class="chead"><img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+      '<div class="chead">' + tierIcon('<img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.gearTier) +
         '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
         '<div class="meta">' + esc(i.type) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
         '<div class="cstats">' + (i.score != null ? '<span class="score" title="Roll score">' + i.score + '</span>' : '') +
@@ -1015,6 +1022,7 @@ function render(){
         (noteFor(i.id) ? '<div class="mynote" title="Your note. Click the card to edit.">📝 ' + esc(noteFor(i.id)) + '</div>' : '') +
         '<div class="reason">' + esc(r.reason) + (r.matches > 1 ? ' · ' + r.matches + ' rolls' : '') +
           (i.roles && i.roles.length ? '<span class="roles"> · ' + i.roles.map(esc).join(', ') + '</span>' : '') + '</div>' +
+        (i.split && typeof modeGraph === 'function' ? modeGraph(i.split, { compact: true }) : '') +
         '<div class="scoreline">' +
           (i.dupCount > 1 && i.dupRank === 1 ? '<span class="dup best">Best of ' + i.dupCount + '</span>' : '') +
           (i.dupCount > 1 && i.dupRank !== 1 ? '<span class="dup">Copy ' + i.dupRank + '/' + i.dupCount + '</span>' : '') + '</div>' +
@@ -1348,6 +1356,14 @@ function renderDetail(){
   const extraChanged = Object.keys(D.extra).length > 0;
   const notOwned = item ? changed.filter(k => !((item.owned[k] || []).some(x => normName(plugName(x)) === normName(plugName(D.preview[k]))))) : [];
   const r = item && item.r;
+  // PvE vs PvP graph: the copy as it is, or live for the perks being previewed
+  let splitHtml = '';
+  if (typeof modeSplit === 'function' && state.wl){
+    const previewing = changed.length > 0 || !item;
+    const selNames = new Set(Object.values(sel).map(h => normName(plugName(h))).filter(Boolean));
+    const sp = !previewing && item.split ? item.split : modeSplit(def.hash, selNames, nameOf, h => (state.defs[h] || {}).t, state.wl);
+    splitHtml = '<div class="dsplit"><div class="dim-lbl">' + (previewing ? (item ? 'PvE vs PvP for the perks you picked' : 'PvE vs PvP for the perks shown') : 'PvE vs PvP for this copy') + '</div>' + modeGraph(sp) + '</div>';
+  }
   // PvE / PvP / My god roll buttons (one click previews the whole roll; click again for the next one)
   if (!D.rolls) D.rolls = { pve: rollsFor('pve'), pvp: rollsFor('pvp') };
   const rb = (k, label) => { const n = D.rolls[k].length, on = D.roll && D.roll.mode === k;
@@ -1374,7 +1390,7 @@ function renderDetail(){
       (changed.length && notOwned.length ? '<div class="swapnote">This copy does not have: ' + notOwned.map(k => esc(plugName(D.preview[k]))).join(', ') + '. Those can only be saved as your god roll, not applied.</div>' : '') +
       modHtml +
       '</div>' +
-      '<div class="dside">' + rollBtns + mwHtml +
+      '<div class="dside">' + splitHtml + rollBtns + mwHtml +
         '<button class="primary" id="dSave">★ Save as My god roll</button>' +
         (mine ? '<button class="ghost" id="dClear">Clear my god roll</button>' : '') +
         (changed.length || extraChanged ? '<button class="ghost" id="dReset">Reset to ' + (item ? 'current perks' : 'default') + '</button>' : '') +
@@ -1776,11 +1792,28 @@ function lookup(){
   }
   $('lookupResults').innerHTML = hits.map(h => {
     const d = state.defs[h];
-    return '<div class="lookup-item" data-h="' + h + '"><img src="https://www.bungie.net' + esc(d.i) + '" alt=""><div><b>' + esc(d.n) + '</b><div class="meta">' + esc(d.t) + ' · ' + state.wl.good.get(h).length + ' recommended combos</div></div></div>';
+    const wm = typeof weaponModes === 'function' ? weaponModes(h, nameOf, h => (state.defs[h] || {}).t, state.wl) : null;
+    return '<div class="lookup-item" data-h="' + h + '"><img src="https://www.bungie.net' + esc(d.i) + '" alt=""><div><b>' + esc(d.n) + '</b><div class="meta">' + esc(d.t) + ' · ' + state.wl.good.get(h).length + ' recommended combos' +
+      (wm ? ' · PvE ' + wm.pve.n + ' · PvP ' + wm.pvp.n + (wm.aegis ? ' · Aegis ' + esc(wm.aegis) : '') : '') + '</div></div></div>';
   }).join('') || '<div style="color:var(--dim)">No recommended rolls found for that name.</div>';
   $('lookupResults').querySelectorAll('.lookup-item').forEach(el => el.onclick = () => { showRolls(+el.dataset.h); openDetail(null, +el.dataset.h); });
 }
 
+// Look up: what the weapon is recommended for in each mode, the traits each mode wants, and how every copy you own scores
+function lookupModes(h, d){
+  if (typeof weaponModes !== 'function') return '';
+  const wm = weaponModes(h, nameOf, h => (state.defs[h] || {}).t, state.wl), tot = wm.pve.n + wm.pvp.n || 1;
+  const side = (m, label) => '<div><h4>' + label + '</h4><div class="n">' + wm[m].n + '<span class="dim-lbl"> recommended rolls</span></div>' +
+    '<div class="share"><b style="width:' + Math.round(wm[m].n / tot * 100) + '%"></b></div>' +
+    '<div class="dim-lbl">' + (wm[m].top.length ? 'Most wanted traits: ' + wm[m].top.map(esc).join(', ') : 'No ' + label + ' rolls on your lists') + '</div></div>';
+  const verdict = !wm.pve.n && !wm.pvp.n ? 'No tagged rolls on your lists.' : wm.pve.n >= wm.pvp.n * 2 ? 'Mostly a PvE weapon.' : wm.pvp.n >= wm.pve.n * 2 ? 'Mostly a PvP weapon.' : 'Wanted in both PvE and PvP.';
+  const mine = (state.items || []).filter(i => i.hash === h || normName(i.name) === normName(d.n));
+  const copies = mine.length ? '<div class="mgcopies"><div class="dim-lbl">Your copies (' + mine.length + ')</div>' +
+    mine.map(i => '<div class="mgcopy" data-open="' + esc(i.id) + '" style="cursor:pointer"><div><b>' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</b><small>' + esc((i.active || []).slice(1, 5).join(', ')) + '</small></div>' +
+      (i.split ? modeGraph(i.split, { compact: true }) : '<span class="dim-lbl">Not rated</span>') + '</div>').join('') + '</div>'
+    : '<div class="dim-lbl">You don\'t own a copy' + (state.items && state.items.length ? '.' : ' (or your weapons have not been scanned yet).') + '</div>';
+  return '<div class="lookmodes"><div class="dim-lbl">' + verdict + (wm.aegis ? ' <span class="mg-aegis">Aegis ' + esc(wm.aegis) + ' tier (PvE)</span>' : '') + '</div><div class="mgw">' + side('pve', 'PvE') + side('pvp', 'PvP') + '</div>' + copies + '</div>';
+}
 function showRolls(h){
   lastLookup = h;
   const mode = $('lookupMode').value;
@@ -1791,11 +1824,11 @@ function showRolls(h){
     e.p.forEach(p => g.perks.add(nameOf(p) || p)); g.count++;
   }
   const d = state.defs[h];
-  $('lookupRolls').innerHTML = '<h3>' + esc(d.n) + ' · ' + esc(d.t) + '</h3>' + [...groups].map(([n, g]) =>
+  $('lookupRolls').innerHTML = '<h3>' + esc(d.n) + ' · ' + esc(d.t) + '</h3>' + lookupModes(h, d) + [...groups].map(([n, g]) =>
     '<div class="roll"><div class="perks">' + [...g.perks].map(p => '<span class="perk hit">' + esc(p) + '</span>').join('') + '</div>' +
     '<div class="tags">' + (g.m ? g.m.toUpperCase() + ' · ' : '') + g.count + ' combos</div>' +
     (state.wl.notes[n] ? '<details><summary>Notes</summary><p>' + esc(state.wl.notes[n]) + '</p></details>' : '') + '</div>'
-  ).join('');
+  ).join('');  $('lookupRolls').querySelectorAll('.mgcopy[data-open]').forEach(el => el.onclick = () => { const it = state.items.find(x => x.id === el.dataset.open); if (it) openDetail(it); });
 }
 // ---- footer: which data this page is using ----
 function updateFooter(){

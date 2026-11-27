@@ -37,7 +37,7 @@ jobs:
           if [[ ! "$BUNGIE_API_KEY" =~ ^[A-Za-z0-9]{16,64}$ ]]; then echo "BUNGIE_API_KEY secret missing or malformed"; exit 1; fi
           if [[ ! "$BUNGIE_CLIENT_ID" =~ ^[0-9]{2,12}$ ]]; then echo "BUNGIE_CLIENT_ID secret missing or malformed"; exit 1; fi
           mkdir -p _site
-          cp *.html *.css stream.js .nojekyll _site/
+          cp *.html *.css stream.js rating.js .nojekyll _site/
           printf 'window.D2RC_CONFIG = { apiKey: "%s", clientId: "%s" };\n' "$BUNGIE_API_KEY" "$BUNGIE_CLIENT_ID" > _site/config.js
           ls -la _site
 

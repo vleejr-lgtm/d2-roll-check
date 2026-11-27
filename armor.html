@@ -221,6 +221,7 @@
 </style>
 <link rel="stylesheet" href="theme.css">
 <script src="config.js" onerror="this.remove()"></script>
+<script src="rating.js"></script>
 </head>
 <body>
 <header>
@@ -898,7 +899,7 @@ function render(){
     return '<div class="card wcard acard ' + i.v + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for details and comparison">' +
       '<label class="pickbox"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
       // header: icon, name + subtitle, tier and verdict on one row
-      '<div class="chead"><img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+      '<div class="chead">' + tierIcon('<img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.tier) +
         '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
         '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
         '<div class="cstats">' + (i.tier ? '<span class="ctier' + (i.tier >= 5 ? ' t5' : '') + '" title="Tier ' + i.tier + '">T' + i.tier + '</span>' : '') +
