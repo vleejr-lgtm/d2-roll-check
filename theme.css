@@ -269,7 +269,11 @@ details.drawer > .drawer-body .drawer-row{flex-basis:100%; display:flex; gap:8px
 
 /* ---------- Home view (index.html#home) ---------- */
 #view-home{gap:36px!important}
-#view-home .hero{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap}
+#view-home .hero{display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; position:relative; overflow:hidden;
+  background:radial-gradient(420px 180px at 0% 50%, rgba(226,183,75,.10), transparent 70%), linear-gradient(135deg, #151920 0%, #0F1319 100%);
+  border:1px solid var(--line); border-radius:var(--radius); padding:22px 24px}
+#view-home .hero-id{display:flex; align-items:center; gap:16px; min-width:0}
+#view-home .hero-emblem{flex:none; width:48px; height:48px; filter:drop-shadow(0 0 10px rgba(226,183,75,.18))}
 #view-home .hero h2{font-size:28px; font-weight:700; letter-spacing:-.02em; margin:0 0 8px}
 #view-home .hero p{margin:0}
 #view-home .quick{display:flex; gap:10px; flex-wrap:wrap}
@@ -292,7 +296,9 @@ a.hstat:hover{border-color:var(--line2)}
 .navcards{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px}
 .navcard{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; text-decoration:none; color:var(--text); display:flex; flex-direction:column; gap:6px; transition:border-color .15s}
 .navcard:hover{border-color:var(--accent)}
-.navcard b{font-size:15px}
+.navcard b{font-size:15px; display:inline-flex; align-items:center; gap:8px}
+.navcard .nicon{flex:none; color:#B89A52; opacity:.85; transition:color .15s, opacity .15s}
+.navcard:hover .nicon{color:#E2B74B; opacity:1}
 .navcard b::after{content:" →"; color:var(--accent)}
 .navcard span{font-size:13px; color:var(--dim); line-height:1.5}
 #view-home .two{display:grid; grid-template-columns:1.3fr 1fr; gap:28px}
