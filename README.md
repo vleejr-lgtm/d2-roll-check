@@ -33,8 +33,8 @@ Sign-in lasts about an hour (Bungie gives this kind of app no refresh token). Cl
 
 * **Home** (click D2 ROLL CHECK in the header): connection status, weapon and armor counts from your last scans, shortcuts to every page, recent drops, and reset clocks.
 
-* **Cards**: verdict, score, Aegis tier, which lists matched, perks to swap, and duplicates ranked.
-* **Click a card**: full detail view like godroll.tv. Perk columns are labeled (Barrel, Magazine, Perk 1, Perk 2, Origin) with an Enhanced toggle; a Mods grid and a Masterwork list preview their stat changes live. Hover anything for details. Mod and masterwork picks only preview stats; Apply changes perks only.
+* **Cards**: verdict with its mode (`GOD ROLL · PvE`, `GOD ROLL · PvE + PvP`, `CLOSE · PvP`), score, Aegis tier, perks to swap, and duplicates ranked. The PvE + PvP / PvE only / PvP only dropdown re-grades every card for that mode.
+* **Click a card**: full detail view like godroll.tv. Perk columns are labeled (Barrel, Magazine, Perk 1, Perk 2, Origin) with an Enhanced toggle; a Mods grid and a Masterwork list preview their stat changes live. Hover anything for details. Mod and masterwork picks only preview stats; Apply changes perks only. **❖ PvE god roll** / **❖ PvP god roll** select a whole recommended roll in one click (click again for the next one, with which lists recommend it), and **★ My god roll** loads yours. The masterwork list only shows stats the weapon has.
   * **Save as My god roll**: your pick wins over the lists for every copy of that weapon.
   * **Apply selected perks in game**: switches the perks on that copy (only perks the copy has). Works in orbit, a social space, or offline.
   * **Lock / Unlock**, **Pull to character**, **DIM tag**.
