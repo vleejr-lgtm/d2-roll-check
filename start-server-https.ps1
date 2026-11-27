@@ -67,7 +67,7 @@ if (-not (Test-Setup)) {
 
 $root = (Resolve-Path $PSScriptRoot).Path
 $listener = [System.Net.HttpListener]::new()
-$listener.Prefixes.Add("https://localhost:$Port/index.html#home")
+$listener.Prefixes.Add("https://localhost:$Port/")
 $listener.Start()
 Write-Host "Serving $root at https://localhost:$Port/  (Ctrl+C to stop)"
 Start-Process "https://localhost:$Port/index.html#home"
