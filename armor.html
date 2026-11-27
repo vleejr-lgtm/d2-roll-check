@@ -806,6 +806,12 @@ function triage(){
     }
     ls.set('armorIndex', JSON.stringify({ at: Date.now(), m: ai }));
   } catch {}
+  // per item verdicts, so the Character page can label every armor piece the same way
+  try {
+    const vm = {};
+    for (const i of state.items) if (i.id) vm[i.id] = [i.v, (i.why || '').slice(0, 160), i.legacy ? 1 : 0, i.exotic ? 1 : 0];
+    ls.set('verdicts:armor', JSON.stringify({ at: Date.now(), m: vm }));
+  } catch {}
   renderSummary(); renderChips(); renderGet(); render();
   if (!state.setInfo) loadSetInfo().then(() => { if (state.setInfo) renderGet(); });
   const c = count();

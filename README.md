@@ -126,6 +126,8 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 ## Character (character.html)
 
 * Pick a character at the top. You get the in-game Character screen: emblem, name, power and stats, weapons and ghost on the left, armor on the right.
+* Every weapon and armor piece gets a label from your last scan: GOD, CLOSE or TRASH for weapons (same as the Weapons page), KEEP, TRASH or OLD for armor (same as Armor triage). OLD means old gear, get a newer copy; purple OLD is an old exotic. Scan each page once to fill them in. Click an item to see why.
+* **All + vault** shows every character and the vault side by side, like DIM. Drag an item onto another character, onto the vault, or onto an equipped slot to equip it. Search dims everything that doesn't match, so `trash` lights up what you can clear.
 * Every slot is expanded: the equipped item plus everything else that character carries for that slot, with empty boxes for free space.
 * Click an item to Equip it, send it to the Vault, move it to another character, or lock it.
 * Click an empty box to bring something from the vault into that slot. It only lists items that fit, and you can filter them.

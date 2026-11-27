@@ -76,6 +76,18 @@
   .ctile .tr{position:absolute; left:0; top:0; font-size:9px; font-weight:800; background:rgba(0,0,0,.72); color:#E2B74B; padding:0 3px; border-bottom-right-radius:3px}
   .ctile .lk{position:absolute; right:1px; top:0; font-size:9px}
   .ctile:hover,.ctile:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .ctile .vt{position:absolute; left:0; bottom:0; font-size:7.5px; font-weight:800; letter-spacing:0; padding:0 2px; border-top-right-radius:3px; line-height:13px; color:#0b0d10}
+  .ctile.big .vt{font-size:9px; line-height:14px; padding:0 3px}
+  .ctile:has(.vt) .pw{padding:0 2px; font-size:9.5px}
+  .vt.god,.vb.god{background:#E2B74B} .vt.close,.vb.close{background:#d08a3a} .vt.trash,.vb.trash{background:#e05252; color:#fff} .vt.keep,.vb.keep{background:#3fb36b}
+  .vt.exo,.vb.exo{background:#c9a227} .vt.old,.vb.old{background:#8b95a5} .vt.oldx,.vb.oldx{background:#b07ad9; color:#fff} .vt.review,.vb.review{background:#4a90d9; color:#fff} .vt.unr,.vb.unr{background:#3a4150; color:#cfd5df}
+  .ctile.vtrash{box-shadow:inset 0 0 0 1px rgba(224,82,82,.9)}
+  .cverd{margin:8px 0 2px; font-size:12.5px; line-height:1.4; color:var(--dim)}
+  .vb{display:inline-block; font-size:10px; font-weight:800; padding:1px 6px; border-radius:3px; margin-right:6px; color:#0b0d10; vertical-align:1px}
+  .clabels{display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; font-size:12px; color:var(--dim); margin:4px 0 10px}
+  .clabels a{color:var(--accent)} .clabels label{display:inline-flex; gap:5px; align-items:center; cursor:pointer}
+  .ccount b{color:var(--text)}
+  body.nolabels .ctile .vt{display:none} body.nolabels .ctile.vtrash{box-shadow:none}
   .ctile.empty{border:1px dashed rgba(255,255,255,.12); background:rgba(255,255,255,.02); cursor:pointer}
   .ctile.empty:hover::after{content:"+"; position:absolute; inset:0; display:grid; place-items:center; color:var(--dim); font-size:20px}
   span.ctile{display:block}
@@ -89,6 +101,28 @@
   .cpm-all{font-size:11px; padding:2px 8px; margin-left:8px; letter-spacing:0; text-transform:none}
   /* item card */
   .croll{border-top:1px solid var(--line); margin-top:10px; padding-top:10px; font-size:12.5px} .croll .rp-head{display:none}
+  .cmode{display:inline-flex; border:1px solid var(--line2); border-radius:6px; overflow:hidden; margin-left:14px; vertical-align:middle}
+  .cmode button{background:transparent; border:0; border-radius:0; color:var(--dim); font-size:12.5px; padding:5px 12px; cursor:pointer}
+  .cmode button.on{background:var(--accent); color:#0b0d10; font-weight:700}
+  /* All + vault view (DIM style): one column per character, the vault on the right, drag items between them */
+  .dwrap{overflow-x:auto; padding-bottom:10px}
+  .dgrid{display:grid; gap:0 16px; min-width:max-content}
+  .dhead{display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:6px; background:linear-gradient(90deg,#1d2430,#151a22); border:1px solid var(--line); background-size:cover; background-position:center; min-height:52px}
+  .dhead img{width:36px; height:36px; border-radius:4px} .dhead b{display:block; font-size:15px} .dhead span{font-size:12px; color:var(--dim)}
+  .dhead .dpow{margin-left:auto; color:#E2B74B; font-weight:800; font-size:17px}
+  .dsec{grid-column:1/-1; font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); padding:16px 0 4px; border-bottom:1px solid var(--line)}
+  .dcell,.dvault{padding:8px 4px; border-bottom:1px solid rgba(255,255,255,.05); border-radius:6px; transition:background .12s}
+  .dcell{display:flex; gap:8px; align-items:flex-start}
+  .dcell .dinv{display:grid; grid-template-columns:repeat(3,54px); gap:4px}
+  .dvault{display:flex; flex-wrap:wrap; gap:4px; align-content:flex-start}
+  .dcell.dover,.dvault.dover{background:rgba(226,183,75,.12); outline:1px dashed #E2B74B}
+  .ctile.deq.dover{outline:2px solid #E2B74B}
+  .dblbl{grid-column:1/-1; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); padding-top:8px}
+  .dpm{display:flex; flex-wrap:wrap; gap:3px} .dpm .ctile{width:40px; height:40px}
+  .ctile[draggable=true]{cursor:grab} .ctile.dragging{opacity:.35} .ctile.busy{opacity:.4; pointer-events:none}
+  .ctile.dimmed{opacity:.18}
+  .dtools{display:flex; gap:12px; align-items:center; margin:4px 0 10px; flex-wrap:wrap}
+  .dtools input{width:280px; max-width:100%}
   .cpop{position:fixed; z-index:60; width:330px; max-height:85vh; overflow:auto; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius-sm); box-shadow:0 14px 40px rgba(0,0,0,.55); padding:14px}
   .cpop h4{margin:0 0 2px; font-size:15px} .cpop .cmeta{font-size:12px; color:var(--dim); margin-bottom:10px}
   .cpop .cacts{display:flex; flex-wrap:wrap; gap:6px} .cpop .cacts button{font-size:12px; padding:4px 10px}
@@ -133,7 +167,7 @@
 <div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
 <main>
   <div id="status"></div>
-  <div class="sectionhead"><h2>Character</h2><span class="dim-lbl" id="lastScan"></span></div>
+  <div class="sectionhead"><h2>Character</h2><div class="cmode" id="cMode"><button data-m="one">One character</button><button data-m="all">All + vault</button></div><span class="dim-lbl" id="lastScan"></span></div>
   <div class="shsignin hidden" id="cSignin"><span><b>Sign in to see your characters.</b> Bungie only shares inventories when you're signed in.</span><button class="primary" id="cSigninBtn">Sign in with Bungie</button></div>
   <div class="ctabs" id="cTabs"></div>
   <div id="cView"></div>
@@ -404,11 +438,55 @@ async function scan(opts = {}){
 }
 
 const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+/* ---- keep / trash labels, read from the last Weapons and Armor triage scans (same item ids) ---- */
+const WEAP_B = new Set([B.kin, B.ene, B.pow]), ARMOR_B = new Set([B.helm, B.arms, B.chest, B.legs, B.cls]);
+let VMAP = null;
+function verdictMaps(){
+  if (VMAP) return VMAP;
+  const read = k => { try { return JSON.parse(ls.get(k) || 'null'); } catch { return null; } };
+  return (VMAP = { w: read('verdicts:weapons'), a: read('verdicts:armor') });
+}
+// returns { tag, cls, label, why } or null
+function verdictOf(i){
+  if (!i || !i.id) return null;
+  const b = i.defB || i.b, M = verdictMaps();
+  if (WEAP_B.has(b) && M.w && M.w.m[i.id]){
+    const [v, why, dup, old] = M.w.m[i.id];
+    const oldNote = old ? ' Old weapon (no tier): a new Tier 5 copy rolls better.' : '';
+    const dupNote = dup ? (dup.startsWith('1/') ? ' Best of your ' + dup.split('/')[1] + ' copies.' : ' Copy ' + dup.replace('/', ' of ') + ', weaker than your best.') : '';
+    if (v === 'god') return { tag: 'GOD', cls: 'god', label: 'God roll', why: why + '.' + dupNote + oldNote };
+    if (v === 'close') return { tag: 'CLOSE', cls: 'close', label: 'Close', why: why + '.' + dupNote + oldNote };
+    if (v === 'trash') return { tag: 'TRASH', cls: 'trash', label: 'Trash', why: why + '.' + dupNote + oldNote };
+    if (v === 'exotic') return { tag: 'EXO', cls: 'exo', label: 'Exotic', why: 'Exotic, perks are fixed.' + dupNote };
+    if (old) return { tag: 'OLD', cls: 'old', label: 'Old gear, get newer', why: (why ? why + '.' : '') + oldNote };
+    return { tag: '?', cls: 'unr', label: 'Unrated', why: (why || 'No community recommendations for this weapon') + '.' };
+  }
+  if (ARMOR_B.has(b) && M.a && M.a.m[i.id]){
+    const [v, why, legacy, exotic] = M.a.m[i.id];
+    if (v === 'trash') return { tag: 'TRASH', cls: 'trash', label: legacy ? (exotic ? 'Trash (old exotic)' : 'Trash (old gear)') : 'Trash', why };
+    if (legacy && exotic) return { tag: 'OLD', cls: 'oldx', label: 'Old exotic, get a new copy', why };
+    if (legacy || v === 'legacy') return { tag: 'OLD', cls: 'old', label: 'Old gear, get newer', why };
+    if (v === 'review') return { tag: 'REVIEW', cls: 'review', label: 'Review', why };
+    return { tag: 'KEEP', cls: 'keep', label: 'Keep', why };
+  }
+  return null;
+}
+function vtag(i){ const v = verdictOf(i); return v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : ''; }
+function ago(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
+function labelsBar(c){
+  const M = verdictMaps(), on = ls.get('charLabels') !== '0';
+  const cnt = {}; for (const i of c.items){ const v = verdictOf(i); if (v) cnt[v.cls] = (cnt[v.cls] || 0) + 1; }
+  const NAMES = { trash: 'Trash', old: 'Old gear', oldx: 'Old exotics', god: 'God rolls', close: 'Close', keep: 'Keep', review: 'Review' };
+  const counts = Object.keys(NAMES).filter(k => cnt[k]).map(k => '<span class="ccount"><span class="vb ' + k + '">' + NAMES[k] + '</span><b>' + cnt[k] + '</b></span>').join('');
+  const src = [M.w ? 'Weapons scan ' + ago(M.w.at) : '<a href="index.html">Scan weapons</a> to label weapons', M.a ? 'Armor scan ' + ago(M.a.at) : '<a href="armor.html">Run Armor triage</a> to label armor'].join(' · ');
+  return '<div class="clabels"><label><input type="checkbox" id="cLabels"' + (on ? ' checked' : '') + '> Keep / trash labels</label>' + (on ? counts : '') + '<span>' + src + '</span></div>';
+}
 function tile(i, big){
-  return '<button class="ctile r' + i.rar + (big ? ' big' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '')) + '">' +
+  const v = verdictOf(i);
+  return '<button class="ctile r' + i.rar + (big ? ' big' : '') + (v && v.cls === 'trash' ? ' vtrash' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + (v ? ' · ' + v.label : '')) + '">' +
     (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') +
     (i.gearTier ? '<span class="tr">T' + i.gearTier + '</span>' : '') + (i.locked ? '<span class="lk">🔒</span>' : '') +
-    (i.power ? '<span class="pw">' + i.power + '</span>' : '') + '</button>';
+    (i.power ? '<span class="pw">' + i.power + '</span>' : '') + (v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : '') + '</button>';
 }
 function slotHtml([label, b], c){
   const eq = c.items.find(i => i.b === b && i.equipped), inv = c.items.filter(i => i.b === b && !i.equipped).sort((x, y) => y.power - x.power || y.rar - x.rar);
@@ -424,15 +502,22 @@ function pmHtml(c){
   const n = c.pm.length, lvl = typeof pmLevel === 'function' ? pmLevel(n) : (n >= 21 ? 'full' : n >= 15 ? 'almost' : '');
   const lbl = (lvl === 'full' ? 'FULL! ' : lvl === 'almost' ? 'ALMOST FULL! ' : '') + '(' + n + '/21)';
   return '<div class="cpm ' + lvl + '"><div class="cslot-lbl">Postmaster <span class="pmlvl">' + lbl + '</span>' + (n ? ' <button class="ghost cpm-all" id="cPmAll">Pull all</button>' : '') + '</div><div class="cpm-row">' +
-    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + '</button>').join('') +
+    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + vtag(i) + '</button>').join('') +
     Array.from({ length: Math.max(0, 21 - n) }, () => '<span class="ctile empty none"></span>').join('') + '</div></div>';
 }
+let mode = ls.get('charMode') === 'all' ? 'all' : 'one', dragging = null, renderLater = false;
+document.querySelectorAll('#cMode [data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; ls.set('charMode', mode); closePop(); render(); });
 function render(){
-  sync();
+  if (dragging){ renderLater = true; return; }   // a refresh during a drag would drop the item being dragged
+  document.querySelectorAll('#cMode [data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+  sync(); VMAP = null;
+  document.body.classList.toggle('nolabels', ls.get('charLabels') === '0');
   $('cSignin').classList.toggle('hidden', auth.valid());
   if (!state.full || !state.full.length){ $('cTabs').innerHTML = ''; $('cView').innerHTML = ''; return; }
   $('cTabs').innerHTML = state.full.map(c => '<button class="ctab' + (c.id === view ? ' on' : '') + '" data-c="' + esc(c.id) + '">' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>Power ' + (c.light || '—') + '</span></div></button>').join('');
   $('cTabs').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { view = b.dataset.c; ls.set('charView', view); closePop(); render(); });
+  $('cTabs').classList.toggle('hidden', mode === 'all');
+  if (mode === 'all') return renderAll();
   const c = state.full.find(x => x.id === view) || state.full[0];
   const stats = Object.entries(c.stats).filter(([h]) => +h !== POWER_STAT).map(([h, v]) => { const d = (state.statDefs[h] || {}).displayProperties || {}; return d.name ? { n: d.name, i: d.icon, v } : null; }).filter(Boolean);
   $('cView').innerHTML =
@@ -440,15 +525,133 @@ function render(){
       '<div class="cpow"><span>POWER</span><b>' + (c.light || '—') + '</b></div></div>' +
     '<div class="panel cinfo">' + (stats.length ? '<div class="cstats">' + stats.map(s => '<span class="cstat" title="' + esc(s.n) + '">' + (s.i ? '<img src="' + img(s.i) + '" alt="">' : '') + esc(s.n) + ' <b>' + s.v + '</b></span>').join('') + '</div>' : '') +
       (state.money.length ? '<div class="cmoney">' + state.money.map(m => '<span title="' + esc(m.n) + '">' + (m.i ? '<img src="' + img(m.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + m.q.toLocaleString() + '</b></span>').join('') + '</div>' : '') + '</div>' +
-    pmHtml(c) +
+    pmHtml(c) + labelsBar(c) +
     '<div class="cgrid"><div class="ccol">' + LEFT.map(s => slotHtml(s, c)).join('') + '</div><div class="ccol">' + RIGHT.map(s => slotHtml(s, c)).join('') + '</div></div>' +
     '<div class="cgrid cextra"><div class="ccol">' + EXTRA.map(s => slotHtml(s, c)).join('') + '</div></div>';
   $('cView').querySelectorAll('[data-item]').forEach(t => t.onclick = e => openItem(t.dataset.item, t, c));
   $('cView').querySelectorAll('[data-fill]').forEach(t => t.onclick = () => openPicker(+t.dataset.fill, t, c));
   $('cView').querySelectorAll('[data-pm]').forEach(t => t.onclick = () => openPm(t.dataset.pm, t, c));
+  if ($('cLabels')) $('cLabels').onchange = () => { ls.set('charLabels', $('cLabels').checked ? '1' : '0'); render(); };
   if ($('cPmAll')) $('cPmAll').onclick = () => { const b = document.getElementById('btnPM'); if (b) b.click(); };
 }
 
+
+/* ===================== All + vault view (DIM style) ===================== */
+const ALL_SECS = [['Weapons', [['Kinetic', B.kin], ['Energy', B.ene], ['Power', B.pow]]],
+  ['Armor', [['Helmet', B.helm], ['Arms', B.arms], ['Chest', B.chest], ['Legs', B.legs], ['Class item', B.cls]]],
+  ['General', [['Ghost', B.ghost], ['Sparrow', B.sparrow], ['Ship', B.ship]]]];
+const keyOf = i => i.id || ('h' + i.hash);
+function findAny(key){
+  for (const c of state.full || []){ const i = c.items.find(x => keyOf(x) === key); if (i) return { i, c }; }
+  const v = state.vault.find(x => keyOf(x) === key); return v ? { i: v, c: null } : null;
+}
+function dtile(i, eq){
+  const t = tile(i, false), drag = auth.valid() && i.id && !i.equipped ? ' draggable="true"' : '';
+  return t.replace('<button class="ctile', '<button' + drag + ' class="ctile' + (eq ? ' deq' : ''));
+}
+function renderAll(){
+  const chars = state.full, cols = 'repeat(' + chars.length + ', 232px) minmax(420px, 1fr)';
+  const vCount = state.vault.length;
+  let h = '<div class="dtools"><input type="search" id="dSearch" placeholder="Search name, type, trash, god, old, t5…" autocomplete="off" value="' + esc(state.dq || '') + '">' +
+    '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + labelsBar(chars.find(x => x.id === view) || chars[0]) +
+    '<div class="dwrap"><div class="dgrid" style="grid-template-columns:' + cols + '">';
+  h += chars.map(c => '<div class="dhead"' + (c.banner ? ' style="background-image:linear-gradient(90deg,rgba(14,17,22,.55),rgba(14,17,22,.2)),url(\'' + img(c.banner) + '\')"' : '') + '>' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>' + c.items.length + ' items</span></div><div class="dpow">' + (c.light || '') + '</div></div>').join('') +
+    '<div class="dhead"><div><b>Vault</b><span>' + vCount + ' items</span></div></div>';
+  // postmaster row
+  h += '<div class="dsec">Postmaster</div>' + chars.map(c => '<div class="dcell"><div class="dpm">' + (c.pm.length ? c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(keyOf(i)) + '" data-pc="' + esc(c.id) + '" title="' + esc(i.name) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : '') + '</button>').join('') : '<span class="dim-lbl">Empty (0/21)</span>') + '</div></div>').join('') + '<div></div>';
+  for (const [sec, buckets] of ALL_SECS){
+    h += '<div class="dsec">' + sec + '</div>';
+    for (const [lbl, b] of buckets){
+      h += '<div class="dblbl">' + esc(lbl) + '</div>';
+      for (const c of chars){
+        const eq = c.items.find(i => i.b === b && i.equipped), inv = c.items.filter(i => i.b === b && !i.equipped).sort((x, y) => y.power - x.power || y.rar - x.rar);
+        h += '<div class="dcell" data-dc="' + esc(c.id) + '" data-db="' + b + '">' + (eq ? dtile(eq, true).replace('<button', '<button data-eqc="' + esc(c.id) + '"') : '<span class="ctile big empty none" style="width:54px;height:54px"></span>') +
+          '<div class="dinv">' + inv.map(i => dtile(i)).join('') + '</div></div>';
+      }
+      const v = state.vault.filter(i => i.defB === b).sort((x, y) => (x.cls ?? 3) - (y.cls ?? 3) || y.power - x.power || y.rar - x.rar || x.name.localeCompare(y.name));
+      h += '<div class="dvault" data-dv="1" data-db="' + b + '">' + (v.length ? v.map(i => dtile(i)).join('') : '<span class="dim-lbl">Nothing in the vault</span>') + '</div>';
+    }
+  }
+  $('cView').innerHTML = h + '</div></div>';
+  const root = $('cView');
+  root.querySelectorAll('[data-item]').forEach(t => t.onclick = () => { const f = findAny(t.dataset.item); if (!f) return; f.c ? openItem(t.dataset.item, t, f.c) : openVaultItem(f.i, t); });
+  root.querySelectorAll('[data-pm]').forEach(t => t.onclick = () => openPm(t.dataset.pm, t, state.full.find(c => c.id === t.dataset.pc)));
+  if ($('cLabels')) $('cLabels').onchange = () => { ls.set('charLabels', $('cLabels').checked ? '1' : '0'); render(); };
+  $('dSearch').oninput = () => { state.dq = $('dSearch').value; applySearch(); };
+  applySearch(); wireDrag(root);
+}
+function applySearch(){
+  const w = (state.dq || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  $('cView').querySelectorAll('[data-item]').forEach(t => {
+    if (!w.length){ t.classList.remove('dimmed'); return; }
+    const f = findAny(t.dataset.item); if (!f) return;
+    const v = verdictOf(f.i), hay = (f.i.name + ' ' + f.i.type + ' ' + (RAR[f.i.rar] || '') + (f.i.gearTier ? ' t' + f.i.gearTier : '') + (v ? ' ' + v.tag + ' ' + v.label : '') + (f.i.locked ? ' locked' : '')).toLowerCase();
+    t.classList.toggle('dimmed', !w.every(x => hay.includes(x)));
+  });
+}
+function openVaultItem(i, anchor){
+  const can = auth.valid() && state.acct && i.id;
+  const acts = can ? state.full.map(o => '<button class="ghost" data-to="' + esc(o.id) + '">To ' + esc(o.name) + '</button>').join('') + '<button class="ghost" data-lock="1">' + (i.locked ? '🔓 Unlock' : '🔒 Lock') + '</button>' : '';
+  $('cPop').innerHTML = '<h4>' + esc(i.name) + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', 'In the vault'].filter(Boolean).join(' · ')) + '</div>' + verdLine(i) +
+    (acts ? '<div class="cacts">' + acts + '</div>' : '<div class="dim-lbl">Sign in to move it.</div>') + '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>';
+  place($('cPop'), anchor);
+  if (typeof rollHtmlFor === 'function') rollHtmlFor(i.id, i.hash).then(h => { const el = $('cRoll'); if (el){ el.innerHTML = h; place($('cPop'), anchor); } }).catch(e => { const el = $('cRoll'); if (el) el.innerHTML = '<div class="dim-lbl">' + esc(e.message) + '</div>'; });
+  else $('cRoll').remove();
+  $('cPop').querySelectorAll('[data-to]').forEach(b => b.onclick = async () => { b.disabled = true; try { await moveItem(i, b.dataset.to, false); closePop(); } catch (e){ b.disabled = false; } });
+  const lb = $('cPop').querySelector('[data-lock]'); if (lb) lb.onclick = async () => { lb.disabled = true; try { await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); closePop(); render(); } catch (e){ lb.disabled = false; setStatus(e.message, true); } };
+}
+// one move for every drop: target null = vault, otherwise a character id; equip = also equip it there
+async function moveItem(i, target, equip){
+  const from = (state.full || []).find(c => c.items.includes(i)) || null;
+  const to = target ? state.full.find(c => c.id === target) : null;
+  try {
+    if (!target){
+      if (!from) return;
+      if (i.equipped) throw new Error(i.name + ' is equipped. Equip something else in that slot first.');
+      await transfer(i, true, from.id);
+      from.items = from.items.filter(x => x !== i); i.charId = null; i.loc = 'Vault'; i.b = i.defB; state.vault.push(i);
+      toast('Sent ' + i.name + ' to the vault');
+    } else {
+      if (from !== to){
+        if (i.equipped) throw new Error(i.name + ' is equipped. Equip something else in that slot first.');
+        if (from) await pullTo(i, target); else await transfer(i, false, target);
+        if (from) from.items = from.items.filter(x => x !== i); else state.vault = state.vault.filter(x => x !== i);
+        i.charId = target; i.b = i.defB; i.loc = to.name; i.equipped = false; to.items.push(i);
+      }
+      if (equip && !i.equipped){
+        await bungieAction('/Destiny2/Actions/Items/EquipItem/', { itemId: i.id, characterId: target, membershipType: state.acct.membershipType });
+        to.items.filter(x => x.b === i.b && x.equipped).forEach(x => { x.equipped = false; });
+        i.equipped = true; toast('Equipped ' + i.name + ' on your ' + to.name);
+      } else if (from !== to) toast('Moved ' + i.name + ' to your ' + to.name);
+    }
+    render();
+  } catch (e){
+    setStatus(isGoneError(e) ? i.name + ' moved in game. Refreshing.' : e.message, true);
+    render(); if (isGoneError(e)) scan({ silent: true });
+    throw e;
+  }
+}
+function wireDrag(root){
+  const zones = root.querySelectorAll('[data-db]');
+  const fits = (z, i) => i && +z.dataset.db === i.defB;
+  root.querySelectorAll('[draggable=true]').forEach(t => {
+    t.addEventListener('dragstart', e => { const f = findAny(t.dataset.item); if (!f) return e.preventDefault(); dragging = f; closePop(); t.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t.dataset.item); } catch {} });
+    t.addEventListener('dragend', () => { t.classList.remove('dragging'); root.querySelectorAll('.dover').forEach(x => x.classList.remove('dover')); dragging = null; if (renderLater){ renderLater = false; render(); } });
+  });
+  const over = (el, ok) => { el.addEventListener('dragover', e => { if (dragging && ok()) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; el.classList.add('dover'); } });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dover'); }); };
+  zones.forEach(z => over(z, () => fits(z, dragging.i)));
+  root.querySelectorAll('.deq[data-eqc]').forEach(q => over(q, () => dragging.i.defB === findAny(q.dataset.item)?.i.defB && dragging.i !== findAny(q.dataset.item)?.i));
+  const drop = async (e, target, equip) => {
+    e.preventDefault(); e.stopPropagation();
+    const f = dragging; dragging = null; renderLater = false; root.querySelectorAll('.dover').forEach(x => x.classList.remove('dover'));
+    if (!f) return;
+    const el = root.querySelector('[data-item="' + CSS.escape(keyOf(f.i)) + '"]'); if (el) el.classList.add('busy');
+    try { await moveItem(f.i, target, equip); } catch {}
+  };
+  zones.forEach(z => z.addEventListener('drop', e => { if (dragging && fits(z, dragging.i)) drop(e, z.dataset.dv ? null : z.dataset.dc, false); }));
+  root.querySelectorAll('.deq[data-eqc]').forEach(q => q.addEventListener('drop', e => { if (dragging) drop(e, q.dataset.eqc, true); }));
+}
 /* ---- item card and vault picker ---- */
 function place(el, anchor){
   const r = anchor.getBoundingClientRect(), w = 300;
@@ -462,6 +665,7 @@ function closePop(){ $('cPop').classList.add('hidden'); $('cPop').innerHTML = ''
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
 document.addEventListener('click', e => { if (!$('cPop').classList.contains('hidden') && !$('cPop').contains(e.target) && !e.target.closest('[data-item],[data-fill],[data-pm]')) closePop(); });
 const RAR = { 6: 'Exotic', 5: 'Legendary', 4: 'Rare', 3: 'Uncommon', 2: 'Common' };
+function verdLine(i){ const v = ls.get('charLabels') === '0' ? null : verdictOf(i); return v ? '<div class="cverd"><span class="vb ' + v.cls + '">' + esc(v.label) + '</span>' + esc(v.why || '') + '</div>' : ''; }
 function openItem(key, anchor, c){
   const i = c.items.find(x => (x.id || ('h' + x.hash)) === key); if (!i) return;
   const others = state.full.filter(x => x.id !== c.id);
@@ -471,7 +675,7 @@ function openItem(key, anchor, c){
     !i.equipped ? '<button class="ghost" data-a="vault">Vault</button>' : '',
     !i.equipped ? others.map(o => '<button class="ghost" data-a="move" data-to="' + esc(o.id) + '">To ' + esc(o.name) + '</button>').join('') : '',
     (i.b !== B.sub && i.b !== B.emblem) ? '<button class="ghost" data-a="lock">' + (i.locked ? '🔓 Unlock' : '🔒 Lock') + '</button>' : ''].join('');
-  $('cPop').innerHTML = '<h4>' + esc(i.name) + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', i.equipped ? 'Equipped' : 'In inventory'].filter(Boolean).join(' · ')) + '</div>' +
+  $('cPop').innerHTML = '<h4>' + esc(i.name) + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', i.equipped ? 'Equipped' : 'In inventory'].filter(Boolean).join(' · ')) + '</div>' + verdLine(i) +
     (acts ? '<div class="cacts">' + acts + '</div>' : '<div class="dim-lbl">' + (i.equipped ? 'Equipped. Equip something else to swap it out.' : 'Sign in to move or equip.') + '</div>');
   if (i.id && typeof rollHtmlFor === 'function' && i.b !== B.sub){
     $('cPop').insertAdjacentHTML('beforeend', '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>');
@@ -500,7 +704,7 @@ async function doAct(a, i, c, to, btn){
 function openPm(key, anchor, c){
   const i = c.pm.find(x => (x.id || ('h' + x.hash)) === key); if (!i) return;
   const can = auth.valid() && state.acct;
-  $('cPop').innerHTML = '<h4>' + esc(i.name) + (i.qty > 1 ? ' ×' + i.qty : '') + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', 'In the postmaster'].filter(Boolean).join(' · ')) + '</div>' +
+  $('cPop').innerHTML = '<h4>' + esc(i.name) + (i.qty > 1 ? ' ×' + i.qty : '') + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', 'In the postmaster'].filter(Boolean).join(' · ')) + '</div>' + verdLine(i) +
     (can ? '<div class="cacts"><button class="primary" id="cPmPull">📬 Pull to ' + esc(c.name) + '</button><button class="ghost" id="cPmVault">Send to vault</button></div>' : '<div class="dim-lbl">Sign in to pull it.</div>') +
     (i.id && typeof rollHtmlFor === 'function' ? '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>' : '');
   place($('cPop'), anchor);
@@ -522,7 +726,7 @@ function openPicker(b, anchor, c){
   const list = state.vault.filter(fits).sort((x, y) => y.power - x.power || y.rar - x.rar || x.name.localeCompare(y.name));
   const pop = $('cPop');
   const draw = q => { const w = q.trim().toLowerCase().split(/\s+/).filter(Boolean), l = list.filter(i => !w.length || w.every(x => (i.name + ' ' + i.type + ' ' + (RAR[i.rar] || '') + (i.gearTier ? ' t' + i.gearTier : '')).toLowerCase().includes(x)));
-    $('cPickList').innerHTML = l.length ? l.slice(0, 80).map(i => '<button data-pick="' + esc(i.id) + '">' + (i.icon ? '<img src="' + img(i.icon) + '" alt="">' : '') + '<span>' + esc(i.name) + '<small>' + esc([i.type, i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</small></span></button>').join('') : '<div class="dim-lbl">Nothing in your vault for this slot.</div>';
+    $('cPickList').innerHTML = l.length ? l.slice(0, 80).map(i => '<button data-pick="' + esc(i.id) + '">' + (i.icon ? '<img src="' + img(i.icon) + '" alt="">' : '') + '<span>' + esc(i.name) + (verdictOf(i) && ls.get('charLabels') !== '0' ? ' <span class="vb ' + verdictOf(i).cls + '">' + esc(verdictOf(i).label) + '</span>' : '') + '<small>' + esc([i.type, i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</small></span></button>').join('') : '<div class="dim-lbl">Nothing in your vault for this slot.</div>';
     $('cPickList').querySelectorAll('[data-pick]').forEach(x => x.onclick = () => pick(x.dataset.pick, x)); };
   pop.innerHTML = '<h4>Bring from the vault</h4><div class="cmeta">' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' fit this slot on your ' + esc(c.name) + '</div><input class="cpick-q" id="cPickQ" type="search" placeholder="Filter" autocomplete="off"><div class="cpick" id="cPickList"></div>';
   place(pop, anchor); draw(''); $('cPickQ').oninput = () => draw($('cPickQ').value); $('cPickQ').focus();
