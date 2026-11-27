@@ -89,28 +89,30 @@
   .shclose{position:absolute; right:14px; top:12px}
   @media (max-width:640px){ .shpanel{grid-template-columns:1fr} .shbig{width:100%; height:auto; aspect-ratio:1/1} }
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav active" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav active" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -310,7 +312,7 @@ function isGoneError(e){ return /item requested was not found|DestinyItemNotFoun
 
 async function getAccount(){
   if (state.acct) return state.acct;
-  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
   const ms = me.destinyMemberships || [];
   const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
   if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -406,11 +408,12 @@ async function scan(opts = {}){
   state.scanning = true; $('btnScan').disabled = true;
   const prev = $('status').textContent;
   try {
-    await loadManifest();
+    const defsP = loadManifest(); defsP.catch(() => {});   // manifest check runs alongside the account and profile requests
     if (auth.valid()){
       const acct = await getAccount();
       if (!opts.silent) setStatus('Reading your collection...');
       const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,800');
+      await defsP;
       const chars = (p.characters && p.characters.data) || {};
       state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
         .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
@@ -421,6 +424,7 @@ async function scan(opts = {}){
       if (!state.owned) setStatus('Bungie returned no collection data. Your collections may be set to private in your Bungie privacy settings.', true);
       state.lastScan = Date.now();
     } else state.owned = null;
+    await defsP;
     render();
     if (state.owned && !opts.silent){ const own = state.shaders.filter(s => statusOf(s) === 'own').length; setStatus(own + ' of ' + state.shaders.length + ' shaders collected.'); }
     else if (!auth.valid()) setStatus(state.shaders.length + ' shaders. Sign in with Bungie to see which ones you own.');
@@ -464,8 +468,8 @@ function render(){
   const list = sorted(filtered());
   $('shCount').textContent = total ? 'Showing ' + Math.min(shown, list.length) + ' of ' + list.length : '';
   $('shGrid').innerHTML = !total ? '' : list.length ? list.slice(0, shown).map(s => { const st = statusOf(s);
-    return '<button class="shcard ' + (st === 'own' ? 'owned' : '') + '" data-sh="' + s.h + '"><div class="shsw">' + (s.i ? '<img class="ic" loading="lazy" onerror="this.remove()" src="' + img(s.i) + '" alt="">' : '<span class="noimg">No image</span>') +
-      (s.wm ? '<img class="wm" loading="lazy" onerror="this.remove()" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
+    return '<button class="shcard ' + (st === 'own' ? 'owned' : '') + '" data-sh="' + s.h + '"><div class="shsw">' + (s.i ? '<img decoding="async" class="ic" loading="lazy" onerror="this.remove()" src="' + img(s.i) + '" alt="">' : '<span class="noimg">No image</span>') +
+      (s.wm ? '<img decoding="async" class="wm" loading="lazy" onerror="this.remove()" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
       '<div class="shbody"><div class="shname" title="' + esc(s.n) + '">' + esc(s.n) + '</div><div class="shsrc" title="' + esc(srcLabel(s.src)) + '">' + esc(srcLabel(s.src)) + '</div>' + badge(st) + '</div></button>'; }).join('')
     : '<div class="shempty">No shaders match these filters.</div>';
   $('shMoreWrap').classList.toggle('hidden', list.length <= shown);
@@ -493,19 +497,19 @@ function vendorCheck(h){
 async function openShader(h){
   const s = state.shaders.find(x => x.h === h); if (!s) return;
   const st = statusOf(s), vc = vendorCheck(h);
-  const vendHtml = !vc.known ? '<div class="shvend no">No vendor data yet. Open <a href="vendors.html">Vendors &amp; Xûr</a> once (signed in) and this will show whether Ada-1 or Eververse is selling it.</div>'
+  const vendHtml = !vc.known ? '<div class="shvend no">No vendor data yet. Open <a href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a> once (signed in) and this will show whether Ada-1 or Eververse is selling it.</div>'
     : vc.sellers.length ? '<div class="shvend yes">On sale now: ' + vc.sellers.map(esc).join(', ') + '</div>'
     : '<div class="shvend no">Not on sale at any vendor you loaded' + (vc.ada ? ' (Ada-1 and Eververse included)' : '') + ', checked ' + esc(new Date(vc.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '.</div>';
   const m = $('shModal');
   m.innerHTML = '<div class="shpanel"><button class="ghost shclose" id="shClose" aria-label="Close">✕</button>' +
-    '<div class="shbig">' + (s.i ? '<img class="ic" src="' + img(s.i) + '" alt="">' : '') + (s.wm ? '<img class="wm" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
+    '<div class="shbig">' + (s.i ? '<img decoding="async" class="ic" src="' + img(s.i) + '" alt="">' : '') + (s.wm ? '<img decoding="async" class="wm" src="' + img(s.wm) + '" alt="">' : '') + '</div>' +
     '<div class="shinfo"><h2>' + esc(s.n) + '</h2>' + badge(st) +
       (s.fl ? '<div class="shv" style="margin-top:10px;font-style:italic;color:var(--dim)">' + esc(s.fl) + '</div>' : '') +
       '<div class="shk">How to get it</div><div class="shv">' + esc(srcLabel(s.src)) + '</div>' +
       '<div class="shk">Category</div><div class="shv">' + esc((SOURCES.find(x => x[0] === srcKey(s.src)) || [])[1] || 'Other') + '</div>' +
       '<div class="shk">Season / release</div><div class="shv" id="shSeason">Loading...</div>' +
       '<div class="shk">Vendors right now</div>' + vendHtml +
-      '<div class="shacts"><button class="primary" id="shCopy">Copy name</button><a class="ghost" href="vendors.html">Open Vendors &amp; Xûr</a></div>' +
+      '<div class="shacts"><button class="primary" id="shCopy">Copy name</button><a class="ghost" href="vendors.html?v=__BUILD__">Open Vendors &amp; Xûr</a></div>' +
     '</div></div>';
   m.classList.remove('hidden');
   $('shClose').onclick = closeShader;
@@ -580,6 +584,6 @@ updateAuthUi();
 render();
 if (ls.get('apiKey')) scan(); else setStatus('Add your Bungie API key in Settings (on the Weapons page) first. The shader list comes from Bungie\'s game data, which needs the key.', true);
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>

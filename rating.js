@@ -160,3 +160,16 @@
   function tierIcon(imgHtml, t){ return +t ? '<span class="ticon">' + imgHtml + tierPips(t) + '</span>' : imgHtml; }
   Object.assign(window, { tierPips, tierIcon });
 })();
+
+/* Signed-in account lookup, cached for the browser session per sign-in token: every page used to ask Bungie
+   GetMembershipsForCurrentUser on each load, a full round trip before the profile could even start. */
+(function(){
+  window.myMemberships = async function(bungieFn){
+    let tok = '';
+    try { tok = ((JSON.parse(localStorage.getItem('auth') || 'null') || {}).token || '').slice(-16); } catch {}
+    try { const c = JSON.parse(sessionStorage.getItem('acctMe') || 'null'); if (c && tok && c.tok === tok && c.me) return c.me; } catch {}
+    const me = await bungieFn('/User/GetMembershipsForCurrentUser/');
+    try { if (tok) sessionStorage.setItem('acctMe', JSON.stringify({ tok, me: { destinyMemberships: me.destinyMemberships || [], primaryMembershipId: me.primaryMembershipId } })); } catch {}
+    return me;
+  };
+})();

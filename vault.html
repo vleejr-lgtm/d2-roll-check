@@ -81,28 +81,30 @@
   .shsignin{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 16px; border:1px solid rgba(226,183,75,.3); background:var(--accent-soft); border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px}
   .shsignin b{color:var(--accent)}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav active" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav active" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -301,7 +303,7 @@ function isGoneError(e){ return /item requested was not found|DestinyItemNotFoun
 
 async function getAccount(){
   if (state.acct) return state.acct;
-  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
   const ms = me.destinyMemberships || [];
   const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
   if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -373,10 +375,11 @@ async function scan(opts = {}){
   state.scanning = true; $('btnScan').disabled = true;
   const prev = $('status').textContent;
   try {
-    await loadDefs();
+    const defsP = loadDefs(); defsP.catch(() => {});   // manifest check runs alongside the account and profile requests
     const acct = await getAccount();
     if (!opts.silent) setStatus('Reading your vault and characters...');
-    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,103,200,201,204,205,300');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,103,200,201,204,205,300,304,305,310');
+    await defsP;
     const chars = (p.characters && p.characters.data) || {};
     state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
       .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
@@ -416,7 +419,7 @@ function spaceHtml(){
     const lvl = pct >= 95 ? 'full' : pct >= 85 ? 'warn' : '';
     return '<div class="vcap ' + lvl + '" title="' + esc(b.name + ': ' + b.used + (b.cap ? ' of ' + b.cap + ' slots used, ' + free + ' free' : ' slots used')) + '"><div class="vcap-top"><span>' + esc(b.name) + '</span><b>' + b.used.toLocaleString() + (b.cap ? '<span class="dim-lbl">/' + b.cap.toLocaleString() + '</span>' : '') + '</b></div>' +
       (b.cap ? '<div class="vbar"><i style="width:' + pct + '%"></i></div><div class="vfree">' + (free > 0 ? free.toLocaleString() + ' free' : 'Full') + '</div>' : '') + '</div>'; };
-  return '<div class="panel vspace">' + (money.length ? '<div class="vmoney">' + money.map(c => '<span class="vcur" title="' + esc(c.n) + '">' + (c.i ? '<img src="' + img(c.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + c.q.toLocaleString() + '</b><span class="dim-lbl">' + esc(c.n) + '</span></span>').join('') + '</div>' : '') +
+  return '<div class="panel vspace">' + (money.length ? '<div class="vmoney">' + money.map(c => '<span class="vcur" title="' + esc(c.n) + '">' + (c.i ? '<img decoding="async" src="' + img(c.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + c.q.toLocaleString() + '</b><span class="dim-lbl">' + esc(c.n) + '</span></span>').join('') + '</div>' : '') +
     (sp.length ? '<div class="vcaps">' + sp.map(meter).join('') + '</div>' : '') + '</div>';
 }
 
@@ -451,7 +454,7 @@ function itemHtml(i){
     (i.charId !== target || i.postmaster) && !i.equipped ? '<button class="ghost" data-act="pull" data-id="' + esc(i.id) + '" title="Move to your ' + esc(((state.chars.find(c => c.id === target) || {}).name) || 'character') + ' (Pull to: menu, top right)">' + (i.postmaster ? '📬 Pull' : '⬇ Pull') + '</button>' : '',
     i.charId && !i.equipped && !i.postmaster ? '<button class="ghost" data-act="vault" data-id="' + esc(i.id) + '" title="Send to the vault">Vault</button>' : '',
     (i.kind === 'weapons' || i.kind === 'armor') ? '<button class="ghost' + (i.locked ? ' on' : '') + '" data-act="lock" data-id="' + esc(i.id) + '" title="' + (i.locked ? 'Unlock' : 'Lock') + '">' + (i.locked ? '🔒' : '🔓') + '</button>' : ''].join('') : '';
-  return '<div class="vit r' + i.rar + '"' + (i.id ? ' data-roll="' + esc(i.id) + '" data-rh="' + i.hash + '"' : '') + '>' + (i.icon ? tierIcon('<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">', i.gearTier) : '<span class="pmnoimg"></span>') +
+  return '<div class="vit r' + i.rar + '"' + (i.id ? ' data-roll="' + esc(i.id) + '" data-rh="' + i.hash + '"' : '') + '>' + (i.icon ? tierIcon('<img decoding="async" loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">', i.gearTier) : '<span class="pmnoimg"></span>') +
     '<div class="vbody"><div class="vname" title="' + esc(i.name) + '">' + esc(i.name) + (i.qty > 1 ? ' <span class="vqty">×' + i.qty + '</span>' : '') + '</div>' +
     '<div class="vmeta">' + esc([i.type, RARITY[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</div>' +
     (i.kind === 'weapons' && i.id && typeof savedSplit === 'function' && savedSplit(i.id) ? '<div class="mgshort">' + esc(modeShort(savedSplit(i.id)) + ' · ' + modeDecide(savedSplit(i.id)).text) + '</div>' : '') +
@@ -558,6 +561,6 @@ render();
 if (!ls.get('apiKey')) setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
 else scan();
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>

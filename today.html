@@ -264,28 +264,30 @@
   .lscal{margin-top:8px;font-size:12.5px} .lscal select{font-size:12.5px;padding:3px 6px}
   .lsweek{margin-top:10px} table.lsw{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px} .lsw th{text-align:left;font-weight:600;color:var(--dim);padding:4px 8px;border-bottom:1px solid var(--line)} .lsw td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav active" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav active" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -556,7 +558,7 @@ function isGoneError(e){ return /item requested was not found|DestinyItemNotFoun
 
 async function getAccount(){
   if (state.acct) return state.acct;
-  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
   const ms = me.destinyMemberships || [];
   const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
   if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -646,7 +648,7 @@ function where(h){ const a = T.act[h] || {}, d = T.dest[a.dest]; if (!d || !d.n)
 function modsHtml(hashes){
   const ms = (hashes || []).map(h => T.mod[h]).filter(m => m && m.s && m.n);
   const seen = new Set(), uniq = ms.filter(m => !seen.has(m.n) && seen.add(m.n));
-  return uniq.length ? '<div class="mods">' + uniq.map(m => '<span class="mod" title="' + esc(m.d) + '">' + (m.i ? '<img src="' + img(m.i) + '" alt="">' : '') + esc(m.n) + '</span>').join('') + '</div>' : '';
+  return uniq.length ? '<div class="mods">' + uniq.map(m => '<span class="mod" title="' + esc(m.d) + '">' + (m.i ? '<img decoding="async" src="' + img(m.i) + '" alt="">' : '') + esc(m.n) + '</span>').join('') + '</div>' : '';
 }
 function rewardsHtml(vr){
   const items = (vr || []).flatMap(r => r.rewardItems || []).map(x => x.itemQuantity || {}).filter(q => q.itemHash && nameOf(q.itemHash));
@@ -654,7 +656,7 @@ function rewardsHtml(vr){
   const seen = new Set(), uniq = items.filter(q => !seen.has(q.itemHash) && seen.add(q.itemHash));
   return '<details class="ax"><summary>Rewards (' + uniq.length + ')</summary><div class="rw">' + uniq.map(q => {
     const d = state.defs[q.itemHash] || {};
-    return '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + (q.quantity > 1 ? ' ×' + q.quantity : '') + '</span>';
+    return '<span class="rwi">' + (d.i ? '<img decoding="async" src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + (q.quantity > 1 ? ' ×' + q.quantity : '') + '</span>';
   }).join('') + '</div></details>';
 }
 function chalHtml(list){
@@ -670,7 +672,7 @@ function actCard(h, extra = {}){
   const name = extra.title || actName(h) || 'Activity', type = extra.type || actType(h);
   const loc = where(h);
   return '<div class="act' + (extra.done ? ' done' : '') + '"><div class="hero" style="background-image:url(\'' + img(extra.image || a.img) + '\')"><span class="ty">' + esc(type) + '</span>' + (extra.feat ? '<span class="feat">Featured</span>' : '') + '</div>' +
-    '<div class="ab"><div class="an">' + (a.i ? '<img src="' + img(a.i) + '" alt="">' : '') + esc(name) + '</div>' +
+    '<div class="ab"><div class="an">' + (a.i ? '<img decoding="async" src="' + img(a.i) + '" alt="">' : '') + esc(name) + '</div>' +
     (extra.sub ? '<div class="meta">' + esc(extra.sub) + '</div>' : '') +
     ((extra.desc || a.d) ? '<div class="ad">' + esc(extra.desc || a.d) + '</div>' : '') +
     '<div class="meta">' + [loc ? '📍 ' + esc(loc) : '', (extra.light || a.light) ? 'Power ' + (extra.light || a.light) : ''].filter(Boolean).join(' · ') + '</div>' +
@@ -817,7 +819,7 @@ function renderLost(){
         '<h3>' + esc(g.name) + '</h3>' + (loc ? '<div class="vloc" style="color:#9fe7ff">📍 ' + esc(loc) + '</div>' : '') +
         '<div class="diffs">' + g.diffs.map(d => '<span class="diff"><b>' + esc(d.label) + '</b>' + (d.light ? ' · Power ' + d.light : '') + '</span>').join('') + '</div>' +
         modsHtml(g.mods) +
-        (rw.length ? '<div class="lsrw">' + rw.map(d => '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + '</span>').join('') + '</div>' : '') +
+        (rw.length ? '<div class="lsrw">' + rw.map(d => '<span class="rwi">' + (d.i ? '<img decoding="async" src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + '</span>').join('') + '</div>' : '') +
         ((a.d) ? '<div class="ad">' + esc(a.d) + '</div>' : '') +
         (other ? '<div><button class="ghost" data-switch="' + esc(other.id) + '">Switch to your ' + esc(other.name) + '</button></div>' : '') +
         '</div></div>';
@@ -881,7 +883,7 @@ function render(){
     (() => { const acc = lostFromAccount().map(x => x.g), l = acc.length ? acc : (lsCache() || []);
       if (l.length) return '<div class="sum"><span class="dim-lbl">Lost Sector today</span><b style="font-size:16px">' + esc(l.map(g => g.name).join(' / ')) + '</b><span class="dim-lbl">' + esc(where(l[0].hash)) + '</span></div>';
       const p = lsProjToday(); return '<div class="sum" title="Projected from the daily rotation"><span class="dim-lbl">Lost Sector today (projected)</span><b style="font-size:16px">' + esc(p.n) + '</b><span class="dim-lbl">' + esc(p.dest) + '</span></div>'; })() +
-    '<div class="sum"><span class="dim-lbl">' + (xw.here ? 'Xûr leaves in' : 'Xûr arrives in') + '</span><b>' + cd(xw.here ? xw.leaves : xw.arrives) + '</b><span class="dim-lbl"><a href="vendors.html">Vendors &amp; Xûr →</a></span></div>';
+    '<div class="sum"><span class="dim-lbl">' + (xw.here ? 'Xûr leaves in' : 'Xûr arrives in') + '</span><b>' + cd(xw.here ? xw.leaves : xw.arrives) + '</b><span class="dim-lbl"><a href="vendors.html?v=__BUILD__">Vendors &amp; Xûr →</a></span></div>';
   renderLost(); renderWeekly(); renderChar(); renderCats();
 }
 function renderWeekly(){
@@ -896,7 +898,7 @@ function renderWeekly(){
     if (!catOk(msCats(m))) continue;
     if (!acts.length){
       if (!matches(0, [md.n, md.d])) continue;
-      cards.push('<div class="act"><div class="hero" style="background-image:url(\'' + img(md.img) + '\')"><span class="ty">Weekly</span></div><div class="ab"><div class="an">' + (md.i ? '<img src="' + img(md.i) + '" alt="">' : '') + esc(md.n || 'Milestone') + '</div>' +
+      cards.push('<div class="act"><div class="hero" style="background-image:url(\'' + img(md.img) + '\')"><span class="ty">Weekly</span></div><div class="ab"><div class="an">' + (md.i ? '<img decoding="async" src="' + img(md.i) + '" alt="">' : '') + esc(md.n || 'Milestone') + '</div>' +
         (md.d ? '<div class="ad">' + esc(md.d) + '</div>' : '') + endsTxt(m.endDate) + '</div></div>');
       continue;
     }
@@ -1029,6 +1031,6 @@ updateAuthUi();
 render();
 if (ls.get('apiKey')) scan(); else setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>
