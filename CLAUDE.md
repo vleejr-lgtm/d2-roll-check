@@ -20,8 +20,8 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday enhPerks armorMeta` (legacy `known:weapons`/`known:armor` are only read for migration)
-  - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday enhPerks armorMeta armorSetSort` (legacy `known:weapons`/`known:armor` are only read for migration)
+  - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
 - **Bungie action limits:** item actions (lock, transfer, equip, socket changes) are throttled (~2 socket changes/sec, sleep 300–600 ms between calls). Perk/mod changes and equips only work in orbit, a social space, or offline.
@@ -77,21 +77,44 @@ Community opinion, not Bungie data. Derived Nov 2026 (after Monument of Triumph 
 | Bulwark | Health / Class | C | B |
 | Siegebreaker | Health / Grenade | C | B |
 
-| Set | PvE | PvP | Why |
+Set tiers use their own labels (`SET_TIER`): `S · Top Set`, `A · Strong`, `B · Niche`, `C · Filler`. A set only gets a tier when a published guide gave a verdict; otherwise it shows `Not rated` (dashed badge). Do not invent tiers. Sources (Nov 2026): Nerd's Chalk dungeon set ranking (Jun 2026: Top-tier = S, Very good = A, Good/Niche = B, Skip/Broken = C), gamingpromax set bonuses (verified Nov 13 2026), gamer.org (Jul 2026), bo3.gg; drop sources from blueberries.gg.
+
+| Set | Source | PvE | PvP |
 |---|---|---|---|
-| Shattered Throne | S | | Best early PvE set, top solo survival |
-| Iron Battalion | S | B | Best Super uptime; 2-piece damage vs non-bosses scales with Weapons |
-| Exodus Down | S | | Armor charge healing and damage resistance |
-| The Lament | A | | Solo survival |
-| CODA | A | | Generalist PvE |
-| Cruel Electrum | | S | Best Trials set |
-| Twofold Crown | | A | Ammo pickup restores health |
-| New Demotic | | A | Sliding gives primary flinch resistance |
-| Last Discipline | B | B | Freshly drawn or reloaded weapons heal |
-| SRL | B | B | Best movement set |
+| Techeun's Regalia | Shattered Throne | S | |
+| Exodus Down | Nessus | S | |
+| Iron Battalion | Iron Banner | S | B |
+| Apostate's Blade | Pit of Heresy | S | |
+| Dark Age | Warlord's Ruin | S | |
+| Taken King | Ghosts of the Deep | S | |
+| CODA | Prophecy, Trials | A | |
+| Promised | Salvation's Edge | A | |
+| Atheon's Memory | Vault of Glass | A | |
+| Dreambane | Moon | A | |
+| Great Hunt | Last Wish | A | |
+| Flain | Sundered Doctrine | A | |
+| Yearning Echo | Grasp of Avarice | B | |
+| Sage Protector | Equilibrium | B | |
+| Nezarec's Nightmare | Root of Nightmares | B | |
+| Spacewalk | Vesper's Host | B | |
+| Tex Mechanica Custom | Spire of the Watcher | B | B |
+| Last Discipline | Crucible Ops | B | B |
+| SRL / Circuit | SRL | B | B |
+| Deep Explorer | Duality | C | |
+| Descending Echo | | C | |
+| Cruel Electrum | Trials | | S |
+| Triumphal Anthem | Crucible Ops | | A |
+| Per Audacia | Competitive Crucible | | A |
+| Twofold Crown | Trials | | A |
+| New Demotic | Trials | | A |
+
+Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Luminopotent, Iron Panoply, Wild Anthem, Shrewd/Thriving Survivor, AION sets, destination sets, older raid sets) is listed in `META_SETS` with its source only.
 
 - Gear to get: columns `PvE` and `PvP` sit between `Stats` and the slot columns. Filter chips `All archetypes` / `Top PvE picks` / `Top PvP picks` (localStorage `armorMeta`). Top picks = every S and A archetype for that mode (owned or not), in `META_ARCH` order; slots without a Tier 5 get the `want` highlight and a count line.
-- Set progress: owned sets that match `META_SETS` (by name regex) get PvE/PvP pills and a one-line bonus summary; a "Notable sets you don't have" list follows (filtered to top S/A sets for the active mode).
+- Set progress: every owned set shows `x/5`, PvE and PvP set badges (or `Not rated`), its drop source, the exact 2-piece and 4-piece bonus text, the community reason, and missing slots. Sort chips `Community rank` / `Pieces owned` (`[data-ssort]`, localStorage `armorSetSort`). Rank sort uses the active meta mode (PvE or PvP) or the better of the two. Shows 6 rows, then a `Show all` toggle.
+- Bonus text: `loadSetInfo()` reads `DestinyEquipableItemSetDefinition.setPerks` (`requiredSetCount`, `sandboxPerkHash`) and resolves names/descriptions with `entMany('DestinySandboxPerkDefinition', ...)`. Cached in IndexedDB `armorSetInfo` `{version, info: {setName: [{c, n, d}]}}`, separate from `manifestArmor`. Runs after the first render, then re-renders Gear to get.
+- Top sets to get (`#setWatch`, full width under the three cards): S and A sets for the active mode (or either mode) where you own 0/5, with source, badges, bonus text and reason. 8 shown, then a toggle.
+- Old exotics: grouped by name and slot, `×N` badge for duplicates (`.dupn`).
 
 ## Data sources
 

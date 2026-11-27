@@ -185,6 +185,17 @@
   .setwhy{font-size:12px; color:#CBD5E1; margin:2px 0}
   .setmiss{margin-top:10px; padding-top:8px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px}
   .setmrow{font-size:12.5px}
+  .setbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px} .setbar h4{margin:0} .setbar .chips{margin-left:auto; display:flex; gap:4px} .setbar .chip{font-size:11px; padding:2px 8px}
+  .getbox ul.setprog{list-style:none; padding:0; margin:0} .setrow{padding:7px 0; border-top:1px solid var(--line)} .setrow:first-child{border-top:0; padding-top:2px}
+  .sethead{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap} .setcount{font-variant-numeric:tabular-nums; font-weight:700}
+  .setbadges{display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin:4px 0 3px} .setsrc{font-size:11.5px}
+  .sbadge{display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:6px; white-space:nowrap; cursor:help; border:1px solid transparent}
+  .mt-none{background:transparent; color:#64748B; border:1px dashed rgba(255,255,255,.14); font-weight:600}
+  .setbonus{display:flex; flex-direction:column; gap:1px; font-size:12px; color:#AEB8C6; margin:2px 0} .setbonus b{color:#E2E8F0; font-size:11px; margin-right:2px}
+  @media (min-width:1100px){ .getcols{grid-template-columns:1fr 1.8fr 1fr} }
+  .watchbox{margin-top:14px} .watchgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px}
+  .watchrow{border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:rgba(255,255,255,.015)} .setsrc2{font-size:12px}
+  .dupn{display:inline-block; font-size:11px; font-weight:700; padding:0 6px; border-radius:999px; background:rgba(226,183,75,.14); color:#E2B74B; margin-left:2px}
 </style>
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -434,25 +445,85 @@ const META_ARCH = {
   Siegebreaker:  { pve: ['C', 'Health primary wastes the biggest stat on the least valued PvE stat.'],
                    pvp: ['B', 'Health for regeneration and flinch plus Grenade; no Weapons or Super.'] },
 };
-// notable sets: matched by name against your armor's set; short value summary
+/* Armor sets: drop source for every set we know, plus community PvE / PvP tiers ONLY where a published guide gave a verdict.
+   Sets with no verdict show "Not rated" rather than a guessed tier. Sources (Nov 2026): Nerd's Chalk dungeon set ranking (Jun 2026),
+   gamingpromax best set bonuses (verified Nov 13 2026), gamer.org best set bonuses (Jul 2026), bo3.gg, blueberries.gg set list (sources).
+   Bonus text (2-piece / 4-piece) is read live from Bungie's manifest, so it is always exact for your game version. */
+const SET_TIER = { S: 'Top Set', A: 'Strong', B: 'Niche', C: 'Filler' };
 const META_SETS = [
-  { re: /shattered throne/i, name: 'Shattered Throne', pve: 'S', pvp: '', why: 'Best early PvE set and a top solo-survival pick.' },
-  { re: /iron battalion/i, name: 'Iron Battalion', pve: 'S', pvp: 'B', why: 'Best Super uptime set; 2-piece adds damage against non-boss enemies that scales with Weapons.' },
-  { re: /exodus down/i, name: 'Exodus Down', pve: 'S', pvp: '', why: 'Survival: armor charge healing and damage resistance. A top generalist PvE set.' },
-  { re: /the lament|^lament/i, name: 'The Lament', pve: 'A', pvp: '', why: 'Solo survival pick.' },
-  { re: /\bcoda\b/i, name: 'CODA', pve: 'A', pvp: '', why: 'One of the best generalist PvE sets.' },
-  { re: /cruel electrum/i, name: 'Cruel Electrum', pve: '', pvp: 'S', why: 'Best Trials set.' },
-  { re: /twofold crown/i, name: 'Twofold Crown', pve: '', pvp: 'A', why: 'Picking up ammo instantly restores part of your health.' },
-  { re: /new demotic/i, name: 'New Demotic', pve: '', pvp: 'A', why: 'Sliding grants flinch resistance for primary weapons.' },
-  { re: /last discipline/i, name: 'Last Discipline', pve: 'B', pvp: 'B', why: '2-piece: freshly drawn or reloaded weapons heal you.' },
-  { re: /\bsrl\b|sparrow racing/i, name: 'SRL', pve: 'B', pvp: 'B', why: 'Best movement set.' },
+  // ---- rated ----
+  { re: /techeun|shattered throne/i, name: "Techeun's Regalia", src: 'Shattered Throne (dungeon)', pve: 'S', pvp: '', why: 'One of the strongest defensive sets; a top solo dungeon survival pick.' },
+  { re: /exodus down/i, name: 'Exodus Down', src: 'Nessus', pve: 'S', pvp: '', why: 'Strongest general PvE survivability: heals and resists whenever Armor Charge changes.' },
+  { re: /iron battalion/i, name: 'Iron Battalion', src: 'Iron Banner', pve: 'S', pvp: 'B', why: 'Best Super uptime: Super energy back after kills in Super, plus Primary damage vs non-bosses.' },
+  { re: /apostate/i, name: "Apostate's Blade", src: 'Pit of Heresy (dungeon)', pve: 'S', pvp: '', why: 'Rated top tier in the dungeon set ranking.' },
+  { re: /dark age/i, name: 'Dark Age', src: "Warlord's Ruin (dungeon)", pve: 'S', pvp: '', why: 'Rated top tier in the dungeon set ranking.' },
+  { re: /taken king/i, name: 'Taken King', src: 'Ghosts of the Deep (dungeon)', pve: 'S', pvp: '', why: 'Rated top tier in the dungeon set ranking.' },
+  { re: /\bcoda\b|kingdom of/i, name: 'CODA', src: 'Prophecy (dungeon), Trials', pve: 'A', pvp: '', why: 'Ability focused: alternating Light and Dark final blows grant energy and damage resistance.' },
+  { re: /^promised/i, name: 'Promised', src: "Salvation's Edge (raid)", pve: 'A', pvp: '', why: 'Flexible endgame PvE for raids and Nightfalls.' },
+  { re: /atheon/i, name: "Atheon's Memory", src: 'Vault of Glass (raid)', pve: 'A', pvp: '', why: 'Neutral Orb generation during sustained damage.' },
+  { re: /dreambane/i, name: 'Dreambane', src: 'Moon', pve: 'A', pvp: '', why: 'Self sustain for close range, aggressive play.' },
+  { re: /great hunt/i, name: 'Great Hunt', src: 'Last Wish (raid)', pve: 'A', pvp: '', why: 'Heavy ammo generation for grenade builds.' },
+  { re: /flain|flame/i, name: 'Flain', src: 'Sundered Doctrine (dungeon)', pve: 'A', pvp: '', why: 'Rated very good in the dungeon set ranking.' },
+  { re: /yearning echo/i, name: 'Yearning Echo', src: 'Grasp of Avarice (dungeon)', pve: 'B', pvp: '', why: 'Pickup stacks for damage reduction and reload, Strand Tangle synergy. Guides split on it.' },
+  { re: /sage protector/i, name: 'Sage Protector', src: 'Equilibrium (dungeon)', pve: 'B', pvp: '', why: 'Sword builds only: Sword hits return ability energy, guard boosts Sword damage.' },
+  { re: /nezarec/i, name: "Nezarec's Nightmare", src: 'Root of Nightmares (raid)', pve: 'B', pvp: '', why: 'For debuff and Devour builds, not a general pick.' },
+  { re: /spacewalk/i, name: 'Spacewalk', src: "Vesper's Host (dungeon)", pve: 'B', pvp: '', why: 'Niche in the dungeon set ranking.' },
+  { re: /tex mechanica|tm custom/i, name: 'Tex Mechanica Custom', src: 'Spire of the Watcher (dungeon)', pve: 'B', pvp: 'B', why: 'Niche; better in PvP than PvE.' },
+  { re: /last discipline/i, name: 'Last Discipline', src: 'Crucible Ops', pve: 'B', pvp: 'B', why: 'Freshly drawn or reloaded weapons heal you.' },
+  { re: /\bsrl\b|sparrow racing|^circuit/i, name: 'SRL / Circuit', src: 'SRL', pve: 'B', pvp: 'B', why: 'Best movement set.' },
+  { re: /deep explorer/i, name: 'Deep Explorer', src: 'Duality (dungeon)', pve: 'C', pvp: '', why: 'Rated skip in the dungeon set ranking.' },
+  { re: /descending echo/i, name: 'Descending Echo', src: '', pve: 'C', pvp: '', why: 'Rated broken, avoid, in the dungeon set ranking.' },
+  { re: /cruel electrum/i, name: 'Cruel Electrum', src: 'Trials of Osiris', pve: '', pvp: 'S', why: 'Best Trials set.' },
+  { re: /triumphal anthem/i, name: 'Triumphal Anthem', src: 'Crucible Ops', pve: '', pvp: 'A', why: 'Slide PvP: sliding grabs ammo, speeds reload and handling, and grants damage resistance.' },
+  { re: /per audacia/i, name: 'Per Audacia', src: 'Competitive Crucible', pve: '', pvp: 'A', why: 'Movement: Primary kills stack Mobility, range and handling; more sprint and slide.' },
+  { re: /twofold crown/i, name: 'Twofold Crown', src: 'Trials of Osiris', pve: '', pvp: 'A', why: 'Picking up ammo instantly restores part of your health.' },
+  { re: /new demotic/i, name: 'New Demotic', src: 'Trials of Osiris', pve: '', pvp: 'A', why: 'Sliding grants flinch resistance for Primary weapons.' },
+  // ---- source only (no published verdict yet) ----
+  { re: /pantheos/i, name: 'Pantheos Resplendent', src: 'Pantheon' },
+  { re: /wayward psyche/i, name: 'Wayward Psyche', src: 'Epic Desert Perpetual (raid)' },
+  { re: /collective psyche/i, name: 'Collective Psyche', src: 'Desert Perpetual (raid)' },
+  { re: /crota/i, name: "Crota's Memory", src: "Crota's End (raid)" },
+  { re: /ory.?x/i, name: "Ory'x Memory", src: "King's Fall (raid)" },
+  { re: /resonant fury/i, name: 'Resonant Fury', src: 'Vow of the Disciple (raid)' },
+  { re: /legacy.?s oath/i, name: "Legacy's Oath", src: 'Deep Stone Crypt (raid)' },
+  { re: /righteousness/i, name: 'Righteousness', src: 'Garden of Salvation (raid)' },
+  { re: /iron panoply/i, name: 'Iron Panoply', src: 'Iron Banner' },
+  { re: /disaster corps/i, name: 'Disaster Corps', src: 'Crucible Ops' },
+  { re: /wild anthem/i, name: 'Wild Anthem', src: 'Crucible Ops' },
+  { re: /wildwood/i, name: 'Wildwood', src: 'EDZ' },
+  { re: /seventh seraph/i, name: 'Seventh Seraph', src: 'Cosmodrome' },
+  { re: /reverie dawn/i, name: 'Reverie Dawn', src: 'Dreaming City' },
+  { re: /crystocrene/i, name: 'Crystocrene', src: 'Europa' },
+  { re: /veritas/i, name: 'Veritas', src: 'Throne World' },
+  { re: /thunderhead/i, name: 'Thunderhead', src: 'Neomuna' },
+  { re: /first ascent/i, name: 'First Ascent', src: 'Pale Heart' },
+  { re: /shrewd survivor/i, name: 'Shrewd Survivor', src: 'Lawless Frontier' },
+  { re: /thriving survivor/i, name: 'Thriving Survivor', src: 'Lawless Frontier' },
+  { re: /aion renewal/i, name: 'AION Renewal', src: 'Kepler' },
+  { re: /aion adapter/i, name: 'AION Adapter', src: 'Kepler' },
+  { re: /cyberserpent/i, name: 'Cyberserpent Null', src: 'Gambit' },
+  { re: /bushido/i, name: 'Bushido', src: 'Pinnacle and Arena Ops' },
+  { re: /swordmaster/i, name: 'Swordmaster', src: 'Pinnacle and Arena Ops' },
+  { re: /eutechnology/i, name: 'Eutechnology', src: 'Pinnacle and Arena Ops' },
+  { re: /techsec/i, name: 'Techsec', src: 'Fireteam and Solo Ops' },
+  { re: /smoke jumper/i, name: 'Smoke Jumper', src: 'Fireteam and Solo Ops' },
+  { re: /ferropotent/i, name: 'Ferropotent', src: 'Fireteam and Solo Ops' },
+  { re: /luminopotent/i, name: 'Luminopotent', src: 'Fireteam and Solo Ops' },
+  { re: /lustrous/i, name: 'Lustrous', src: 'Solstice (event)' },
 ];
 const metaSet = n => META_SETS.find(m => m.re.test(n || ''));
 const metaBadge = (t, why, mode) => t ? '<span class="mt mt-' + t + '" title="' + esc(mode + ': ' + why) + '">' + t + ' · ' + META_TIER[t] + '</span>' : '';
+const setBadge = (mode, t, why) => '<span class="sbadge mt-' + (t || 'none') + '" title="' + esc(t ? 'Community ' + mode + ': ' + t + ' · ' + SET_TIER[t] + (why ? '. ' + why : '') : 'No published ' + mode + ' verdict for this set yet') + '">' + mode + ' ' + (t ? t + ' · ' + SET_TIER[t] : 'Not rated') + '</span>';
+const SET_RANK = t => t ? { S: 0, A: 1, B: 2, C: 3 }[t] : 4;
+const setRank = (m, mode) => !m ? 9 : mode ? SET_RANK(m[mode]) : Math.min(SET_RANK(m.pve), SET_RANK(m.pvp)) + (m.pve && m.pvp ? -0.1 : 0);
+const setBonusLine = n => { const p = (state.setInfo || {})[n]; if (!p || !p.length) return '';
+  return '<div class="setbonus">' + p.map(x => '<span title="' + esc(x.d) + '"><b>' + x.c + 'pc</b> ' + esc(x.n || '') + (x.d ? ': ' + esc(shortTxt(x.d)) : '') + '</span>').join('') + '</div>'; };
+const shortTxt = t => { t = String(t).replace(/\s+/g, ' ').trim(); const one = t.split(/(?<=\.)\s/)[0]; return one.length > 110 ? one.slice(0, 107).replace(/\s\S*$/, '') + '...' : one; };
+let setSort = (() => { try { return localStorage.getItem('armorSetSort') || 'rank'; } catch { return 'rank'; } })();
 const metaPill = (mode, t) => t ? '<span class="mpill mt-' + t + '" title="Community ' + mode + ' priority: ' + t + ' · ' + META_TIER[t] + '">' + mode + ' ' + t + '</span>' : '';
 let getMeta = (() => { try { return localStorage.getItem('armorMeta') || 'all'; } catch { return 'all'; } })();
 const CLASS = ['Titan', 'Hunter', 'Warlock'];
-const state = { defs: null, sets: {}, manVer: '', items: [], chars: [], acct: null, picked: new Set(), vFilter: new Set(['keep', 'trash', 'legacy', 'review']), cFilter: '' };
+const state = { defs: null, sets: {}, setInfo: null, manVer: '', items: [], chars: [], acct: null, picked: new Set(), vFilter: new Set(['keep', 'trash', 'legacy', 'review']), cFilter: '' };
 const nameOf = h => (state.defs[h] && state.defs[h].n) || '';
 
 async function loadDefs(){
@@ -482,6 +553,25 @@ async function loadDefs(){
   }
   await cacheSet('manifestArmor', { version: man.version, data, sets });
   state.defs = data; state.sets = sets;
+}
+
+// set bonus text: setPerks -> DestinySandboxPerkDefinition. Kept in its own cache so the big item cache never re-downloads for it.
+async function loadSetInfo(){
+  if (state.setInfo) return;
+  try {
+    const c = await cacheGet('armorSetInfo');
+    if (c && c.version === state.manVer && c.info){ state.setInfo = c.info; return; }
+    const man = await bungie('/Destiny2/Manifest/'), path = man.jsonWorldComponentContentPaths.en.DestinyEquipableItemSetDefinition;
+    if (!path) return;
+    const sraw = await (await net('https://www.bungie.net' + path, 'armor set definitions')).json();
+    const byName = {}, hashes = [];
+    for (const h in sraw){ const sd = sraw[h], n = (sd.displayProperties || {}).name; if (!n || byName[n]) continue;
+      byName[n] = (sd.setPerks || []).map(p => ({ c: p.requiredSetCount, h: p.sandboxPerkHash })).sort((a, b) => a.c - b.c); byName[n].forEach(p => hashes.push(p.h)); }
+    const perks = await entMany('DestinySandboxPerkDefinition', hashes), info = {};
+    for (const n in byName) info[n] = byName[n].map(p => { const dp = ((perks[p.h] || {}).displayProperties) || {}; return { c: p.c, n: dp.name || '', d: dp.description || '' }; });
+    state.setInfo = info;
+    if (Object.values(info).some(a => a.some(p => p.d))) await cacheSet('armorSetInfo', { version: state.manVer, info });
+  } catch (e){ console.warn('Set bonus text unavailable', e.message); }
 }
 
 async function findAccount(input){
@@ -687,6 +777,7 @@ function triage(){
     ls.set('armorIndex', JSON.stringify({ at: Date.now(), m: ai }));
   } catch {}
   renderSummary(); renderChips(); renderGet(); render();
+  if (!state.setInfo) loadSetInfo().then(() => { if (state.setInfo) renderGet(); });
   const c = count();
   try { ls.set('armorSummary', JSON.stringify({ at: Date.now(), total: state.items.length, c })); } catch {}   // for the Home page
   setStatus('Scanned ' + state.items.length + ' armor pieces: keep ' + c.keep + ', trash ' + c.trash + (c.legacy ? ', get newer ' + c.legacy : '') + (c.review ? ', review ' + c.review : '') + '.');
@@ -984,7 +1075,7 @@ $('btnCsv').onclick = () => {
 
 
 /* ===================== gear to get (per character class) ===================== */
-let getCls = null, getAll = false;
+let getCls = null, getAll = false, setAllOpen = false, watchAllOpen = false;
 function renderGet(){
   const classes = [0, 1, 2].filter(c => state.items.some(i => i.cls === c));
   if (!classes.length){ $('getPanel').classList.add('hidden'); return; }
@@ -1023,23 +1114,48 @@ function renderGet(){
   // 3. set progress (pieces you keep, Armor 3.0)
   const sets = new Map();
   for (const i of mine) if (i.set && !i.legacy){ if (!sets.has(i.set)) sets.set(i.set, new Map()); const m = sets.get(i.set); const b = m.get(i.slot); if (!b || better(i, b) < 0) m.set(i.slot, i); }
-  const setRows = [...sets].map(([n, m]) => ({ n, have: [...m.keys()], low: [...m.values()].filter(x => x.tier < 4).map(x => x.slot) })).sort((a, b) => b.have.length - a.have.length);
-  // 4. old exotics to replace, and old legendary armor still in use
-  const oldEx = state.items.filter(i => i.cls === getCls && i.exotic && i.legacy && i.v !== 'trash');
+  const modeName = metaMode === 'pve' ? 'PvE' : metaMode === 'pvp' ? 'PvP' : '';
+  const setRows = [...sets].map(([n, m]) => ({ n, m: metaSet(n), have: [...m.keys()], low: [...m.values()].filter(x => x.tier < 4).map(x => x.slot) }))
+    .sort((a, b) => setSort === 'owned' ? (b.have.length - a.have.length) || (setRank(a.m, metaMode) - setRank(b.m, metaMode)) || a.n.localeCompare(b.n)
+                                        : (setRank(a.m, metaMode) - setRank(b.m, metaMode)) || (b.have.length - a.have.length) || a.n.localeCompare(b.n));
+  const SET_SHOW = 6, shownSets = setAllOpen ? setRows : setRows.slice(0, SET_SHOW);
+  const bonusFor = m => { const k = Object.keys(state.setInfo || {}).find(n => m.re.test(n)); return k ? setBonusLine(k) : ''; };
+  const setLi = r => { const m = r.m || {}, c = r.have.length;
+    return '<li class="setrow" data-set-row="' + esc(r.n) + '"><div class="sethead"><b>' + esc(r.n) + '</b> <span class="setcount">' + c + '/5</span> ' +
+      (c >= 4 ? '<span style="color:var(--keep)">4-piece ready</span>' : c >= 2 ? '<span style="color:#8cc8ff">2-piece ready, ' + (4 - c) + ' more for 4</span>' : '<span class="dim-lbl">' + (2 - c) + ' more for 2-piece</span>') + '</div>' +
+      '<div class="setbadges">' + setBadge('PvE', m.pve, m.why) + setBadge('PvP', m.pvp, m.why) + (m.src ? '<span class="dim-lbl setsrc">' + esc(m.src) + '</span>' : '') + '</div>' +
+      setBonusLine(r.n) + (m.why ? '<div class="setwhy">' + esc(m.why) + '</div>' : '') +
+      '<div class="dim-lbl">Missing: ' + (slots.filter(s => !r.have.includes(s)).join(', ') || 'none') + (r.low.length ? ' · below Tier 4: ' + r.low.join(', ') : '') + '</div></li>'; };
+  // watchlist: S and A sets (for the active mode, or either mode) you own no pieces of
+  const watch = META_SETS.filter(m => (m.pve || m.pvp) && !setRows.some(r => m.re.test(r.n)) && (metaMode ? m[metaMode] && 'SA'.includes(m[metaMode]) : 'SA'.includes(m.pve || 'x') || 'SA'.includes(m.pvp || 'x')))
+    .sort((a, b) => setRank(a, metaMode) - setRank(b, metaMode) || a.name.localeCompare(b.name));
+  // 4. old exotics to replace (duplicates grouped), and old legendary armor still in use
+  const oldEx = [...state.items.filter(i => i.cls === getCls && i.exotic && i.legacy && i.v !== 'trash')
+    .reduce((g, i) => { const k = i.name + '|' + i.slot; g.set(k, { name: i.name, slot: i.slot, n: (g.has(k) ? g.get(k).n : 0) + 1 }); return g; }, new Map()).values()]
+    .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot) || a.name.localeCompare(b.name));
   const oldSlots = slots.filter(s => mine.some(i => i.legacy && !i.exotic && i.slot === s) && !mine.some(i => !i.legacy && i.slot === s));
   $('getBody').innerHTML =
     '<div class="dim-lbl">Your best ' + CLASS[getCls] + ' piece for each archetype and slot (keepers only). <span style="color:#e8b84a">T5</span> = done, <span style="color:#8cc8ff">T4</span> = fine, grey = worth upgrading, — = you have none. Click a cell to see those pieces.</div>' + grid +
     '<div class="getcols">' +
       '<div class="getbox"><h4>Slots with no Tier 5 yet</h4>' + (noT5.length ? '<ul>' + noT5.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<span class="dim-lbl">Every slot has a Tier 5 piece.</span>') + '</div>' +
-      '<div class="getbox"><h4>Set progress</h4>' + (setRows.length ? '<ul>' + setRows.slice(0, 12).map(r => { const m = metaSet(r.n); return '<li><b>' + esc(r.n) + '</b>' + (m ? ' ' + metaPill('PvE', m.pve) + metaPill('PvP', m.pvp) : '') + ': ' + r.have.length + '/5 ' +
-        (r.have.length >= 4 ? '<span style="color:var(--keep)">(4-piece ready)</span>' : r.have.length >= 2 ? '<span style="color:#8cc8ff">(2-piece ready, need ' + (4 - r.have.length) + ' more for 4)</span>' : '<span class="dim-lbl">(need ' + (2 - r.have.length) + ' more for 2-piece)</span>') +
-        (m ? '<div class="setwhy">' + esc(m.why) + '</div>' : '') +
-        '<div class="dim-lbl">Missing: ' + (slots.filter(s => !r.have.includes(s)).join(', ') || 'none') + (r.low.length ? ' · below Tier 4: ' + r.low.join(', ') : '') + '</div></li>'; }).join('') + '</ul>' : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') +
-        (() => { const miss = META_SETS.filter(m => !setRows.some(r => m.re.test(r.n)) && (metaMode ? m[metaMode] && 'SA'.includes(m[metaMode]) : true));
-          return miss.length ? '<div class="setmiss"><div class="dim-lbl">Notable sets you don\'t have' + (metaMode ? ' (top ' + (metaMode === 'pve' ? 'PvE' : 'PvP') + ')' : '') + ':</div>' + miss.map(m => '<div class="setmrow" title="' + esc(m.why) + '"><b>' + esc(m.name) + '</b> ' + metaPill('PvE', m.pve) + metaPill('PvP', m.pvp) + '<span class="dim-lbl"> ' + esc(m.why) + '</span></div>').join('') + '</div>' : ''; })() + '</div>' +
-      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldEx.length ? '<ul>' + oldEx.map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + i.slot + ')</span></li>').join('') + '</ul>' : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
+      '<div class="getbox setbox"><div class="setbar"><h4>Set progress</h4><span class="chips" id="setSortChips">' +
+        [['rank', 'Community rank'], ['owned', 'Pieces owned']].map(([k, l]) => '<span class="chip' + (setSort === k ? ' on' : '') + '" data-ssort="' + k + '">' + l + '</span>').join('') + '</span></div>' +
+        (setRows.length ? '<ul class="setprog">' + shownSets.map(setLi).join('') + '</ul>' +
+          (setRows.length > SET_SHOW ? '<button class="ghost" id="setMoreBtn" style="font-size:12px;padding:4px 10px;margin-top:6px">' + (setAllOpen ? 'Show top ' + SET_SHOW + ' only' : 'Show all ' + setRows.length + ' sets') + '</button>' : '')
+          : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') +
+        (state.setInfo ? '' : '<div class="dim-lbl" style="margin-top:6px">Loading 2-piece and 4-piece bonus text from Bungie...</div>') + '</div>' +
+      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldEx.length ? '<ul class="oldex">' + oldEx.map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + i.slot + ')</span>' + (i.n > 1 ? ' <span class="dupn" title="' + i.n + ' copies">×' + i.n + '</span>' : '') + '</li>').join('') + '</ul>' : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
         (oldSlots.length ? '<h4 style="margin-top:10px">Slots still on old armor only</h4><ul>' + oldSlots.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '') + '</div>' +
-    '</div>';
+    '</div>' +
+    '<div class="getbox watchbox" id="setWatch"><h4>Top sets to get' + (modeName ? ' (' + modeName + ')' : '') + ' <span class="dim-lbl" title="Sets rated S or A by published community guides (Nov 2026) that you have 0 of 5 pieces for.">· you have 0/5 ⓘ</span></h4>' +
+      (watch.length ? '<div class="watchgrid">' + (watchAllOpen ? watch : watch.slice(0, 8)).map(m => '<div class="watchrow" data-watch="' + esc(m.name) + '"><div class="sethead"><b>' + esc(m.name) + '</b> <span class="setcount">0/5</span></div>' +
+        '<div class="setbadges">' + setBadge('PvE', m.pve, m.why) + setBadge('PvP', m.pvp, m.why) + '</div>' +
+        (m.src ? '<div class="setsrc2"><span class="dim-lbl">Source:</span> ' + esc(m.src) + '</div>' : '') + bonusFor(m) + '<div class="setwhy">' + esc(m.why) + '</div></div>').join('') + '</div>' +
+        (watch.length > 8 ? '<button class="ghost" id="watchMoreBtn" style="font-size:12px;padding:4px 10px;margin-top:8px">' + (watchAllOpen ? 'Show top 8 only' : 'Show all ' + watch.length + ' top sets') + '</button>' : '')
+        : '<span class="dim-lbl">You own pieces of every top-rated ' + (modeName ? modeName + ' ' : '') + 'set.</span>') + '</div>';
+  $('getBody').querySelectorAll('[data-ssort]').forEach(c => c.onclick = () => { setSort = c.dataset.ssort; try { localStorage.setItem('armorSetSort', setSort); } catch {} renderGet(); });
+  if ($('watchMoreBtn')) $('watchMoreBtn').onclick = () => { watchAllOpen = !watchAllOpen; renderGet(); };
+  if ($('setMoreBtn')) $('setMoreBtn').onclick = () => { setAllOpen = !setAllOpen; renderGet(); };
   if ($('getAllBtn')) $('getAllBtn').onclick = () => { getAll = !getAll; renderGet(); };
   $('getBody').querySelectorAll('[data-meta]').forEach(c => c.onclick = () => { getMeta = c.dataset.meta; try { localStorage.setItem('armorMeta', getMeta); } catch {} renderGet(); });
   $('getBody').querySelectorAll('[data-f]').forEach(td => td.onclick = () => {
