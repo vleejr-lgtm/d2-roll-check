@@ -81,8 +81,15 @@
   span.ctile{display:block}
   .ctile.none{cursor:default} .ctile.none:hover{outline:none} .ctile.none:hover::after{content:none}
   .cextra{margin-top:18px}
+  .cpm{margin:0 0 14px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm)}
+  .cpm.almost{border-color:rgba(226,183,75,.55)} .cpm.almost .pmlvl{color:#E2B74B}
+  .cpm.full{border-color:#E5534B; background:linear-gradient(180deg, rgba(229,83,75,.28), rgba(229,83,75,.08))} .cpm.full .pmlvl{color:#FFB4B0}
+  .cpm-row{display:grid; grid-template-columns:repeat(auto-fill, 44px); gap:5px; margin-top:4px}
+  .cpm-row .ctile{width:44px; height:44px}
+  .cpm-all{font-size:11px; padding:2px 8px; margin-left:8px; letter-spacing:0; text-transform:none}
   /* item card */
-  .cpop{position:fixed; z-index:60; width:300px; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius-sm); box-shadow:0 14px 40px rgba(0,0,0,.55); padding:14px}
+  .croll{border-top:1px solid var(--line); margin-top:10px; padding-top:10px; font-size:12.5px} .croll .rp-head{display:none}
+  .cpop{position:fixed; z-index:60; width:330px; max-height:85vh; overflow:auto; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius-sm); box-shadow:0 14px 40px rgba(0,0,0,.55); padding:14px}
   .cpop h4{margin:0 0 2px; font-size:15px} .cpop .cmeta{font-size:12px; color:var(--dim); margin-bottom:10px}
   .cpop .cacts{display:flex; flex-wrap:wrap; gap:6px} .cpop .cacts button{font-size:12px; padding:4px 10px}
   .cpick{max-height:min(60vh,520px); overflow:auto; display:grid; gap:6px; margin-top:8px}
@@ -355,7 +362,8 @@ function readChars(p){
     const inv = (((p.characterInventories || {}).data || {})[c.characterId] || {}).items || [];
     const items = eq.map(it => mk(it, c.characterId, true, inst)).concat(inv.filter(it => it.bucketHash !== PM_BUCKET).map(it => mk(it, c.characterId, false, inst)));
     items.forEach(i => { i.loc = CLASS[c.classType] || 'Character'; });
-    return { id: c.characterId, name: CLASS[c.classType] || 'Character', cls: c.classType, light: c.light, stats: c.stats || {}, emblem: c.emblemPath, banner: c.emblemBackgroundPath,
+    const pm = inv.filter(it => it.bucketHash === PM_BUCKET).map(it => Object.assign(mk(it, c.characterId, false, inst), { postmaster: true, loc: 'Postmaster' }));
+    return { pm, id: c.characterId, name: CLASS[c.classType] || 'Character', cls: c.classType, light: c.light, stats: c.stats || {}, emblem: c.emblemPath, banner: c.emblemBackgroundPath,
       race: ['Human', 'Awoken', 'Exo'][c.raceType] || '', items };
   });
   state.items = state.full.flatMap(c => c.items);
@@ -411,6 +419,14 @@ function slotHtml([label, b], c){
 }
 // items the Make room step sent to the vault (stream.js clears their charId through byId) leave the character view
 function sync(){ for (const c of state.full || []){ const gone = c.items.filter(i => !i.charId); if (gone.length){ c.items = c.items.filter(i => i.charId); state.vault.push(...gone); } } }
+// the in-game postmaster row: 21 boxes, items first. Click one to see the roll and pull it.
+function pmHtml(c){
+  const n = c.pm.length, lvl = typeof pmLevel === 'function' ? pmLevel(n) : (n >= 21 ? 'full' : n >= 15 ? 'almost' : '');
+  const lbl = (lvl === 'full' ? 'FULL! ' : lvl === 'almost' ? 'ALMOST FULL! ' : '') + '(' + n + '/21)';
+  return '<div class="cpm ' + lvl + '"><div class="cslot-lbl">Postmaster <span class="pmlvl">' + lbl + '</span>' + (n ? ' <button class="ghost cpm-all" id="cPmAll">Pull all</button>' : '') + '</div><div class="cpm-row">' +
+    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + '</button>').join('') +
+    Array.from({ length: Math.max(0, 21 - n) }, () => '<span class="ctile empty none"></span>').join('') + '</div></div>';
+}
 function render(){
   sync();
   $('cSignin').classList.toggle('hidden', auth.valid());
@@ -424,10 +440,13 @@ function render(){
       '<div class="cpow"><span>POWER</span><b>' + (c.light || '—') + '</b></div></div>' +
     '<div class="panel cinfo">' + (stats.length ? '<div class="cstats">' + stats.map(s => '<span class="cstat" title="' + esc(s.n) + '">' + (s.i ? '<img src="' + img(s.i) + '" alt="">' : '') + esc(s.n) + ' <b>' + s.v + '</b></span>').join('') + '</div>' : '') +
       (state.money.length ? '<div class="cmoney">' + state.money.map(m => '<span title="' + esc(m.n) + '">' + (m.i ? '<img src="' + img(m.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + m.q.toLocaleString() + '</b></span>').join('') + '</div>' : '') + '</div>' +
+    pmHtml(c) +
     '<div class="cgrid"><div class="ccol">' + LEFT.map(s => slotHtml(s, c)).join('') + '</div><div class="ccol">' + RIGHT.map(s => slotHtml(s, c)).join('') + '</div></div>' +
     '<div class="cgrid cextra"><div class="ccol">' + EXTRA.map(s => slotHtml(s, c)).join('') + '</div></div>';
   $('cView').querySelectorAll('[data-item]').forEach(t => t.onclick = e => openItem(t.dataset.item, t, c));
   $('cView').querySelectorAll('[data-fill]').forEach(t => t.onclick = () => openPicker(+t.dataset.fill, t, c));
+  $('cView').querySelectorAll('[data-pm]').forEach(t => t.onclick = () => openPm(t.dataset.pm, t, c));
+  if ($('cPmAll')) $('cPmAll').onclick = () => { const b = document.getElementById('btnPM'); if (b) b.click(); };
 }
 
 /* ---- item card and vault picker ---- */
@@ -440,7 +459,7 @@ function place(el, anchor){
 }
 function closePop(){ $('cPop').classList.add('hidden'); $('cPop').innerHTML = ''; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
-document.addEventListener('click', e => { if (!$('cPop').classList.contains('hidden') && !$('cPop').contains(e.target) && !e.target.closest('[data-item],[data-fill]')) closePop(); });
+document.addEventListener('click', e => { if (!$('cPop').classList.contains('hidden') && !$('cPop').contains(e.target) && !e.target.closest('[data-item],[data-fill],[data-pm]')) closePop(); });
 const RAR = { 6: 'Exotic', 5: 'Legendary', 4: 'Rare', 3: 'Uncommon', 2: 'Common' };
 function openItem(key, anchor, c){
   const i = c.items.find(x => (x.id || ('h' + x.hash)) === key); if (!i) return;
@@ -453,6 +472,10 @@ function openItem(key, anchor, c){
     (i.b !== B.sub && i.b !== B.emblem) ? '<button class="ghost" data-a="lock">' + (i.locked ? '🔓 Unlock' : '🔒 Lock') + '</button>' : ''].join('');
   $('cPop').innerHTML = '<h4>' + esc(i.name) + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', i.equipped ? 'Equipped' : 'In inventory'].filter(Boolean).join(' · ')) + '</div>' +
     (acts ? '<div class="cacts">' + acts + '</div>' : '<div class="dim-lbl">' + (i.equipped ? 'Equipped. Equip something else to swap it out.' : 'Sign in to move or equip.') + '</div>');
+  if (i.id && typeof rollHtmlFor === 'function' && i.b !== B.sub){
+    $('cPop').insertAdjacentHTML('beforeend', '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>');
+    rollHtmlFor(i.id, i.hash).then(h => { const el = $('cRoll'); if (el){ el.innerHTML = h; place($('cPop'), anchor); } }).catch(e => { const el = $('cRoll'); if (el) el.innerHTML = '<div class="dim-lbl">' + esc(e.message) + '</div>'; });
+  }
   place($('cPop'), anchor);
   $('cPop').querySelectorAll('[data-a]').forEach(b => b.onclick = () => doAct(b.dataset.a, i, c, b.dataset.to, b));
 }
@@ -472,6 +495,20 @@ async function doAct(a, i, c, to, btn){
     }
     closePop(); render();
   } catch (e){ btn.disabled = false; setStatus(isGoneError(e) ? i.name + ' moved in game. Refreshing.' : e.message, true); if (isGoneError(e)) scan({ silent: true }); }
+}
+function openPm(key, anchor, c){
+  const i = c.pm.find(x => (x.id || ('h' + x.hash)) === key); if (!i) return;
+  const can = auth.valid() && state.acct;
+  $('cPop').innerHTML = '<h4>' + esc(i.name) + (i.qty > 1 ? ' ×' + i.qty : '') + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', 'In the postmaster'].filter(Boolean).join(' · ')) + '</div>' +
+    (can ? '<div class="cacts"><button class="primary" id="cPmPull">📬 Pull to ' + esc(c.name) + '</button></div>' : '<div class="dim-lbl">Sign in to pull it.</div>') +
+    (i.id && typeof rollHtmlFor === 'function' ? '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>' : '');
+  place($('cPop'), anchor);
+  if (i.id && typeof rollHtmlFor === 'function') rollHtmlFor(i.id, i.hash).then(h => { const el = $('cRoll'); if (el){ el.innerHTML = h; place($('cPop'), anchor); } }).catch(e => { const el = $('cRoll'); if (el) el.innerHTML = '<div class="dim-lbl">' + esc(e.message) + '</div>'; });
+  if ($('cPmPull')) $('cPmPull').onclick = async () => {
+    const b = $('cPmPull'); b.disabled = true;
+    try { await pullFromPostmaster(i); c.pm = c.pm.filter(x => x !== i); i.postmaster = false; i.loc = c.name; i.b = i.defB; c.items.push(i); toast('Pulled ' + i.name + ' to your ' + c.name); closePop(); render(); }
+    catch (e){ b.disabled = false; setStatus(e.message, true); }
+  };
 }
 function openPicker(b, anchor, c){
   const fits = i => i.defB === b && (i.cls === 3 || i.cls === undefined || i.cls === c.cls || CLASS[i.cls] === c.name);

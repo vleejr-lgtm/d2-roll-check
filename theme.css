@@ -443,3 +443,44 @@ body.streampinned #noticeStack{right:410px}
 .pmempty{font-size:12px; padding:2px 0}
 body.streampinned .pmpanel{right:390px}
 .pmroom{display:flex; gap:8px; align-items:flex-start; padding:0 14px 10px; font-size:12.5px; color:var(--text); cursor:pointer} .pmroom input{margin-top:2px}
+
+/* ---- roll inspector (stream.js) ---- */
+.rollpop{position:fixed; z-index:70; width:330px; max-height:80vh; overflow:auto; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius-sm); box-shadow:0 14px 40px rgba(0,0,0,.6); padding:12px; font-size:12.5px}
+.rp-head{display:flex; gap:10px; align-items:center; margin-bottom:10px} .rp-head img{width:44px; height:44px; border-radius:4px} .rp-head b{display:block; font-size:14px} .rp-head span{color:var(--dim); font-size:11.5px}
+.rp-perks{display:grid; gap:5px; margin-bottom:10px}
+.rollpop{width:380px}
+.rp-stats{margin-bottom:8px}
+.rp-frame{display:flex; gap:8px; align-items:center; padding:8px; margin:6px 0; background:rgba(255,255,255,.04); border-radius:6px} .rp-frame img,.rp-frame .rp-noimg{width:30px; height:30px; border-radius:4px}
+.rp-frame b{display:block} .rp-frame small{color:var(--dim); font-size:10.5px}
+.rp-cols{display:grid; gap:0}
+.rp-col{display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line)}
+.rp-cur{display:flex; gap:8px; align-items:center; flex:1; min-width:0} .rp-cur img,.rp-cur .rp-noimg{width:30px; height:30px; border-radius:50%; background:#1d4a7a; flex:none}
+.rp-cur b{display:block; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis} .rp-cur small{color:var(--dim); font-size:10.5px} .rp-cur.enh b{color:#E2B74B}
+.rp-alts{display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; max-width:55%}
+.rp-alt{width:30px; height:30px; padding:0; border-radius:50%; border:1px solid var(--line2); background:#1d2430; cursor:pointer; overflow:hidden}
+.rp-alt img,.rp-alt .rp-noimg{width:100%; height:100%; border-radius:50%} .rp-alt:hover{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)} .rp-alt.enh{border-color:#E2B74B}
+.rp-alt[disabled]{opacity:.35; cursor:not-allowed} .rp-alt.busy{opacity:.5; animation:rpspin 1s linear infinite} @keyframes rpspin{to{transform:rotate(360deg)}}
+.rp-mods{display:flex; gap:6px; flex-wrap:wrap; padding-top:8px; border-top:1px solid var(--line)} .rp-mod img,.rp-mod .rp-noimg{width:30px; height:30px; border-radius:4px; display:block; background:#1d2430}
+.rp-hint{font-size:11px; color:var(--dim); margin-top:8px}
+.rp-perk{display:flex; gap:8px; align-items:center} .rp-perk img,.rp-noimg{width:26px; height:26px; border-radius:50%; background:#1d2430; flex:none}
+.rp-perk b{display:block; font-weight:600} .rp-perk small{color:var(--dim); font-size:10.5px}
+.rp-perk.enh b{color:#E2B74B}
+.rp-stats{display:grid; gap:3px; border-top:1px solid var(--line); padding-top:8px}
+.rp-stat{display:grid; grid-template-columns:110px 1fr 34px; gap:8px; align-items:center; font-size:11.5px} .rp-stat span{color:var(--dim)} .rp-stat b{text-align:right; font-variant-numeric:tabular-nums}
+.rp-stat i{height:6px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden} .rp-stat i em{display:block; height:100%; background:#cbd5e1} .rp-stat i.nobar{background:none}
+.pmrow[data-roll]{cursor:pointer} .pmrow[data-roll]:hover .pmname{color:var(--accent)}
+
+.rp-mod.edit{padding:0; border:1px solid var(--line2); border-radius:5px; background:#1d2430; cursor:pointer; width:32px; height:32px; overflow:hidden}
+.rp-mod.edit img{width:100%; height:100%; border-radius:0} .rp-mod.edit:hover,.rp-mod.edit.on{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+.rp-mod.edit.empty{border-style:dashed} .rp-plus{display:grid; place-items:center; height:100%; color:var(--dim); font-size:18px}
+.rp-modlist{margin-top:8px; border:1px solid var(--line); border-radius:6px; padding:8px; background:rgba(255,255,255,.02)}
+.rp-modq{width:100%; margin-bottom:6px; font-size:12px; padding:4px 8px}
+.rp-modopts{display:grid; gap:4px; max-height:240px; overflow:auto}
+.rp-modopt{display:flex; gap:8px; align-items:center; text-align:left; font:inherit; color:var(--text); background:#161b22; border:1px solid var(--line); border-radius:5px; padding:4px 6px; cursor:pointer}
+.rp-modopt img,.rp-modopt .rp-noimg{width:28px; height:28px; border-radius:3px; flex:none} .rp-modopt b{display:block; font-weight:600; font-size:12px} .rp-modopt small{color:var(--dim); font-size:10.5px}
+.rp-modopt:hover{border-color:var(--accent)} .rp-modopt.cur{border-color:#3FB37F} .rp-modopt.busy{opacity:.5}
+
+#btnPM.pmfull{border-color:#E5534B; color:#fff; background:rgba(229,83,75,.25); animation:pmpulse 1.6s ease-in-out infinite}
+@keyframes pmpulse{50%{box-shadow:0 0 0 4px rgba(229,83,75,.25)}}
+.pmchar.almost{border-color:rgba(226,183,75,.55)} .pmchar.almost .pmcount{color:#E2B74B}
+.pmchar.full{border-color:#E5534B; background:linear-gradient(180deg, rgba(229,83,75,.22), rgba(229,83,75,.06))} .pmchar.full .pmcount{color:#FFB4B0}

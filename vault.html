@@ -64,7 +64,7 @@
   .vcount{margin-left:auto}
   .vgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:14px}
   .vit{display:flex; gap:10px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; content-visibility:auto; contain-intrinsic-size:66px; min-width:0}
-  .vit:hover{border-color:var(--line2)}
+  .vit:hover{border-color:var(--line2)} .vit[data-roll]{cursor:pointer}
   .vit.r6{border-left:3px solid var(--exotic)} .vit.r5{border-left:3px solid #8a5cf6} .vit.r4{border-left:3px solid #4aa3e8}
   .vit img{width:46px; height:46px; border-radius:4px; flex:none; background:#0A0C0F}
   .vbody{flex:1; min-width:0}
@@ -449,7 +449,7 @@ function itemHtml(i){
     (i.charId !== target || i.postmaster) && !i.equipped ? '<button class="ghost" data-act="pull" data-id="' + esc(i.id) + '" title="Move to your ' + esc(((state.chars.find(c => c.id === target) || {}).name) || 'character') + ' (Pull to: menu, top right)">' + (i.postmaster ? '📬 Pull' : '⬇ Pull') + '</button>' : '',
     i.charId && !i.equipped && !i.postmaster ? '<button class="ghost" data-act="vault" data-id="' + esc(i.id) + '" title="Send to the vault">Vault</button>' : '',
     (i.kind === 'weapons' || i.kind === 'armor') ? '<button class="ghost' + (i.locked ? ' on' : '') + '" data-act="lock" data-id="' + esc(i.id) + '" title="' + (i.locked ? 'Unlock' : 'Lock') + '">' + (i.locked ? '🔒' : '🔓') + '</button>' : ''].join('') : '';
-  return '<div class="vit r' + i.rar + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '<span class="pmnoimg"></span>') +
+  return '<div class="vit r' + i.rar + '"' + (i.id ? ' data-roll="' + esc(i.id) + '" data-rh="' + i.hash + '"' : '') + '>' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '<span class="pmnoimg"></span>') +
     '<div class="vbody"><div class="vname" title="' + esc(i.name) + '">' + esc(i.name) + (i.qty > 1 ? ' <span class="vqty">×' + i.qty + '</span>' : '') + '</div>' +
     '<div class="vmeta">' + esc([i.type, RARITY[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</div>' +
     '<div class="vloc' + (i.postmaster ? ' pm' : '') + '">' + esc(i.loc) + (i.locked && !(i.kind === 'weapons' || i.kind === 'armor') ? ' · 🔒' : '') + '</div></div>' +
@@ -465,7 +465,7 @@ function render(){
   const gen = (state.space || []).find(b => b.h === 138197802);
   $('vSpace').innerHTML = spaceHtml();
   $('vSum').innerHTML = [['Vault', n('vault'), gen && gen.cap ? (gen.cap - gen.used).toLocaleString() + ' of ' + gen.cap.toLocaleString() + ' vault slots free' : vaultGear + ' weapons and armor']].concat(state.chars.map(c => [c.name, n(c.id), c.light ? 'Power ' + c.light : '']))
-    .concat([['Postmaster', n('pm'), n('pm') ? 'Open 📬 to pull them' : 'Empty']])
+    .concat([['Postmaster', n('pm'), n('pm') ? state.chars.map(c => { const k = state.items.filter(i => i.postmaster && i.charId === c.id).length; return c.name + ' ' + (typeof pmLabel === 'function' ? pmLabel(k) : k + '/21'); }).join(' · ') : 'Empty']])
     .map(([k, v, s]) => '<div class="hstat' + (k === 'Postmaster' && v >= 18 ? ' gold' : '') + '"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div><div class="s">' + esc(s) + '</div></div>').join('');
   chips($('vWhere'), [['all', 'Everywhere', state.items.length], ['vault', 'Vault', n('vault')]].concat(state.chars.map(c => [c.id, c.name, n(c.id)])).concat([['pm', 'Postmaster', n('pm')]]), fWhere, 'data-w', 'vaultWhere', v => fWhere = v);
   const inWhere = state.items.filter(i => fWhere === 'all' || i.where === fWhere);
