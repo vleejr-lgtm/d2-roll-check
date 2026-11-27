@@ -100,6 +100,6 @@ A page like todayindestiny.com, built from Bungie's own data.
   * **Weekly challenges**: your progress on each, finished ones faded.
   * **Everything you can play**, grouped by type (Raid, Dungeon, Lost Sector, Crucible...), with modifiers, power level, location and rewards.
 * **Search** across activity names, modifiers, rewards and places, plus category pills with live counts: Lost Sector, Strikes / Nightfall, Raids, Dungeons, Crucible, Weekly / Portal.
-* If no character shows today's lost sector, the page offers to check your other characters, lists the lost sectors you can run, and links to a full rotation calendar.
+* Today's lost sector is checked on all your characters, so one character having it unlocked is enough. Lost sectors rotate at the daily reset, 17:00 UTC (9 AM Pacific in winter). Bungie hides the day's lost sector on characters that haven't cleared it on normal, so when none of yours list it the page projects today's from the rotation order, with champions, shields and a 7-day preview. The projection corrects itself whenever Bungie shows the real one, or you can pick today's from the list.
 
 The first visit downloads Bungie's activity definitions once (cached after that). Rotations reload by themselves at reset.
