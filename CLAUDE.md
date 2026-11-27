@@ -10,6 +10,7 @@ Personal Destiny 2 tool, run locally at `https://localhost:8443/` (`start-server
 | `armor.html` | Armor triage (Armor 3.0 archetype/tier/tertiary rules, Gear to get, mods) |
 | `vendors.html` | Vendors, Zavala & Shaxx panel, Xûr panel |
 | `today.html` | Lost sector of the day, weekly milestones, featured activities, challenges |
+| `shaders.html` | Every collectible shader, owned vs missing (Collections), source, detail modal with vendor check |
 | `stream.js` | Shared Activity stream, tag-menu behavior, bottom-right notices. Loaded **after** each page's inline script |
 | `theme.css` | Shared visual theme. Loaded **after** each page's inline `<style>` |
 | `start-server-https.ps1` | Local HTTPS server (cert, netsh binding). `start-server.ps1` is the old http fallback |
@@ -20,8 +21,8 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
-  - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor vendSales shStatus shSource shSort enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
+  - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `manifestShaders` (shader list), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
 - **Bungie action limits:** item actions (lock, transfer, equip, socket changes) are throttled (~2 socket changes/sec, sleep 300–600 ms between calls). Perk/mod changes and equips only work in orbit, a social space, or offline.
@@ -119,7 +120,7 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 
 ## Data sources
 
-- Bungie.net API: profile components `102,200,201,204,205,300,304,305,310,1200`; `GetVendors` (`400,401,402,300,304,305,310`, needs the vendor OAuth scope); public `/Destiny2/Milestones/`; manifest JSON tables.
+- Bungie.net API: profile components `102,200,201,204,205,300,304,305,310,800,1200` (800 = Collectibles, Shaders page); `GetVendors` (`400,401,402,300,304,305,310`, needs the vendor OAuth scope); public `/Destiny2/Milestones/`; manifest JSON tables.
 - Lost sector of the day is **not** in public data: it's the lost sector a character can run at Expert/Master in `characterActivities.availableActivities` (component 204). `isLostSector()` matches "Lost Sector" in the activity name, original name, description, mode name, or activity type name (`T.act[h].at` = `activityTypeHash`, `T.atype` from `DestinyActivityTypeDefinition`). `lostFromAccount()` merges all characters (selected first), so one character having it is enough. Results are cached per daily reset in `lsToday` (non-empty only).
 - Rotation fallback: when no character lists it and there is no cache, `lsProjectionHtml()` projects today's lost sector from `LS_CYCLE` (11-day order, champions, shields), anchored by `LS_DEFAULT_ANCHOR` (2025-07-06 reset = Veles Labyrinth, from published 2025 schedules). It is an estimate for Monument of Triumph, so it self-corrects: every time Bungie shows a lost sector that is in the cycle, `setLsAnchor(name, 'api')` stores localStorage `lsAnchor` `{day, name, src}`; the user can also pick today's from a select (`src: 'manual'`). Reset is 17:00 UTC (`RESET_H`). Shows today's card plus a 7-day table. Champion/shield values are the last published ones; unknown ones show "Not published". If the rotation changes, update `LS_CYCLE`.
 - `manifestToday` cache has a `schema` number (`T.schema`); bump it when the cached table shape changes so users re-download.
@@ -127,6 +128,17 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - Today category pills (`state.cat`, localStorage `todayCat`): All, Lost Sector, Strikes / Nightfall, Raids, Dungeons, Crucible, Weekly / Portal. `catsOf()` classifies by activity name/type/mode; "Weekly / Portal" = weekly milestones, Portal-featured, or has weekly challenges. Counts are live and respect the search box; a filter hides empty sections and scrolls to the first match.
 - Xûr: schedule-based (Fri 17:00 UTC → Tue 17:00 UTC). His Strange Coin shop is in vendor data all week, so presence in the data doesn't mean he's arrived.
 - Wishlists (DIM format) from `PRESETS` in `index.html`: Community (voltron), Aegis Endgame PvE, Monument PvE/PvP, optional trash list. Footer roll counts = lines starting with `dimwishlist:`.
+
+## Shaders (shaders.html)
+
+- Nav: every page's header has `Shaders` after `Vendors & Xûr`; Home has a Shaders card in Jump to. Same header, stream panel, auth banner and `stream.js` hooks as Today (`PAGE = 'shaders'`). OAuth `returnTo` = `shaders.html`.
+- `loadManifest()` downloads `DestinyInventoryItemLiteDefinition` once and fills both `manifestArmor` (shared item names for the Activity stream) and `manifestShaders` (`{version, v: 1, list}`) when either is missing. Bump `v` if the row shape changes.
+- A shader = lite item with `itemCategoryHashes` containing 41, or `itemType 19` + `itemSubType 20`, with a `collectibleHash` that exists and isn't redacted in `DestinyCollectibleDefinition`. One row per collectible, then one per name (newest `index` wins). Row: `{h, ch, n, i, wm (iconWatermark), src (sourceString), x (index), fl, tier}`. Default/dummy shaders have no collectible, so they drop out.
+- Owned: profile `components=...,800`. `readOwned()` treats a collectible as owned when `(state & 1) === 0` in `profileCollectibles` or any `characterCollectibles`. No collectible data (privacy) = status unknown with a message.
+- Signed out: full list, search, source and sort work; status chips are dimmed and badges say "Sign in to check".
+- Filters: search (name or source), status chips `All / Owned / Need to get` (`shStatus`), source select (`shSource`, `SOURCES` regex buckets on `sourceString`, plus Other), sort (`shSort`: Newest = manifest `index` desc, an approximation; Name; Owned first; Missing first). Grid renders 120 cards at a time with Show more.
+- Detail modal: big swatch with watermark, source text, category, season (`seasonHash` from the full item definition via `ent()`, then `DestinySeasonDefinition`), vendor check, Copy name. Esc or backdrop closes.
+- Vendor check: `vendors.html` writes localStorage `vendSales` `{at, vendors: [{n, due, h: [itemHash]}]}` after every vendor load. Shaders ignores vendors whose `due` has passed. No data = prompt to open the Vendors page.
 
 ## Testing
 
