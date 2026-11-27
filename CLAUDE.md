@@ -140,6 +140,13 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - Detail modal: big swatch with watermark, source text, category, season (`seasonHash` from the full item definition via `ent()`, then `DestinySeasonDefinition`), vendor check, Copy name. Esc or backdrop closes.
 - Vendor check: `vendors.html` writes localStorage `vendSales` `{at, vendors: [{n, due, h: [itemHash]}]}` after every vendor load. Shaders ignores vendors whose `due` has passed. No data = prompt to open the Vendors page.
 
+## Hosting
+
+- GitHub Pages, deployed by `.github/workflows/pages.yml` on every push to `main` (Pages `build_type=workflow`): https://vleejr-lgtm.github.io/d2-roll-check/ . The workflow copies `*.html *.css stream.js .nojekyll` into `_site` (no .md or .ps1) and writes `_site/config.js` from repo secrets `BUNGIE_API_KEY` and `BUNGIE_CLIENT_ID` (format-checked, fails the deploy if missing).
+- `config.js` sets `window.D2RC_CONFIG = { apiKey, clientId }`. Every page loads it in `<head>` (`onerror` removes the tag, so a missing file on localhost is harmless). `SHARED_APP` is true when both values are present; then `ls.get('apiKey' | 'clientId')` returns the config values and ignores localStorage, Settings hides `#keyFields` / `#keyHelp` and shows `#sharedApp`, and Save doesn't write the key fields.
+- `config.js` is in `.gitignore`. Never commit it, and never put keys in any other file. Locally (no config.js) Settings works as before with your own localhost Bungie app.
+- Each address needs its own Bungie app (one Origin + one Redirect URL per app). localStorage is per origin, so tags and notes don't carry between localhost and the hosted site.
+
 ## Testing
 
 - Playwright scripts with mocked Bungie responses (`page.route('**/*')`, Chromium with `--disable-web-security`, pages opened from `file://`).

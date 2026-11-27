@@ -16,7 +16,28 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
 | start-server.ps1 | Old http://localhost:8000 server. Works for scanning only, no sign-in |
 
-## One time setup
+## Use it online
+
+The app is hosted on GitHub Pages: **https://vleejr-lgtm.github.io/d2-roll-check/**. Friends open the link and click **Sign in with Bungie** with their own account. There is nothing to set up on their side.
+
+How it works: the site uses one shared Bungie app. Its API key and OAuth client_id are stored as GitHub repository secrets, and the deploy workflow (`.github/workflows/pages.yml`) writes them into `config.js` on the live site only. They are never committed. On the hosted site, Settings hides the key fields and only shows the god roll lists.
+
+One time setup (repo owner):
+
+1. Create a Bungie app at bungie.net/en/Application for the hosted site:
+   * OAuth Client Type: **Public**
+   * Redirect URL: `https://vleejr-lgtm.github.io/d2-roll-check/`
+   * Origin Header: `https://vleejr-lgtm.github.io`
+   * Scope: the same three as below
+2. Save the key and client_id as repo secrets (`gh secret set BUNGIE_API_KEY` and `gh secret set BUNGIE_CLIENT_ID`, each prompts for the value).
+3. Switch Pages to deploy from the workflow: `gh api -X PUT repos/vleejr-lgtm/d2-roll-check/pages -f build_type=workflow`.
+4. Every merge to `main` redeploys. To change the key, update the secret and re-run the workflow (`gh workflow run "Deploy site"`).
+
+The key can still be read from the live site in a browser, which is how every Bungie web app works. It only works from the app's Origin, and nobody can touch an account without signing in with it.
+
+Tags, notes and sign-in are saved per browser, so each friend's tags stay their own.
+
+## One time setup (run it on your PC)
 
 1. Bungie app (bungie.net/en/Application, open your D2 Roll Check Local app):
    * OAuth Client Type: **Public**

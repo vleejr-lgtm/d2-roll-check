@@ -1,0 +1,49 @@
+# Deploys the site to GitHub Pages on every push to main.
+# The shared Bungie app's API key and OAuth client_id come from repository secrets
+# (BUNGIE_API_KEY, BUNGIE_CLIENT_ID) and are written to config.js in the deployed site only.
+# They are never committed. Anyone can still read them from the live site in the browser:
+# that's normal for Bungie web apps, and the key only works from the app's Origin.
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build site folder with config.js
+        env:
+          BUNGIE_API_KEY: ${{ secrets.BUNGIE_API_KEY }}
+          BUNGIE_CLIENT_ID: ${{ secrets.BUNGIE_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$BUNGIE_API_KEY" =~ ^[A-Za-z0-9]{16,64}$ ]]; then echo "BUNGIE_API_KEY secret missing or malformed"; exit 1; fi
+          if [[ ! "$BUNGIE_CLIENT_ID" =~ ^[0-9]{2,12}$ ]]; then echo "BUNGIE_CLIENT_ID secret missing or malformed"; exit 1; fi
+          mkdir -p _site
+          cp *.html *.css stream.js .nojekyll _site/
+          printf 'window.D2RC_CONFIG = { apiKey: "%s", clientId: "%s" };\n' "$BUNGIE_API_KEY" "$BUNGIE_CLIENT_ID" > _site/config.js
+          ls -la _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
