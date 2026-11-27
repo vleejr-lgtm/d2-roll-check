@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check · Armor triage</title>
+<style>
+  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+    --keep:#3fb37f; --trash:#d9534f; --legacy:#c98a2e; --review:#4aa3e8; --exotic:#ceae33; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:17px;margin:0;letter-spacing:.04em;text-transform:uppercase}
+  .tabs{display:flex;gap:4px;margin-left:12px}
+  .tab{background:none;border:1px solid transparent;color:var(--dim);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit;text-decoration:none}
+  .tab.active{color:var(--text);border-color:var(--line);background:var(--panel2)}
+  .spacer{flex:1}
+  main{padding:18px 22px 20px;max-width:1500px;margin:0 auto}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;font:inherit}
+  button.primary{background:#2f6fb0;border:0;color:#fff;padding:8px 16px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}
+  button.primary:disabled{opacity:.5}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--dim);padding:7px 12px;border-radius:6px;font:inherit;cursor:pointer}
+  button.ghost:hover{color:var(--text)}
+  #status{color:var(--dim);font-size:13px;min-height:20px;margin-bottom:10px;white-space:pre-line}
+  #status.err{color:var(--trash)}
+  .dim-lbl{color:var(--dim);font-size:13px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+  .panel h3{margin:0 0 8px;font-size:14px}
+  .rules{display:flex;flex-wrap:wrap;gap:6px 18px}
+  .rules label{font-size:13px;display:flex;gap:6px;align-items:center}
+  .help{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--panel);color:var(--dim);padding:5px 11px;border-radius:999px;cursor:pointer;font-size:13px}
+  .chip.on{color:var(--text);border-color:var(--text)} .chip b{margin-left:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+  .card{position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--dim);border-radius:8px;padding:12px 12px 12px 34px;display:flex;gap:12px}
+  .card.keep{border-left-color:var(--keep)} .card.trash{border-left-color:var(--trash)}
+  .card.legacy{border-left-color:var(--legacy)} .card.review{border-left-color:var(--review)}
+  .card.picked{outline:2px solid #2fd3c8;outline-offset:-1px}
+  .pickbox{position:absolute;left:9px;top:14px} .pickbox input{width:17px;height:17px;accent-color:#2fd3c8;cursor:pointer}
+  .card img.icon{width:52px;height:52px;border-radius:4px;flex:none;background:#000}
+  .card .body{flex:1;min-width:0}
+  .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .name{font-weight:650;font-size:15px}
+  .meta{color:var(--dim);font-size:12px}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .badge.keep{background:var(--keep);color:#04140b} .badge.trash{background:var(--trash);color:#fff}
+  .badge.legacy{background:var(--legacy);color:#1a1000} .badge.review{background:var(--review);color:#041320}
+  .pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .pill{font-size:11.5px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);color:#c9d1db}
+  .pill.tier5{border-color:#e8b84a;color:#e8b84a} .pill.tier4{border-color:#4aa3e8;color:#4aa3e8} .pill.exotic{border-color:var(--exotic);color:var(--exotic)}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+  .st{font-size:11px;color:var(--dim);text-align:center}
+  .st b{display:block;font-size:13px;color:var(--text)} .st.arch b{color:#e8b84a} .st.tert b{color:#9fc6ef}
+  .st i{display:block;height:3px;background:#2a3038;border-radius:2px;margin-top:2px;overflow:hidden} .st i span{display:block;height:100%;background:#c9d1db}
+  .reason{font-size:12.5px;margin-top:6px}
+  .mynote{font-size:12.5px;color:#e6d9a8;margin-top:4px}
+  .actions{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .actions button{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:3px 8px;border-radius:4px;cursor:pointer}
+  .actions button:hover{color:var(--text)} .actions button:disabled{opacity:.45;cursor:default}
+  .tagboxes{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}
+  .tagbox{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--dim);cursor:pointer}
+  .tagbox input{width:13px;height:13px;margin:0}
+  .tagbox.on{color:var(--text)}
+  .tagbox.on.t-favorite{border-color:#e8b84a;color:#e8b84a} .tagbox.on.t-keep{border-color:#3fb37f;color:#3fb37f}
+  .tagbox.on.t-infuse{border-color:#4aa3e8;color:#4aa3e8} .tagbox.on.t-junk{border-color:#d9534f;color:#d9534f} .tagbox.on.t-archive{border-color:#8b95a5;color:#c9d1db}
+  .tagapply{font:inherit;font-size:12px;padding:3px 10px;border-radius:4px;border:1px solid var(--line);background:none;color:var(--dim);cursor:pointer}
+  .tagapply:disabled{opacity:.4;cursor:default}
+  .tagapply.ready:not(:disabled){background:#2f6fb0;border-color:#2f6fb0;color:#fff;font-weight:600}
+  body:not(.authed) .needauth{display:none!important}
+  .bulkbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:calc(100% - 32px);
+    background:#161b22;border:1px solid #2fd3c8;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px #000c}
+  .bulkbar .sep{width:1px;height:22px;background:var(--line)}
+  .hidden{display:none!important}
+  .pill.new{border-color:#2b6b50;color:#3fb37f} .pill.old{border-color:#7a5a1a;color:#e0a948}
+  .card{cursor:pointer} .card:hover{border-color:#3a4656}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .dpanel{position:relative;width:min(1200px,100%);background:#12161c;border:1px solid var(--line);border-radius:10px;padding:0 0 18px}
+  .dhead{position:relative;display:flex;gap:14px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);border-radius:10px 10px 0 0;background:linear-gradient(90deg,#12161cee 40%,#12161c99),var(--shot) center/cover}
+  .dicon{width:64px;height:64px;border:2px solid #e8b84a;border-radius:4px}
+  .dname{font-size:22px;font-weight:700;display:flex;gap:10px;align-items:center}
+  .dclose{position:absolute;right:16px;top:16px}
+  .dgrid{display:grid;grid-template-columns:280px 1fr 250px;gap:22px;padding:18px 20px}
+  .dgrid h4{margin:0 0 10px;font-size:15px} .dgrid h4 small{color:var(--dim);font-weight:400;font-size:12px}
+  .srow{margin-bottom:10px} .shead{display:flex;justify-content:space-between;font-size:13.5px;color:#c9d1db}
+  .shead .a{color:#e8b84a} .shead .t{color:#9fc6ef}
+  .sbar{position:relative;height:6px;background:#2a3038;border-radius:3px;margin-top:4px;overflow:hidden}
+  .sbar i{position:absolute;left:0;top:0;bottom:0;background:#e6e9ee} .sbar i.mod{background:#4aa3e8;opacity:.6}
+  table.cmp{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.cmp th,table.cmp td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center}
+  table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+  table.cmp tr.me{background:#1c2a36} table.cmp tr{cursor:pointer} table.cmp tr:hover td{background:#18202a}
+  .dside{display:flex;flex-direction:column;gap:8px} .dside button{width:100%}
+  .dside textarea{width:100%;min-height:80px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit;font-size:13px;resize:vertical}
+  .verdictbox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px}
+  @media (max-width:1000px){ .dgrid{grid-template-columns:1fr} }
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}
+  .frow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .flbl{width:74px;flex:none;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .chip.cls-0.on{border-color:#d9534f;color:#ff8a85} .chip.cls-1.on{border-color:#4aa3e8;color:#8cc8ff} .chip.cls-2.on{border-color:#e8b84a;color:#f0d08a}
+  .setpick{position:relative;flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 30px 4px 6px;min-height:38px}
+  .setpick:focus-within{border-color:#2fd3c8}
+  .setpick input{border:0;background:none;padding:4px;flex:1;min-width:120px;outline:none}
+  .setchips{display:flex;flex-wrap:wrap;gap:4px}
+  .setchip{background:#173a3a;color:#5fe3d8;border-radius:4px;padding:2px 8px;font-size:12.5px;display:inline-flex;gap:6px;align-items:center}
+  .setchip b{cursor:pointer;font-weight:400}
+  .sx{position:absolute;right:6px;top:6px;background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer}
+  .setlist{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:300px;overflow:auto;background:#161b22;border:1px solid var(--line);border-radius:8px;z-index:30;padding:6px;box-shadow:0 10px 24px #000a}
+  .setopt{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13.5px;display:flex;justify-content:space-between}
+  .setopt:hover{background:#222a35} .setopt.on{background:#173a3a;color:#5fe3d8} .setopt small{color:var(--dim)}
+  .cov{border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
+  .cov th,.cov td{padding:5px 8px;border:1px solid var(--line);text-align:center}
+  .cov th{color:var(--dim);font-weight:500} .cov td:first-child{text-align:left;color:#c9d1db}
+  .cov td.t5{background:#3a2f10;color:#e8b84a;font-weight:700} .cov td.t4{background:#12304a;color:#8cc8ff}
+  .cov td.tlow{background:#1e2228;color:var(--dim)} .cov td.none{color:#6b4d4d}
+  .cov td[data-f]{cursor:pointer} .cov td[data-f]:hover{outline:1px solid #2fd3c8}
+  .getcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:10px}
+  .getbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+  .getbox h4{margin:0 0 6px;font-size:13.5px} .getbox ul{margin:0;padding-left:18px} .getbox li{margin:3px 0}
+  @media (max-width:1000px){ .fgrid{grid-template-columns:1fr} }
+  .energy{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--dim);margin-bottom:8px}
+  .ebar{display:flex;gap:3px} .ebar i{width:16px;height:8px;border:1px solid #556;border-radius:2px} .ebar i.on{background:#e6e9ee;border-color:#e6e9ee}
+  .modslots{display:flex;flex-wrap:wrap;gap:6px}
+  .modslot{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px 5px 5px;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer;text-align:left;max-width:240px}
+  .modslot img{width:34px;height:34px;border-radius:3px;flex:none} .modslot small{display:block;color:var(--dim);font-size:11px}
+  .modslot.open{border-color:#2fd3c8} .modslot.new{border-color:#e8b84a;box-shadow:0 0 0 1px #e8b84a55}
+  .modchanges{font-size:12.5px;color:#f0c060;margin-top:8px}
+  .modpicker{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#0f1318}
+  .modpicker input{width:100%;margin-bottom:8px}
+  .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;max-height:320px;overflow:auto}
+  .mopt{display:flex;gap:8px;align-items:flex-start;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}
+  .mopt:hover{border-color:#3a4656} .mopt.on{border-color:#2fd3c8}
+  .mopt img{width:32px;height:32px;border-radius:3px;flex:none} .mopt small{display:block;color:var(--dim)} .mopt em{display:block;color:#9aa4b2;font-style:normal;font-size:11.5px;margin-top:2px}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .eqbadge{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;color:#ffd27a;background:#3a2a10;border:1px solid #6b4d16;border-radius:4px;padding:1px 8px}
+  .actions button.uneq{color:#ffd27a;border-color:#6b4d16}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  .reason.dismantle{color:#ffb4b0}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);background:var(--keep);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+  .toast.show{opacity:1}
+  .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  #charSel{padding:6px 8px;font-size:13px}
+  .summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
+  .sum{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+  .sum b{font-size:18px;display:block}
+  .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
+  .sb-new{background:#2fd3c8;color:#04201e}
+</style>
+</head>
+<body>
+<header>
+  <h1>D2 Roll Check</h1>
+  <div class="tabs">
+    <a class="tab" href="index.html">Weapons</a>
+    <a class="tab active" href="armor.html">Armor triage</a>
+    <a class="tab" href="vendors.html">Vendors &amp; Xûr</a>
+    <a class="tab" href="https://d2armorpicker.com/" target="_blank" rel="noopener" title="Build loadouts from the armor you keep">D2ArmorPicker ↗</a>
+  </div>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull armor to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <a class="ghost tab" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+</header>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <div id="status"></div>
+  <div class="bar">
+    <input id="bungieName" placeholder="BungieName#1234 (or Sign in)" style="min-width:260px">
+    <button class="primary" id="btnScan">Scan my armor</button>
+      <button class="ghost" id="btnRefresh2" title="Re-read your inventory from Bungie (keeps your filters)">↻ Refresh</button>
+      <label class="dim-lbl" title="Re-reads your inventory when you switch back to this tab, and every 60 seconds while it's open"><input type="checkbox" id="autoRefresh"> Auto-refresh</label>
+      <span class="dim-lbl" id="lastScan"></span>
+  </div>
+
+  <div class="panel">
+    <h3>Trash rules</h3>
+    <div class="rules">
+      <label><input type="checkbox" id="rDupes" checked> Duplicates: same class, slot, set, archetype and tertiary stat. Keep the best, trash the rest</label>
+      <label><input type="checkbox" id="rOutclassed" checked> Tier 1 and 2 pieces when you own a Tier 4+ with the same class, slot and archetype</label>
+      <label><input type="checkbox" id="rLegacy"> Old armor (pre Edge of Fate, no archetype): mark as Trash instead of Get newer</label>
+      <label><input type="checkbox" id="rExoticDupes" checked> Duplicate exotics: keep the best copy of each</label>
+      <label><input type="checkbox" id="rLocked" checked> Never trash locked pieces</label>
+    </div>
+    <div class="help">Stats are compared without mods, masterwork or tuning, so two pieces are judged on their real roll. "Best" means higher tier, then higher total stats, then higher power. Exotic class items are marked Review because their value is the perk pair, not stats.</div>
+  </div>
+
+  <div id="summary" class="summary hidden"></div>
+
+  <div class="panel hidden" id="getPanel">
+    <div class="bar" style="margin:0 0 6px"><h3 style="margin:0">Gear to get</h3><div class="chips" id="getTabs"></div></div>
+    <div id="getBody"></div>
+  </div>
+
+  <div class="panel hidden" id="toolbar">
+    <div class="fgrid">
+      <div class="frow"><span class="flbl">Class</span><div class="chips" id="fCls"></div></div>
+      <div class="frow"><span class="flbl">Slot</span><div class="chips" id="fSlot"></div></div>
+      <div class="frow"><span class="flbl">Rarity</span><div class="chips" id="fRar"></div></div>
+      <div class="frow"><span class="flbl">Set</span><div class="setpick" id="setPick"><div class="setchips" id="setChips"></div><input id="setInput" placeholder="Type or pick sets..." autocomplete="off"><button class="sx" id="setClear" title="Clear sets">×</button><div class="setlist hidden" id="setList"></div></div></div>
+      <div class="frow"><span class="flbl">Type</span><div class="chips" id="fFeat"></div></div>
+      <div class="frow"><span class="flbl">Archetype</span><div class="chips" id="fArch"></div></div>
+      <div class="frow"><span class="flbl">Verdict</span><div class="chips" id="vChips"></div></div>
+      <div class="frow"><span class="flbl">Search</span><input id="filterText" placeholder="name, archetype, set, stat" style="flex:1">
+        <select id="sort"><option value="verdict">Sort: verdict</option><option value="group">Sort: class, slot, archetype</option><option value="total">Sort: total stats</option><option value="tier">Sort: tier</option><option value="set">Sort: set</option></select>
+        <button class="ghost" id="fReset">Reset filters</button></div>
+    </div>
+    <div id="fCount" class="dim-lbl" style="margin:8px 0 10px"></div>
+    <div class="bar" style="margin:0">
+      <button class="primary" id="btnCsv">Export DIM tags (CSV)</button>
+      <button class="ghost" id="btnSearchTrash">Copy DIM search: trash armor</button>
+      <button class="ghost" id="btnSearchKeep">Copy DIM search: keepers</button>
+      <button class="primary needauth" id="btnPullTrash" title="Moves trash for the selected character's class to that character, up to 9 per slot, so you can dismantle it in game">⬇ Pull trash to character</button>
+      <button class="primary needauth" id="btnLockKeep">🔒 Lock all keepers</button>
+      <label class="dim-lbl"><input type="checkbox" id="tagLockSync"> Apply also locks favorite/keep, unlocks junk</label>
+    </div>
+    <div class="help">Suggested tags: keepers get no tag (or what you set), trash gets <b>junk</b>. Tick tags on a card and click Apply to change them. To send tags to DIM: Export, then in DIM Settings → Spreadsheets → Import tags/notes from CSV. After clearing trash, open <a href="https://d2armorpicker.com/" target="_blank" rel="noopener" style="color:#9fc6ef">D2ArmorPicker</a> to build loadouts from what's left.</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
+
+<div id="detail" class="modal hidden"><div class="dpanel" id="dbody"></div></div>
+<div id="bulkbar" class="bulkbar hidden">
+  <b id="bulkCount">0 selected</b>
+  <span class="dim-lbl">Tag:</span><span id="bulkTags" class="tagboxes" style="flex-basis:auto"></span>
+  <span class="sep"></span>
+  <button class="ghost needauth" id="bulkLock">🔒 Lock</button>
+  <button class="ghost needauth" id="bulkUnlock">🔓 Unlock</button>
+  <button class="ghost needauth" id="bulkPull">Pull</button>
+  <button class="ghost needauth" id="bulkVault">To vault</button>
+  <span class="sep"></span>
+  <button class="ghost" id="bulkAll">Select all shown</button>
+  <button class="ghost" id="bulkNone">Clear selection</button>
+</div>
+
+<script>
+/* ===================== shared helpers (same storage as the Weapons page) ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+function toast(msg){
+  let t = document.querySelector('.toast');
+  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+async function copyText(text, msg){ try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch { prompt('Copy this:', text); } }
+
+function idb(){ return new Promise((res, rej) => { const r = indexedDB.open('d2rollcheck', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
+async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+
+async function net(url, what, opts){
+  try { return await fetch(url, opts); }
+  catch (e){ console.error('Fetch failed for', what, url, e); throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nUsually an ad blocker, browser shield or firewall. Press F12, Console tab, for the exact reason.'); }
+}
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid(), a = auth.get();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.items.length) render(); }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); updateAuthUi(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443/armor.html', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'armor.html'); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+async function bungie(path, body, plainBody){
+  const key = ls.get('apiKey');
+  if (!key) throw new Error('Add your Bungie API key in Settings on the Weapons page first.');
+  const headers = { 'X-API-Key': key };
+  if (body && !plainBody) headers['Content-Type'] = 'application/json';
+  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
+  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', { method: body ? 'POST' : 'GET', headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+  let j; try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
+  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
+  return j.Response;
+}
+async function bungieAction(path, body){
+  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
+  try { return await bungie(path, body); } catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+}
+const entMem = new Map();
+async function ent(type, hash){
+  const k = type + ':' + hash;
+  if (entMem.has(k)) return entMem.get(k);
+  const p = (async () => {
+    const c = await cacheGet('ent:' + k);
+    if (c && c.v === state.manVer) return c.d;
+    let d, lastErr;
+    for (const wait of [0, 1500, 4000]){
+      if (wait) await sleep(wait);
+      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
+      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
+    }
+    if (lastErr) throw lastErr;
+    await cacheSet('ent:' + k, { v: state.manVer, d });
+    return d;
+  })();
+  entMem.set(k, p);
+  try { return await p; } catch (e){ entMem.delete(k); throw e; }
+}
+async function entMany(type, hashes){
+  const out = {}, list = [...new Set(hashes.filter(Boolean))];
+  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
+  return out;
+}
+
+/* ===================== armor data ===================== */
+const STATS = ['Weapons', 'Health', 'Class', 'Grenade', 'Super', 'Melee'];
+const SHORT = { Weapons: 'Wpn', Health: 'Hlth', Class: 'Class', Grenade: 'Gren', Super: 'Super', Melee: 'Melee' };
+// archetype -> [primary, secondary]
+const ARCH = { Siegebreaker: ['Health', 'Grenade'], Bulwark: ['Health', 'Class'], Brawler: ['Melee', 'Health'], Skirmisher: ['Melee', 'Weapons'],
+  Grenadier: ['Grenade', 'Super'], Demolitionist: ['Grenade', 'Class'], Colossus: ['Super', 'Health'], Paragon: ['Super', 'Melee'],
+  Reaver: ['Class', 'Melee'], Specialist: ['Class', 'Weapons'], Gunner: ['Weapons', 'Grenade'], Powerhouse: ['Weapons', 'Super'] };
+const SLOT = { 3448274439: 'Helmet', 3551918588: 'Arms', 14239492: 'Chest', 20886954: 'Legs', 1585787867: 'Class item' };
+const SLOT_ORDER = ['Helmet', 'Arms', 'Chest', 'Legs', 'Class item'];
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+const state = { defs: null, sets: {}, manVer: '', items: [], chars: [], acct: null, picked: new Set(), vFilter: new Set(['keep', 'trash', 'legacy', 'review']), cFilter: '' };
+const nameOf = h => (state.defs[h] && state.defs[h].n) || '';
+
+async function loadDefs(){
+  if (state.defs) return;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version; updateFooter();
+  const cached = await cacheGet('manifestArmor');
+  if (cached && cached.version === man.version){ state.defs = cached.data; state.sets = cached.sets || {}; return; }
+  const paths = man.jsonWorldComponentContentPaths.en;
+  setStatus('Downloading item definitions (first run only, about 30 to 60 MB)...');
+  const r = await net('https://www.bungie.net' + paths.DestinyInventoryItemLiteDefinition, 'the Bungie item definitions file');
+  const raw = await r.json(), data = {};
+  for (const h in raw){
+    const d = raw[h], dp = d.displayProperties || {}, inv = d.inventory || {};
+    data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: inv.tierType || 0, b: inv.bucketTypeHash || 0, c: d.classType };
+  }
+  // armor set bonuses (Armor 3.0). Optional: older manifests don't have this table.
+  const sets = {};
+  if (paths.DestinyEquipableItemSetDefinition){
+    try {
+      setStatus('Downloading armor set definitions...');
+      const sr = await net('https://www.bungie.net' + paths.DestinyEquipableItemSetDefinition, 'armor set definitions');
+      const sraw = await sr.json();
+      for (const h in sraw){ const sd = sraw[h]; for (const ih of (sd.setItems || [])) sets[ih] = (sd.displayProperties || {}).name || ''; }
+    } catch (e){ console.warn('Set definitions unavailable', e.message); }
+  }
+  await cacheSet('manifestArmor', { version: man.version, data, sets });
+  state.defs = data; state.sets = sets;
+}
+
+async function findAccount(input){
+  const m = /^(.+)#(\d{1,4})$/.exec(input);
+  if (!m) throw new Error('Enter your full Bungie name, like Guardian#1234, or Sign in with Bungie.');
+  const body = { displayName: m[1], displayNameCode: parseInt(m[2], 10) };
+  for (const a of [() => bungie('/Destiny2/SearchDestinyPlayerByBungieName/-1/', body), () => bungie('/Destiny2/SearchDestinyPlayerByBungieName/-1/', body, true)]){
+    try { const r = await a(); if (r && r.length) return r; } catch (e){ console.warn(e.message); }
+  }
+  throw new Error('Could not find ' + input + '. Try Sign in with Bungie instead.');
+}
+
+$('bungieName').value = ls.get('bungieName') || '';
+$('btnScan').onclick = scan;
+async function scan(opts = {}){
+  if (state.scanning) return;
+  const silent = !!opts.silent, prevStatus = $('status').textContent;
+  const prevIds = new Set(state.items.map(i => i.id));
+  const full = $('bungieName').value.trim();
+  if (!full && !auth.valid()){ setStatus('Enter your Bungie name or Sign in with Bungie.', true); return; }
+  $('btnScan').disabled = true; state.scanning = true;
+  try {
+    await loadDefs();
+    let acct;
+    if (auth.valid()){
+      setStatus('Loading your signed-in account...');
+      const me = await bungie('/User/GetMembershipsForCurrentUser/');
+      const ms = me.destinyMemberships || [];
+      acct = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
+    } else {
+      ls.set('bungieName', full);
+      acct = ls.get('acct:' + full) ? JSON.parse(ls.get('acct:' + full)) : null;
+      if (!acct){ const found = await findAccount(full); acct = found.find(a => a.crossSaveOverride && a.membershipType === a.crossSaveOverride) || found[0]; ls.set('acct:' + full, JSON.stringify({ membershipType: acct.membershipType, membershipId: acct.membershipId })); }
+    }
+    if (!acct) throw new Error('No Destiny account found.');
+    state.acct = { membershipType: acct.membershipType, membershipId: acct.membershipId };
+    setStatus('Loading inventory...');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,304,305,310,1200');
+    state.bungieTime = p.responseMintedTimestamp ? new Date(p.responseMintedTimestamp).getTime() : 0;
+    await buildArmor(p);
+    triage();
+    trackDrops(p);
+    // what disappeared since the last scan (dismantled, or moved off this account view)
+    const nowIds = new Set(state.items.map(i => i.id));
+    const gone = prevIds.size ? [...prevIds].filter(id => !nowIds.has(id)) : [];
+    gone.forEach(id => state.picked.delete(id));
+    state.lastScan = Date.now();
+    tickRefresh();
+    if (gone.length){ const m = gone.length + (gone.length === 1 ? ' piece' : ' pieces') + ' gone since last check (dismantled or deleted).'; toast(m); setStatus(m); }
+    else if (silent) setStatus(prevStatus);
+  } catch (e){ setStatus(e.message, true); }
+  finally { $('btnScan').disabled = false; state.scanning = false; }
+}
+
+async function buildArmor(p){
+  const chars = (p.characters && p.characters.data) || {};
+  state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed)).map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light }));
+  fillCharSel(p);
+  updateAuthUi();
+  if (!p.profileInventory || !p.profileInventory.data) setStatus('Your vault is private, so only character armor is shown. On Bungie.net: Settings, Privacy, "Show my non-equipped Inventory", or Sign in with Bungie.', true);
+  const ic = p.itemComponents || {};
+  const sockets = (ic.sockets && ic.sockets.data) || {}, stats = (ic.stats && ic.stats.data) || {}, insts = (ic.instances && ic.instances.data) || {};
+  const reusable = (ic.reusablePlugs && ic.reusablePlugs.data) || {};
+  // mods you've unlocked: plug set hash -> set of plug hashes you can insert
+  state.plugSets = {};
+  const addSets = plugs => { for (const k in (plugs || {})){ const set = state.plugSets[k] || (state.plugSets[k] = new Set()); for (const pl of plugs[k]) if (pl.canInsert !== false && pl.enabled !== false) set.add(pl.plugItemHash); } };
+  addSets(p.profilePlugSets && p.profilePlugSets.data && p.profilePlugSets.data.plugs);
+  for (const cid in ((p.characterPlugSets && p.characterPlugSets.data) || {})) addSets(p.characterPlugSets.data[cid].plugs);
+  const raw = [];
+  const add = (items, charId, equipped) => {
+    for (const it of items || []){
+      const d = state.defs[it.itemHash];
+      if (!d || d.it !== 2 || !it.itemInstanceId || !SLOT[d.b]) continue;   // itemType 2 = armor
+      raw.push({ it, d, charId, equipped });
+    }
+  };
+  if (p.profileInventory && p.profileInventory.data) add(p.profileInventory.data.items, null, false);
+  for (const cid in ((p.characterInventories && p.characterInventories.data) || {})) add(p.characterInventories.data[cid].items, cid, false);
+  for (const cid in ((p.characterEquipment && p.characterEquipment.data) || {})) add(p.characterEquipment.data[cid].items, cid, true);
+
+  // Mods, masterwork and tuning change stats; fetch their stat values so we can compare raw rolls.
+  const modHashes = new Set(), statHashes = new Set();
+  for (const r of raw){
+    for (const s of ((sockets[r.it.itemInstanceId] || {}).sockets || [])) if (s.plugHash && /mod|masterwork|tuning/i.test(((state.defs[s.plugHash] || {}).t) || '')) modHashes.add(s.plugHash);
+    for (const k in (((stats[r.it.itemInstanceId] || {}).stats) || {})) statHashes.add(+k);
+  }
+  setStatus('Reading stat values for ' + modHashes.size + ' mods and ' + statHashes.size + ' stats (cached after the first scan)...');
+  const mods = await entMany('DestinyInventoryItemDefinition', [...modHashes]);
+  state.modDefs = mods;
+  const statDefs = await entMany('DestinyStatDefinition', [...statHashes]);
+  const statName = h => ((statDefs[h] || {}).displayProperties || {}).name || '';
+  state.statDefsById = {}; for (const h in statDefs) state.statDefsById[h] = statName(+h);
+
+  state.items = raw.map(({ it, d, charId, equipped }) => {
+    const id = it.itemInstanceId, inst = insts[id] || {};
+    const sk = (sockets[id] || {}).sockets || [];
+    const base = {}, cur = {}; STATS.forEach(s => { base[s] = 0; cur[s] = 0; });
+    for (const k in ((stats[id] || {}).stats || {})){ const n = statName(+k); if (n in base){ base[n] += stats[id].stats[k].value; cur[n] += stats[id].stats[k].value; } }
+    for (const s of sk){ const m = mods[s.plugHash]; if (!m) continue; for (const iv of (m.investmentStats || [])){ if (iv.isConditionallyActive) continue; const n = statName(iv.statTypeHash); if (n in base) base[n] -= iv.value; } }
+    STATS.forEach(s => base[s] = Math.max(0, base[s]));
+    // archetype: from its plug name if present, else from the two highest stats
+    let arch = '';
+    for (const s of sk){ const n = nameOf(s.plugHash); if (ARCH[n]){ arch = n; break; } }
+    const sorted = STATS.slice().sort((a, b) => base[b] - base[a]);
+    // only guess an archetype for Armor 3.0 pieces (they report a gear tier); legacy armor has neither
+    if (!arch && inst.gearTier && base[sorted[0]] > 0 && base[sorted[1]] > 0){
+      arch = Object.keys(ARCH).find(a => ARCH[a][0] === sorted[0] && ARCH[a][1] === sorted[1]) || '';
+    }
+    const tert = arch ? (STATS.filter(s => !ARCH[arch].includes(s)).sort((a, b) => base[b] - base[a])[0] || '') : '';
+    // Armor 3.0 rolls stats only in its primary, secondary and tertiary stat. Anything in the other three
+    // comes from masterwork (+5 each) or tuning mods, so the raw roll there is 0.
+    if (arch) for (const s of STATS) if (!ARCH[arch].includes(s) && s !== tert) base[s] = 0;
+    const total = STATS.reduce((a, s) => a + base[s], 0);
+    let tier = inst.gearTier || 0;
+    if (!tier && arch) tier = total >= 75 ? 5 : total >= 70 ? 4 : total >= 64 ? 3 : total >= 58 ? 2 : 1;
+    const legacy = !arch && !inst.gearTier;   // pre Edge of Fate (Armor 2.0), exotics included
+    const where = charId ? (CLASS[(chars[charId] || {}).classType] || 'Character') + (equipped ? ' (equipped)' : '') : 'Vault';
+    return { id, hash: it.itemHash, name: d.n, icon: d.i, cls: d.c, clsName: CLASS[d.c] || 'Any class', slot: SLOT[d.b], bucket: d.b, exotic: d.tier === 6,
+      set: state.sets[it.itemHash] || '', arch, tert: tert && base[tert] > 0 ? tert : '', base, cur, total, tier, legacy,
+      power: inst.primaryStat ? inst.primaryStat.value : 0, locked: !!(it.state & 1), charId, equipped,
+      loc: it.bucketHash === PM_BUCKET ? 'Postmaster (' + where + ')' : where, postmaster: it.bucketHash === PM_BUCKET,
+      sockets: sk, reusable: (reusable[id] || {}).plugs || {}, energyCap: inst.energy ? inst.energy.energyCapacity : 0 };
+  });
+}
+
+/* ===================== triage ===================== */
+const RULES = ['rDupes', 'rOutclassed', 'rLegacy', 'rExoticDupes', 'rLocked'];
+RULES.forEach(id => { const v = ls.get('armorRule:' + id); if (v !== null) $(id).checked = v === '1'; $(id).onchange = () => { ls.set('armorRule:' + id, $(id).checked ? '1' : '0'); if (state.items.length) triage(); }; });
+// best first: tier, total, then the copy you've invested in (masterwork/mods), then locked, then power
+const invested = i => STATS.reduce((a, s) => a + i.cur[s] - i.base[s], 0) > 0;
+const better = (a, b) => (b.tier - a.tier) || (b.total - a.total) || (invested(b) - invested(a)) || (b.locked - a.locked) || (b.power - a.power);
+const whereIs = x => x.loc.replace(' (equipped)', ', equipped') + (x.power ? ' (Power ' + x.power + ')' : '');
+const rollDesc = x => (x.tier ? 'Tier ' + x.tier + ' ' : '') + (x.arch || '') + (x.tert ? ' (+' + x.tert + ')' : '');
+// why the kept copy won a tie
+function keepReason(keep, other){
+  if (invested(keep) && !invested(other)) return "it's already masterworked or modded";
+  if (keep.locked && !other.locked) return "it's locked";
+  if (keep.power > other.power) return 'it has higher power (' + keep.power + ' vs ' + other.power + ')';
+  return 'either copy works, the app just picked one';
+}
+const desc = i => (i.tier ? 'Tier ' + i.tier + ' ' : '') + (i.arch || '') + ' ' + i.slot.toLowerCase() + (i.tert ? ' (+' + i.tert + ')' : '') + (i.set ? ', ' + i.set : '');
+
+function triage(){
+  const R = {}; RULES.forEach(id => R[id] = $(id).checked);
+  for (const i of state.items){ i.v = 'keep'; i.why = ''; i.beatBy = null; }
+  const groups = new Map(), push = (k, i) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); };
+  const new30 = new Set(state.items.filter(i => !i.legacy).map(i => i.exotic ? 'x|' + i.name + '|' + i.cls : 'l|' + i.cls + '|' + i.slot));
+  for (const i of state.items){
+    i.groupKey = '';
+    if (i.legacy){
+      if (i.exotic && new30.has('x|' + i.name + '|' + i.cls)){ i.v = 'trash'; i.why = 'Old version: you already own an Armor 3.0 ' + i.name; continue; }
+      if (i.exotic && i.slot === 'Class item'){ i.v = 'legacy'; i.why = 'Old exotic class item (pre Edge of Fate). New drops are Tier 5 with an archetype. Keep only if its perk pair is one you still use.'; continue; }
+      i.v = R.rLegacy ? 'trash' : 'legacy';
+      i.why = i.exotic ? 'Old exotic (pre Edge of Fate): no archetype, tier or tuning. Get a new Tier 5 copy, then dismantle this one.'
+        : 'Old armor (pre Edge of Fate): no archetype or tier. ' + (new30.has('l|' + i.cls + '|' + i.slot) ? 'Your Armor 3.0 ' + i.slot.toLowerCase() + ' pieces beat it.' : 'You have no Armor 3.0 ' + i.slot.toLowerCase() + ' for this class yet, so keep it until you get one.');
+      continue;
+    }
+    if (i.exotic){
+      if (i.slot === 'Class item'){ i.v = 'review'; i.why = 'Exotic class item: judge it by its perk pair'; continue; }
+      i.groupKey = 'x|' + i.hash + '|' + i.cls + '|' + i.arch + '|' + i.tert;
+    } else i.groupKey = 'l|' + i.cls + '|' + i.slot + '|' + i.set + '|' + i.arch + '|' + i.tert;
+    push(i.groupKey, i);
+  }
+  for (const [k, g] of groups){
+    g.sort(better);
+    g.forEach((i, n) => {
+      i.rank = n + 1; i.groupSize = g.length;
+      if (n === 0){ i.why = g.length > 1 ? 'Keep this one. Best of ' + g.length + ' matching pieces.' : (i.exotic ? 'Keep this one. Only copy of this exotic with this archetype.' : 'Keep this one. Your only ' + desc(i).trim() + '.'); return; }
+      const isEx = k[0] === 'x', best = g[0];
+      if ((isEx && R.rExoticDupes) || (!isEx && R.rDupes)){
+        i.v = 'trash'; i.beatBy = best;
+        i.dupWhy = best.total === i.total && best.tier === i.tier
+          ? 'Exact duplicate of your ' + best.name + ' in ' + whereIs(best) + ': same ' + rollDesc(best) + ', ' + best.total + ' total. You only need one, and that copy is the keeper because ' + keepReason(best, i) + '.'
+          : 'Your ' + best.name + ' in ' + whereIs(best) + ' has the same ' + rollDesc(best) + ' roll type but better stats (' + best.total + ' vs ' + i.total + ' total), so this copy adds nothing.';
+        i.why = 'Dismantle this one. ' + i.dupWhy;
+      }
+      else i.why = 'Copy ' + (n + 1) + ' of ' + g.length;
+    });
+  }
+  if (R.rOutclassed){
+    const bestHigh = new Map();
+    for (const i of state.items) if (!i.exotic && !i.legacy && i.tier >= 4){ const k = i.cls + '|' + i.slot + '|' + i.arch; const b = bestHigh.get(k); if (!b || better(i, b) < 0) bestHigh.set(k, i); }
+    for (const i of state.items){
+      if (i.exotic || i.legacy || i.tier > 2 || i.v === 'trash') continue;
+      const b = bestHigh.get(i.cls + '|' + i.slot + '|' + i.arch);
+      if (b){ i.v = 'trash'; i.beatBy = b; i.dupWhy = 'You have a ' + desc(b).trim() + ' in ' + whereIs(b) + ' that beats it. Tier 1 and 2 pieces are not worth keeping once you own a Tier 4 or 5 with the same archetype.'; i.why = 'Dismantle this one. ' + i.dupWhy; }
+    }
+  }
+  if (R.rLocked) for (const i of state.items) if (i.v === 'trash' && i.locked){ i.v = 'keep'; i.why = 'Kept only because it is locked. ' + (i.dupWhy || '') + ' Unlock it if you want it cleared.'; }
+  // tell the keeper which copies are marked trash because of it
+  for (const k of state.items){
+    const extra = state.items.filter(x => x.beatBy === k && x.v === 'trash');
+    if (extra.length && k.v === 'keep') k.why = 'Keep this one. You also have ' + extra.length + ' ' + (extra.length === 1 ? 'copy' : 'copies') + ' marked trash because of it (' + extra.slice(0, 3).map(whereIs).join('; ') + (extra.length > 3 ? '; …' : '') + ').';
+  }
+  // what you own, so the Vendors page can tell if vendor armor is an upgrade
+  try {
+    const ai = {};
+    for (const i of state.items){
+      if (i.legacy) continue;
+      const k = i.exotic ? 'x|' + i.name.toLowerCase() : [i.cls, i.slot, i.arch, i.tert].join('|');
+      const a = ai[k] || (ai[k] = { n: 0, t: 0, tot: 0 }); a.n++; a.t = Math.max(a.t, i.tier); a.tot = Math.max(a.tot, i.total);
+    }
+    ls.set('armorIndex', JSON.stringify({ at: Date.now(), m: ai }));
+  } catch {}
+  renderSummary(); renderChips(); renderGet(); render();
+  const c = count();
+  setStatus('Scanned ' + state.items.length + ' armor pieces: keep ' + c.keep + ', trash ' + c.trash + (c.legacy ? ', get newer ' + c.legacy : '') + (c.review ? ', review ' + c.review : '') + '.');
+  $('toolbar').classList.remove('hidden');
+}
+const VLABEL = { keep: 'Keep', trash: 'Trash', legacy: 'Get newer', review: 'Review' };
+const count = (list = state.items) => { const c = { keep: 0, trash: 0, legacy: 0, review: 0 }; list.forEach(i => c[i.v]++); return c; };
+
+function renderSummary(){
+  const el = $('summary'); el.classList.remove('hidden');
+  el.innerHTML = [0, 1, 2].map(cl => {
+    const list = state.items.filter(i => i.cls === cl); if (!list.length) return '';
+    const c = count(list), t5 = list.filter(i => i.tier === 5).length;
+    return '<div class="sum"><b>' + CLASS[cl] + '</b>' + list.length + ' pieces · <span style="color:var(--keep)">keep ' + c.keep + '</span> · <span style="color:var(--trash)">trash ' + c.trash + '</span>' +
+      (c.legacy ? ' · <span style="color:var(--legacy)">old ' + c.legacy + '</span>' : '') + '<br><span class="dim-lbl">' + t5 + ' Tier 5 pieces</span></div>';
+  }).join('');
+}
+// ---- filter panel (empty set = everything) ----
+const F = { cls: new Set(), slot: new Set(), rar: new Set(), feat: new Set(), arch: new Set(), sets: new Set() };
+function chipGroup(el, key, opts){
+  $(el).innerHTML = opts.map(([val, label, cls]) => '<span class="chip ' + (cls || '') + (F[key].has(val) ? ' on' : '') + '" data-val="' + esc(val) + '">' + label + '</span>').join('');
+  $(el).querySelectorAll('.chip').forEach(ch => ch.onclick = () => { const v = ch.dataset.val; F[key].has(v) ? F[key].delete(v) : F[key].add(v); renderChips(); render(); });
+}
+function renderChips(){
+  const c = count(state.items.filter(i => passes(i, true)));
+  $('vChips').innerHTML = Object.keys(VLABEL).map(v => '<span class="chip ' + (state.vFilter.has(v) ? 'on' : '') + '" data-v="' + v + '">' + VLABEL[v] + '<b>' + c[v] + '</b></span>').join('');
+  $('vChips').querySelectorAll('.chip').forEach(ch => ch.onclick = () => { const v = ch.dataset.v; state.vFilter.has(v) ? state.vFilter.delete(v) : state.vFilter.add(v); renderChips(); render(); });
+  chipGroup('fCls', 'cls', [['1', 'Hunter', 'cls-1'], ['0', 'Titan', 'cls-0'], ['2', 'Warlock', 'cls-2']]);
+  chipGroup('fSlot', 'slot', [['Helmet', 'Helmet'], ['Arms', 'Gauntlets'], ['Chest', 'Chest Armor'], ['Legs', 'Leg Armor'], ['Class item', 'Class Item']]);
+  chipGroup('fRar', 'rar', [['exotic', 'Exotic'], ['legendary', 'Legendary']]);
+  chipGroup('fFeat', 'feat', [['new', 'Armor 3.0 (has archetype)'], ['old', 'Old armor'], ['t5', 'Tier 5 only']]);
+  const archs = [...new Set(state.items.map(i => i.arch).filter(Boolean))].sort();
+  chipGroup('fArch', 'arch', archs.map(a => [a, a]));
+  renderSetChips();
+}
+function renderSetChips(){
+  $('setChips').innerHTML = [...F.sets].map(n => '<span class="setchip">' + esc(n) + '<b data-x="' + esc(n) + '">×</b></span>').join('');
+  $('setChips').querySelectorAll('[data-x]').forEach(b => b.onclick = e => { e.stopPropagation(); F.sets.delete(b.dataset.x); renderChips(); render(); });
+}
+function renderSetList(){
+  const q = $('setInput').value.trim().toLowerCase();
+  const counts = new Map();
+  for (const i of state.items) if (i.set) counts.set(i.set, (counts.get(i.set) || 0) + 1);
+  const opts = [...counts.keys()].filter(n => !q || n.toLowerCase().includes(q)).sort();
+  $('setList').innerHTML = opts.map(n => '<div class="setopt' + (F.sets.has(n) ? ' on' : '') + '" data-set="' + esc(n) + '">' + esc(n) + '<small>' + counts.get(n) + ' pieces</small></div>').join('') || '<div class="dim-lbl" style="padding:8px">No sets match. (Sets need the Armor 3.0 set data from Bungie.)</div>';
+  $('setList').querySelectorAll('[data-set]').forEach(o => o.onmousedown = e => { e.preventDefault(); const n = o.dataset.set; F.sets.has(n) ? F.sets.delete(n) : F.sets.add(n); $('setInput').value = ''; renderChips(); renderSetList(); render(); });
+}
+$('setInput').onfocus = () => { renderSetList(); $('setList').classList.remove('hidden'); };
+$('setInput').oninput = renderSetList;
+$('setInput').onblur = () => setTimeout(() => $('setList').classList.add('hidden'), 150);
+$('setClear').onclick = () => { F.sets.clear(); renderChips(); render(); };
+$('fReset').onclick = () => { Object.values(F).forEach(x => x.clear()); state.vFilter = new Set(Object.keys(VLABEL)); $('filterText').value = ''; renderChips(); render(); };
+function passes(i, ignoreVerdict){
+  const q = $('filterText').value.trim().toLowerCase();
+  return (ignoreVerdict || state.vFilter.has(i.v)) &&
+    (!F.cls.size || F.cls.has(String(i.cls))) && (!F.slot.size || F.slot.has(i.slot)) &&
+    (!F.rar.size || F.rar.has(i.exotic ? 'exotic' : 'legendary')) &&
+    (!F.feat.size || (F.feat.has('new') && !i.legacy) || (F.feat.has('old') && i.legacy) || (F.feat.has('t5') && i.tier === 5)) &&
+    (!F.arch.size || F.arch.has(i.arch)) && (!F.sets.size || F.sets.has(i.set)) &&
+    (!q || [i.name, i.arch, i.set, i.tert, i.slot, i.clsName].join(' ').toLowerCase().includes(q));
+}
+$('sort').onchange = render;
+$('filterText').oninput = () => { renderChips(); render(); };
+
+function render(){
+  const sort = $('sort').value;
+  const VO = { trash: 0, legacy: 1, review: 2, keep: 3 };
+  let list = state.items.filter(i => passes(i));
+  $('fCount').textContent = 'Showing ' + list.length + ' of ' + state.items.length + ' pieces';
+  const grp = (a, b) => (a.cls - b.cls) || (SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)) || a.arch.localeCompare(b.arch) || better(a, b);
+  list.sort(sort === 'total' ? (a, b) => b.total - a.total : sort === 'tier' ? (a, b) => better(a, b) : sort === 'group' ? grp : sort === 'set' ? (a, b) => (a.set || '~').localeCompare(b.set || '~') || grp(a, b) : (a, b) => (VO[a.v] - VO[b.v]) || grp(a, b));
+  state.shown = list;
+  const LBL = VLABEL;
+  $('grid').innerHTML = list.slice(0, 600).map(i => {
+    const archStats = i.arch ? ARCH[i.arch] : [];
+    const statHtml = STATS.map(s => '<div class="st' + (archStats.includes(s) ? ' arch' : s === i.tert ? ' tert' : '') + '">' + SHORT[s] + '<b>' + i.base[s] + '</b><i><span style="width:' + Math.min(100, i.base[s] / 30 * 100) + '%"></span></i></div>').join('');
+    const note = noteFor(i.id);
+    return '<div class="card ' + i.v + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for details and comparison">' +
+      '<label class="pickbox"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
+      '<img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+      '<div class="body"><div class="top"><span class="name">' + esc(i.name) + '</span><span class="badge ' + i.v + '">' + LBL[i.v] + '</span></div>' +
+      '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · Power ' + i.power : '') + (i.locked ? ' · 🔒' : '') + '</div>' +
+      (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
+      (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
+      '<div class="pills">' + (i.legacy ? '<span class="pill old">Old armor</span>' : '<span class="pill new">Armor 3.0</span>') + (i.tier ? '<span class="pill' + (i.tier >= 5 ? ' tier5' : i.tier === 4 ? ' tier4' : '') + '">Tier ' + i.tier + '</span>' : '') +
+        (i.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (i.arch ? '<span class="pill">' + esc(i.arch) + '</span>' : '') +
+        (i.tert ? '<span class="pill">+' + esc(i.tert) + '</span>' : '') + (i.set ? '<span class="pill">' + esc(i.set) + '</span>' : '') +
+        '<span class="pill">Total ' + i.total + '</span></div>' +
+      '<div class="stats">' + statHtml + '</div>' +
+      '<div class="reason' + (i.v === 'trash' ? ' dismantle' : '') + '">' + esc(i.why) + '</div>' +
+      (note ? '<div class="mynote">📝 ' + esc(note) + '</div>' : '') +
+      '<div class="actions">' + tagBoxes(i.id, tagFor(i)) +
+        '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '">' + (i.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
+        (i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another piece for this slot so this one can be moved or dismantled">Unequip</button>' :
+          (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' : '') +
+          (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '">To vault</button>' : '')) +
+        '<button data-copy="id:' + esc(i.id) + '">Copy DIM search</button><button data-note="' + esc(i.id) + '">' + (note ? 'Edit note' : 'Add note') + '</button>' +
+      '</div></div></div>';
+  }).join('') + (list.length > 600 ? '<div class="dim-lbl">Showing 600 of ' + list.length + '. Use the filters to narrow it down.</div>' : '') || '<div class="dim-lbl">Nothing to show.</div>';
+  wireTagBoxes($('grid'), render);
+  $('grid').querySelectorAll('[data-pick]').forEach(cb => cb.onchange = () => { cb.checked ? state.picked.add(cb.dataset.pick) : state.picked.delete(cb.dataset.pick); cb.closest('.card').classList.toggle('picked', cb.checked); updateBulkBar(); });
+  $('grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => runAction(b.dataset.act, b.dataset.id, b));
+  $('grid').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText(b.dataset.copy, 'Copied. Paste it into the DIM search bar.'));
+  $('grid').querySelectorAll('.card[data-open]').forEach(c => c.onclick = e => { if (e.target.closest('button,select,label,input,a,textarea')) return; openArmor(byId(c.dataset.open)); });
+  $('grid').querySelectorAll('[data-note]').forEach(b => b.onclick = () => {
+    const id = b.dataset.note, t = prompt('Note for this piece (shown on the card and sent to DIM on export). Leave empty to clear:', noteFor(id));
+    if (t !== null){ setNote(id, t.trim()); render(); }
+  });
+  updateBulkBar();
+}
+
+/* ===================== tags, notes (shared with the Weapons page) ===================== */
+const TAG_PRIORITY = ['favorite', 'keep', 'infuse', 'archive', 'junk'];
+const primaryTag = arr => TAG_PRIORITY.find(t => arr.includes(t)) || '';
+function tagStore(){ try { return JSON.parse(ls.get('tags') || '{}'); } catch { return {}; } }
+function setTags(id, arr){ const s = tagStore(); s[id] = arr; ls.set('tags', JSON.stringify(s)); }
+function tagFor(i){ const s = tagStore(); if (i.id in s){ const v = s[i.id]; return Array.isArray(v) ? v : (v ? [v] : []); } return i.v === 'trash' ? ['junk'] : []; }
+function noteStore(){ try { return JSON.parse(ls.get('notes') || '{}'); } catch { return {}; } }
+function noteFor(id){ return noteStore()[id] || ''; }
+function setNote(id, text){ const s = noteStore(); if (text) s[id] = text; else delete s[id]; ls.set('notes', JSON.stringify(s)); }
+function tagBoxes(id, cur){
+  return '<div class="tagboxes" data-tagset="' + esc(id) + '">' + TAG_PRIORITY.map(t => '<label class="tagbox t-' + t + (cur.includes(t) ? ' on' : '') + '"><input type="checkbox" value="' + t + '"' + (cur.includes(t) ? ' checked' : '') + '>' + t + '</label>').join('') + '<button class="tagapply" disabled>Apply</button></div>';
+}
+async function applyTags(i, arr){
+  setTags(i.id, arr);
+  if ($('tagLockSync').checked && auth.valid() && state.acct){
+    const want = (arr.includes('favorite') || arr.includes('keep')) ? true : arr.includes('junk') ? false : null;
+    if (want !== null && i.locked !== want){ await setLock(i, want); return want ? ' and locked' : ' and unlocked'; }
+  }
+  return '';
+}
+function wireTagBoxes(root, after){
+  root.querySelectorAll('[data-tagset]').forEach(box => {
+    const btn = box.querySelector('.tagapply');
+    box.querySelectorAll('input').forEach(cb => cb.onchange = () => { cb.closest('label').classList.toggle('on', cb.checked); btn.disabled = false; btn.classList.add('ready'); });
+    btn.onclick = async () => {
+      const i = byId(box.dataset.tagset); if (!i) return;
+      const arr = [...box.querySelectorAll('input:checked')].map(c => c.value);
+      btn.disabled = true;
+      try { const extra = await applyTags(i, arr); toast(arr.length ? 'Tagged ' + arr.join(' + ') + extra : 'Tags cleared' + extra); }
+      catch (e){ setStatus(i.name + ': tags saved, but lock change failed: ' + e.message, true); }
+      after();
+    };
+  });
+}
+
+/* ===================== in-game actions ===================== */
+const byId = id => state.items.find(i => i.id === id);
+// "Auto" follows the character you're playing: the one Bungie reports in an activity now, else the last played
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+function fillCharSel(p){
+  const acts = (p.characterActivities && p.characterActivities.data) || {};
+  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
+  state.activeChar = (live || state.chars[0] || {}).id;
+  const a = state.chars.find(c => c.id === state.activeChar);
+  const saved = ls.get('pullChar2') || 'auto';
+  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
+    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
+  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
+}
+$('charSel').onchange = () => { ls.set('pullChar2', $('charSel').value); getCls = null; renderGet(); render(); };
+async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
+async function transfer(i, toVault, charId){ await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType }); }
+async function pullFromPostmaster(i){
+  await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
+}
+async function pullTo(i, target){
+  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }   // postmaster items go to their own character first
+  if (i.charId === target) return;
+  if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
+  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
+}
+async function runAction(act, id, btn){
+  const i = byId(id); if (!i) return; btn.disabled = true;
+  try {
+    if (act === 'lock'){ await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); }
+    else if (act === 'pull'){ await pullTo(i, selChar()); toast('Pulled ' + i.name + ' to ' + i.loc); }
+    else if (act === 'unequip'){ const sub = await unequip(i); toast('Equipped ' + sub.name + ' instead. ' + i.name + ' is free to move.'); }
+    else if (act === 'vault'){ if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); } await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; toast('Sent ' + i.name + ' to the vault'); }
+  } catch (e){ if (isGoneError(e)) dropGone(i); else setStatus(i.name + ': ' + e.message, true); }
+  render();
+}
+
+// Bungie says the item doesn't exist: it was dismantled (or deleted) after the last refresh. Drop it from the list.
+function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+function dropGone(i){
+  state.items = state.items.filter(x => x.id !== i.id);
+  state.picked.delete(i.id);
+  toast(i.name + ' is already gone (dismantled). Removed from the list.');
+}
+
+// Unequip = equip another item for that slot on the same character (Bungie has no plain "unequip").
+// Prefers a non-exotic keeper already on that character, then one in the vault (pulled first).
+async function unequip(i){
+  const cid = i.charId;
+  const rank = x => (x.charId === cid ? 0 : x.charId ? 2 : 1) * 10 + (x.v === 'trash' || (x.r && x.r.verdict === 'trash') ? 5 : 0);
+  const cands = state.items.filter(x => x.id !== i.id && x.bucket === i.bucket && !x.equipped && x.tier !== 6 && !(x.exotic) &&
+      (x.cls === undefined || x.cls === i.cls || x.cls === 3))
+    .sort((a, b) => rank(a) - rank(b) || ((b.score || b.total || 0) - (a.score || a.total || 0)));
+  const sub = cands[0];
+  if (!sub) throw new Error('No other non-exotic item for that slot to swap in. Equip something else in game first.');
+  if (sub.charId !== cid){ setStatus('Moving ' + sub.name + ' to that character to swap in...'); await pullTo(sub, cid); await sleep(300); }
+  await bungieAction('/Destiny2/Actions/Items/EquipItem/', { itemId: sub.id, characterId: cid, membershipType: state.acct.membershipType });
+  const who = (state.chars.find(c => c.id === cid) || {}).name || 'Character';
+  sub.equipped = true; sub.loc = who + ' (equipped)';
+  i.equipped = false; i.loc = who;
+  return sub;
+}
+
+function updateBulkBar(){ const n = state.picked.size; $('bulkbar').classList.toggle('hidden', !n); $('bulkCount').textContent = n + ' selected'; }
+async function bulkRun(label, list, fn){
+  let done = 0, failed = 0, skipped = 0, gone = 0;
+  state.busy = true;
+  try {
+  for (const i of list){
+    setStatus(label + ': ' + (done + failed + skipped + 1) + ' of ' + list.length + ' (' + i.name + ')...');
+    try { const r = await fn(i); if (r === 'skip') skipped++; else done++; } catch (e){ if (isGoneError(e)){ gone++; state.items = state.items.filter(x => x.id !== i.id); state.picked.delete(i.id); } else { failed++; console.warn(label, i.name, e.message); } }
+  }
+  } finally { state.busy = false; }
+  setStatus(label + ': ' + done + ' done' + (skipped ? ', ' + skipped + ' skipped' : '') + (gone ? ', ' + gone + ' already dismantled (removed from list)' : '') + (failed ? ', ' + failed + ' failed (F12 console has details)' : '') + '.', !!failed);
+  render();
+}
+const picked = () => state.items.filter(i => state.picked.has(i.id));
+const needAuth = fn => async () => { if (!auth.valid()){ setStatus('Sign in with Bungie first (top right).', true); return; } await fn(); };
+$('bulkTags').innerHTML = TAG_PRIORITY.map(t => '<label class="tagbox t-' + t + '"><input type="checkbox" value="' + t + '">' + t + '</label>').join('') + '<button class="tagapply ready" id="bulkTagApply">Apply tags to selected</button>';
+$('bulkTags').querySelectorAll('input').forEach(cb => cb.onchange = () => cb.closest('label').classList.toggle('on', cb.checked));
+$('bulkTagApply').onclick = () => { const arr = [...$('bulkTags').querySelectorAll('input:checked')].map(c => c.value); bulkRun(arr.length ? 'Tagging ' + arr.join(' + ') : 'Clearing tags', picked(), async i => { await applyTags(i, arr); }); };
+$('bulkLock').onclick = needAuth(() => bulkRun('Locking', picked(), async i => { if (i.locked) return 'skip'; await setLock(i, true); await sleep(250); }));
+$('bulkUnlock').onclick = needAuth(() => bulkRun('Unlocking', picked(), async i => { if (!i.locked) return 'skip'; await setLock(i, false); await sleep(250); }));
+$('bulkPull').onclick = needAuth(() => bulkRun('Pulling', picked(), async i => { const t = selChar(); if (i.charId === t) return 'skip'; await pullTo(i, t); await sleep(300); }));
+$('bulkVault').onclick = needAuth(() => bulkRun('Sending to vault', picked(), async i => { if (!i.charId) return 'skip'; if (i.equipped) throw new Error('equipped'); await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }));
+$('bulkAll').onclick = () => { (state.shown || []).forEach(i => state.picked.add(i.id)); render(); };
+$('bulkNone').onclick = () => { state.picked.clear(); render(); };
+$('btnLockKeep').onclick = needAuth(() => bulkRun('Locking keepers', state.items.filter(i => i.v === 'keep'), async i => { if (i.locked) return 'skip'; await setLock(i, true); await sleep(250); }));
+// Pull trash for the selected character's class, filling each slot up to the 9-piece inventory limit
+$('btnPullTrash').onclick = needAuth(async () => {
+  const target = selChar(); if (!target) return;
+  const ch = state.chars.find(c => c.id === target), cls = CLASS.indexOf(ch.name);
+  const SLOT_CAP = 9;
+  const onChar = slot => state.items.filter(i => i.charId === target && !i.equipped && !i.postmaster && i.slot === slot).length;
+  const plan = [], left = [];
+  for (const slot of SLOT_ORDER){
+    let room = SLOT_CAP - onChar(slot);
+    const trash = state.items.filter(i => i.v === 'trash' && i.cls === cls && i.slot === slot && (i.charId !== target || i.postmaster) && !i.equipped && !i.locked);
+    for (const i of trash){ if (room > 0){ plan.push(i); room--; } else left.push(i); }
+  }
+  if (!plan.length){ setStatus(left.length ? 'Your ' + ch.name + "'s armor slots are full. Dismantle what's there, then click again." : 'No unlocked trash for your ' + ch.name + ' outside its inventory. Pick another character in "Pull to".'); return; }
+  await bulkRun('Pulling trash to ' + ch.name, plan, async i => { await pullTo(i, target); await sleep(300); });
+  setStatus('Pulled ' + plan.length + (plan.length === 1 ? ' trash piece' : ' trash pieces') + ' to your ' + ch.name + '. Dismantle them in game.' + (left.length ? ' ' + left.length + ' more are waiting: click again after dismantling.' : ''));
+  // show exactly what was pulled
+  Object.values(F).forEach(x => x.clear()); F.cls.add(String(cls)); state.vFilter = new Set(['trash']);
+  renderChips(); render();
+});
+$('tagLockSync').checked = ls.get('tagLockSync') !== '0';
+$('tagLockSync').onchange = () => ls.set('tagLockSync', $('tagLockSync').checked ? '1' : '0');
+
+/* ===================== DIM export ===================== */
+const dimSearch = list => list.map(i => 'id:' + i.id).join(' or ');
+$('btnSearchTrash').onclick = () => { const l = state.items.filter(i => i.v === 'trash'); l.length ? copyText(dimSearch(l), 'Copied a DIM search for ' + l.length + ' trash pieces') : toast('No trash armor'); };
+$('btnSearchKeep').onclick = () => { const l = state.items.filter(i => i.v === 'keep'); l.length ? copyText(dimSearch(l), 'Copied a DIM search for ' + l.length + ' keepers') : toast('Nothing to copy'); };
+const csvCell = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+$('btnCsv').onclick = () => {
+  const rows = [['Id', 'Hash', 'Name', 'Tag', 'Notes']];
+  for (const i of state.items){
+    const tags = tagFor(i), note = noteFor(i.id);
+    if (!tags.length && !note) continue;
+    rows.push([i.id, i.hash, i.name, primaryTag(tags), (note ? note + ' | ' : '') + (tags.length ? 'Tags: ' + tags.join(', ') + '. ' : '') + 'D2 Roll Check armor: ' + i.v + '. ' + i.why]);
+  }
+  if (rows.length === 1){ toast('Nothing to export'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv' }));
+  a.download = 'dim-armor-tags-' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+  toast('Exported ' + (rows.length - 1) + ' pieces');
+};
+
+
+/* ===================== gear to get (per character class) ===================== */
+let getCls = null, getAll = false;
+function renderGet(){
+  const classes = [0, 1, 2].filter(c => state.items.some(i => i.cls === c));
+  if (!classes.length){ $('getPanel').classList.add('hidden'); return; }
+  $('getPanel').classList.remove('hidden');
+  if (getCls === null || !classes.includes(getCls)){
+    const cur = state.chars.find(c => c.id === selChar());
+    getCls = cur ? (CLASS.indexOf(cur.name) >= 0 ? CLASS.indexOf(cur.name) : classes[0]) : classes[0];
+  }
+  $('getTabs').innerHTML = classes.map(c => '<span class="chip cls-' + c + (c === getCls ? ' on' : '') + '" data-gc="' + c + '">' + CLASS[c] + '</span>').join('');
+  $('getTabs').querySelectorAll('[data-gc]').forEach(t => t.onclick = () => { getCls = +t.dataset.gc; renderGet(); });
+  const mine = state.items.filter(i => i.cls === getCls && i.v !== 'trash');
+  const slots = SLOT_ORDER;
+  // 1. archetype x slot grid: best tier you own (keepers only)
+  const best = (arch, slot) => mine.filter(i => !i.exotic && !i.legacy && i.arch === arch && i.slot === slot).sort(better)[0];
+  const owned = Object.keys(ARCH).filter(a => mine.some(i => i.arch === a));
+  const usedArch = getAll ? owned.concat(Object.keys(ARCH).filter(a => !owned.includes(a))) : owned;
+  const grid = '<table class="cov"><tr><th>Archetype</th><th>Stats</th>' + slots.map(s => '<th>' + s + '</th>').join('') + '</tr>' +
+    usedArch.map(a => '<tr><td>' + a + '</td><td class="dim-lbl">' + ARCH[a].join(' / ') + '</td>' + slots.map(s => {
+      const b = best(a, s);
+      return b ? '<td class="' + (b.tier >= 5 ? 't5' : b.tier === 4 ? 't4' : 'tlow') + '" data-f="' + a + '|' + s + '" title="' + esc(b.name + ', +' + (b.tert || '-') + (b.set ? ', ' + b.set : '')) + '">T' + b.tier + '</td>' : '<td class="none">—</td>';
+    }).join('') + '</tr>').join('') + '</table>' +
+    '<button class="ghost" id="getAllBtn" style="font-size:12px;padding:4px 10px">' + (getAll ? 'Show only archetypes I own' : 'Show all 12 archetypes (' + (12 - owned.length) + ' you have none of)') + '</button>';
+  // 2. slots with no Tier 5
+  const noT5 = slots.filter(s => !mine.some(i => !i.legacy && i.slot === s && i.tier >= 5));
+  // 3. set progress (pieces you keep, Armor 3.0)
+  const sets = new Map();
+  for (const i of mine) if (i.set && !i.legacy){ if (!sets.has(i.set)) sets.set(i.set, new Map()); const m = sets.get(i.set); const b = m.get(i.slot); if (!b || better(i, b) < 0) m.set(i.slot, i); }
+  const setRows = [...sets].map(([n, m]) => ({ n, have: [...m.keys()], low: [...m.values()].filter(x => x.tier < 4).map(x => x.slot) })).sort((a, b) => b.have.length - a.have.length);
+  // 4. old exotics to replace, and old legendary armor still in use
+  const oldEx = state.items.filter(i => i.cls === getCls && i.exotic && i.legacy && i.v !== 'trash');
+  const oldSlots = slots.filter(s => mine.some(i => i.legacy && !i.exotic && i.slot === s) && !mine.some(i => !i.legacy && i.slot === s));
+  $('getBody').innerHTML =
+    '<div class="dim-lbl">Your best ' + CLASS[getCls] + ' piece for each archetype and slot (keepers only). <span style="color:#e8b84a">T5</span> = done, <span style="color:#8cc8ff">T4</span> = fine, grey = worth upgrading, — = you have none. Click a cell to see those pieces.</div>' + grid +
+    '<div class="getcols">' +
+      '<div class="getbox"><h4>Slots with no Tier 5 yet</h4>' + (noT5.length ? '<ul>' + noT5.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<span class="dim-lbl">Every slot has a Tier 5 piece.</span>') + '</div>' +
+      '<div class="getbox"><h4>Set progress</h4>' + (setRows.length ? '<ul>' + setRows.slice(0, 12).map(r => '<li><b>' + esc(r.n) + '</b>: ' + r.have.length + '/5 ' +
+        (r.have.length >= 4 ? '<span style="color:var(--keep)">(4-piece ready)</span>' : r.have.length >= 2 ? '<span style="color:#8cc8ff">(2-piece ready, need ' + (4 - r.have.length) + ' more for 4)</span>' : '<span class="dim-lbl">(need ' + (2 - r.have.length) + ' more for 2-piece)</span>') +
+        '<div class="dim-lbl">Missing: ' + (slots.filter(s => !r.have.includes(s)).join(', ') || 'none') + (r.low.length ? ' · below Tier 4: ' + r.low.join(', ') : '') + '</div></li>').join('') + '</ul>' : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') + '</div>' +
+      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldEx.length ? '<ul>' + oldEx.map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + i.slot + ')</span></li>').join('') + '</ul>' : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
+        (oldSlots.length ? '<h4 style="margin-top:10px">Slots still on old armor only</h4><ul>' + oldSlots.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '') + '</div>' +
+    '</div>';
+  $('getAllBtn').onclick = () => { getAll = !getAll; renderGet(); };
+  $('getBody').querySelectorAll('[data-f]').forEach(td => td.onclick = () => {
+    const [a, s] = td.dataset.f.split('|');
+    Object.values(F).forEach(x => x.clear()); F.cls.add(String(getCls)); F.arch.add(a); F.slot.add(s);
+    state.vFilter = new Set(Object.keys(VLABEL)); renderChips(); render();
+    $('toolbar').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+/* ===================== armor detail view ===================== */
+function closeArmor(){ $('detail').classList.add('hidden'); }
+$('detail').addEventListener('click', e => { if (e.target.id === 'detail') closeArmor(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArmor(); });
+async function openArmor(i){
+  if (!i) return;
+  $('detail').classList.remove('hidden');
+  renderArmor(i, '');
+  try { const def = await ent('DestinyInventoryItemDefinition', i.hash); if (def && def.screenshot && !$('detail').classList.contains('hidden')) renderArmor(i, def.screenshot); } catch {}
+}
+function renderArmor(i, shot){
+  const archStats = i.arch ? ARCH[i.arch] : [];
+  const statHtml = STATS.map(s => {
+    const mod = Math.max(0, i.cur[s] - i.base[s]);
+    return '<div class="srow"><div class="shead"><span class="' + (archStats.includes(s) ? 'a' : s === i.tert ? 't' : '') + '">' + s + (archStats[0] === s ? ' (primary)' : archStats[1] === s ? ' (secondary)' : s === i.tert ? ' (tertiary)' : '') + '</span><span><b>' + i.base[s] + '</b>' + (mod ? ' <small class="dim-lbl">+' + mod + ' mods/MW</small>' : '') + '</span></div>' +
+      '<div class="sbar"><i style="width:' + Math.min(100, i.base[s] / 30 * 100) + '%"></i>' + (mod ? '<i class="mod" style="left:' + Math.min(100, i.base[s] / 30 * 100) + '%;width:' + Math.min(100, mod / 30 * 100) + '%"></i>' : '') + '</div></div>';
+  }).join('');
+  // pieces it was compared against: same duplicate group, plus whatever outclassed it
+  const mates = state.items.filter(x => (i.groupKey && x.groupKey === i.groupKey) || x === i.beatBy || x.beatBy === i);
+  if (!mates.includes(i)) mates.push(i);
+  mates.sort(better);
+  const cmp = mates.length > 1 ? '<table class="cmp"><tr><th>Piece</th><th>Tier</th>' + STATS.map(s => '<th>' + SHORT[s] + '</th>').join('') + '<th>Total</th><th></th></tr>' +
+    mates.map(x => '<tr class="' + (x === i ? 'me' : '') + '" data-goto="' + esc(x.id) + '"><td>' + esc(x.name) + '<div class="dim-lbl">' + esc(x.loc) + (x.locked ? ' · 🔒' : '') + '</div></td><td>' + (x.tier || '-') + '</td>' +
+      STATS.map(s => '<td>' + x.base[s] + '</td>').join('') + '<td><b>' + x.total + '</b></td><td><span class="badge ' + x.v + '">' + VLABEL[x.v] + '</span></td></tr>').join('') + '</table>'
+    : '<div class="dim-lbl">No other piece of yours matches this one (same class, slot, set, archetype and tertiary), so there was nothing to compare against.</div>';
+  const note = noteFor(i.id);
+  $('dbody').innerHTML =
+    '<div class="dhead" style="--shot:url(' + (shot ? 'https://www.bungie.net' + esc(shot) : '') + ')"><img class="dicon" src="https://www.bungie.net' + esc(i.icon) + '" alt="">' +
+      '<div><div class="dname">' + esc(i.name) + ' <span class="badge ' + i.v + '">' + VLABEL[i.v] + '</span></div>' +
+      '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · Power ' + i.power : '') + (i.locked ? ' · 🔒 Locked' : '') + '</div>' +
+      (i.equipped ? '<div class="eqbadge">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
+      '<div class="pills">' + (i.legacy ? '<span class="pill old">Old armor (pre Edge of Fate)</span>' : '<span class="pill new">Armor 3.0</span>') + (i.tier ? '<span class="pill' + (i.tier >= 5 ? ' tier5' : i.tier === 4 ? ' tier4' : '') + '">Tier ' + i.tier + '</span>' : '') +
+        (i.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (i.arch ? '<span class="pill">' + esc(i.arch) + '</span>' : '<span class="pill">No archetype</span>') +
+        (i.tert ? '<span class="pill">+' + esc(i.tert) + '</span>' : '') + (i.set ? '<span class="pill">Set: ' + esc(i.set) + '</span>' : '') + '<span class="pill">Total ' + i.total + '</span></div></div>' +
+      '<button class="ghost dclose" id="dClose">✕</button></div>' +
+    '<div class="dgrid"><div><h4>Stats <small>raw roll · blue = mods and masterwork</small></h4>' + statHtml + '</div>' +
+      '<div><div class="verdictbox"><b>' + VLABEL[i.v] + ':</b> ' + esc(i.why) + '</div>' +
+        '<h4>Mods <small>click a slot to change it</small></h4><div id="dMods"><div class="dim-lbl">Loading mods...</div></div>' +
+        '<h4 style="margin-top:16px">Compared with</h4>' + cmp + '</div>' +
+      '<div class="dside"><div class="dim-lbl">DIM tag</div>' + tagBoxes(i.id, tagFor(i)) +
+        '<div class="dim-lbl">My notes</div><textarea id="dNote" maxlength="1000" placeholder="e.g. keep for Prismatic Hunter build">' + esc(note) + '</textarea><button class="tagapply" id="dNoteSave" disabled>Save note</button>' +
+        '<button class="ghost needauth" id="dLock">' + (i.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
+        (i.equipped ? '<button class="ghost needauth" id="dUneq">Unequip (swap in another piece)</button>' :
+          (i.charId !== selChar() ? '<button class="ghost needauth" id="dPull">Pull to character</button>' : '') +
+          (i.charId ? '<button class="ghost needauth" id="dVault">To vault</button>' : '')) +
+        '<button class="ghost" id="dCopy">Copy DIM search</button></div></div>';
+  const again = () => { render(); renderArmor(i, shot); };
+  renderMods(i, shot);
+  $('dClose').onclick = closeArmor;
+  wireTagBoxes($('dbody'), again);
+  $('dNote').oninput = () => { $('dNoteSave').disabled = false; $('dNoteSave').classList.add('ready'); };
+  $('dNoteSave').onclick = () => { setNote(i.id, $('dNote').value.trim()); toast('Note saved'); again(); };
+  $('dLock').onclick = async () => { try { await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); } catch (e){ setStatus(e.message, true); } again(); };
+  if ($('dPull')) $('dPull').onclick = async () => { try { await pullTo(i, selChar()); toast('Pulled to ' + i.loc); } catch (e){ setStatus(e.message, true); } again(); };
+  if ($('dUneq')) $('dUneq').onclick = async () => { try { const sub = await unequip(i); toast('Equipped ' + sub.name + ' instead'); } catch (e){ setStatus(e.message, true); } again(); };
+  if ($('dVault')) $('dVault').onclick = async () => { try { await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; toast('Sent to vault'); } catch (e){ setStatus(e.message, true); } again(); };
+  $('dCopy').onclick = () => copyText('id:' + i.id, 'Copied. Paste it into the DIM search bar.');
+  $('dbody').querySelectorAll('[data-goto]').forEach(r => r.onclick = () => { const x = byId(r.dataset.goto); if (x && x !== i) openArmor(x); });
+}
+
+/* ===================== armor mods (applied with Bungie's free socket action) ===================== */
+const MOD_SKIP = /ornament|shader|masterwork|archetype|transmog|memento|tracker|catalyst|intrinsic|cosmetic|deprecated/i;
+const modCost = d => (d && d.plug && d.plug.energyCost && d.plug.energyCost.energyCost) || 0;
+const MODS = {};   // per item id: { slots, defs, pend, open, query }
+async function loadMods(i){
+  if (MODS[i.id]) return MODS[i.id];
+  const def = await ent('DestinyInventoryItemDefinition', i.hash);
+  const entries = (def.sockets && def.sockets.socketEntries) || [];
+  const slots = [];
+  entries.forEach((e, k) => {
+    const cur = (i.sockets[k] || {}).plugHash || e.singleInitialItemHash;
+    const t = ((state.defs[cur] || {}).t || (state.defs[e.singleInitialItemHash] || {}).t || '');
+    if (!/mod/i.test(t) || MOD_SKIP.test(t)) return;
+    slots.push({ k, cur, empty: e.singleInitialItemHash, setHash: e.reusablePlugSetHash || e.randomizedPlugSetHash || 0, label: t, opts: null });
+  });
+  const defs = await entMany('DestinyInventoryItemDefinition', slots.flatMap(sl => [sl.cur, sl.empty]));
+  MODS[i.id] = { slots, defs, pend: {}, open: null, query: '' };
+  return MODS[i.id];
+}
+async function slotOptions(i, M, sl){
+  if (sl.opts) return sl.opts;
+  let hashes = [];
+  if (sl.setHash){ try { const ps = await ent('DestinyPlugSetDefinition', sl.setHash); hashes = (ps.reusablePlugItems || []).map(x => x.plugItemHash); } catch {} }
+  const own = (i.reusable[sl.k] || []).map(x => x.plugItemHash);
+  hashes = [...new Set(hashes.concat(own, [sl.empty]))].filter(Boolean);
+  const unlocked = state.plugSets && state.plugSets[sl.setHash];
+  if (unlocked && unlocked.size) hashes = hashes.filter(h => unlocked.has(h) || own.includes(h) || h === sl.empty);
+  const defs = await entMany('DestinyInventoryItemDefinition', hashes);
+  Object.assign(M.defs, defs);
+  sl.opts = hashes.filter(h => defs[h]).sort((a, b) => (a === sl.empty ? -1 : b === sl.empty ? 1 : 0) || defs[a].displayProperties.name.localeCompare(defs[b].displayProperties.name));
+  return sl.opts;
+}
+function statText(d){
+  return (d.investmentStats || []).filter(x => !x.isConditionallyActive && x.value).map(x => {
+    const n = ((state.statDefsById || {})[x.statTypeHash]) || ''; return (x.value > 0 ? '+' : '') + x.value + (n ? ' ' + n : '');
+  }).join(', ');
+}
+async function renderMods(i, shot){
+  const box = $('dMods'); if (!box) return;
+  let M;
+  try { M = await loadMods(i); } catch (e){ box.innerHTML = '<div class="dim-lbl">Could not load mods: ' + esc(e.message) + '</div>'; return; }
+  if (!$('dMods')) return;
+  if (!M.slots.length){ box.innerHTML = '<div class="dim-lbl">No mod slots found on this piece.</div>'; return; }
+  const plugOf = sl => M.pend[sl.k] || sl.cur;
+  const cap = i.energyCap || (i.tier >= 4 ? 11 : 10);
+  const used = M.slots.reduce((a, sl) => a + modCost(M.defs[plugOf(sl)]), 0);
+  const changed = M.slots.filter(sl => M.pend[sl.k] && M.pend[sl.k] !== sl.cur);
+  // stat change from the staged mods
+  const delta = {};
+  for (const sl of changed) for (const [h, sign] of [[sl.cur, -1], [M.pend[sl.k], 1]]) for (const x of ((M.defs[h] || {}).investmentStats || [])) if (!x.isConditionallyActive && x.value){ const n = (state.statDefsById || {})[x.statTypeHash] || x.statTypeHash; delta[n] = (delta[n] || 0) + sign * x.value; }
+  const deltaTxt = Object.entries(delta).filter(([, v]) => v).map(([n, v]) => (v > 0 ? '+' : '') + v + ' ' + n).join(', ');
+  let html = '<div class="energy"><span>Energy ' + used + '/' + cap + '</span><div class="ebar">' + Array.from({ length: cap }, (_, n) => '<i class="' + (n < used ? 'on' : '') + '"></i>').join('') + '</div></div>' +
+    '<div class="modslots">' + M.slots.map(sl => {
+      const d = M.defs[plugOf(sl)] || {}, dp = d.displayProperties || {}, isNew = M.pend[sl.k] && M.pend[sl.k] !== sl.cur;
+      return '<button class="modslot' + (M.open === sl.k ? ' open' : '') + (isNew ? ' new' : '') + '" data-slot="' + sl.k + '" title="' + esc(sl.label) + '">' +
+        (dp.icon ? '<img src="https://www.bungie.net' + esc(dp.icon) + '" alt="">' : '') + '<span>' + esc(dp.name || 'Empty') + '<small>' + (modCost(d) ? modCost(d) + ' energy' : esc(sl.label)) + '</small></span></button>';
+    }).join('') + '</div>';
+  if (changed.length) html += '<div class="modchanges">' + changed.length + ' change' + (changed.length > 1 ? 's' : '') + ' staged' + (deltaTxt ? ' · ' + esc(deltaTxt) : '') +
+    (used > cap ? ' · <b style="color:var(--trash)">over energy by ' + (used - cap) + '</b>' : '') + '</div>' +
+    '<div class="bar" style="margin:6px 0 0"><button class="primary needauth" id="mApply"' + (used > cap ? ' disabled' : '') + '>Apply mods in game</button><button class="ghost" id="mReset">Undo changes</button>' +
+    '<span class="dim-lbl">Works in orbit, a social space, or offline. Vault pieces are pulled to your character first.</span></div>';
+  if (M.open !== null){
+    const sl = M.slots.find(x => x.k === M.open);
+    html += '<div class="modpicker"><input id="mSearch" placeholder="Search mods..." value="' + esc(M.query) + '"><div id="mList" class="mlist"><div class="dim-lbl">Loading options...</div></div></div>';
+    box.innerHTML = html;
+    const opts = await slotOptions(i, M, sl);
+    const listEl = $('mList'); if (!listEl) return;
+    const q = M.query.toLowerCase();
+    listEl.innerHTML = opts.filter(h => !q || M.defs[h].displayProperties.name.toLowerCase().includes(q)).map(h => {
+      const d = M.defs[h], st = statText(d);
+      return '<button class="mopt' + (h === plugOf(sl) ? ' on' : '') + '" data-mod="' + h + '">' + (d.displayProperties.icon ? '<img src="https://www.bungie.net' + esc(d.displayProperties.icon) + '" alt="">' : '') +
+        '<span><b>' + esc(h === sl.empty ? 'Remove mod (empty)' : d.displayProperties.name) + '</b><small>' + modCost(d) + ' energy' + (st ? ' · ' + esc(st) : '') + '</small>' +
+        (d.displayProperties.description ? '<em>' + esc(d.displayProperties.description) + '</em>' : '') + '</span></button>';
+    }).join('') || '<div class="dim-lbl">No unlocked mods match.</div>';
+    listEl.querySelectorAll('[data-mod]').forEach(b => b.onclick = () => { const h = +b.dataset.mod; if (h === sl.cur) delete M.pend[sl.k]; else M.pend[sl.k] = h; M.open = null; renderMods(i, shot); });
+    $('mSearch').oninput = () => { M.query = $('mSearch').value; const pos = $('mSearch').selectionStart; renderMods(i, shot).then(() => { const el = $('mSearch'); if (el){ el.focus(); el.setSelectionRange(pos, pos); } }); };
+  } else box.innerHTML = html;
+  box.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { const k = +b.dataset.slot; M.open = M.open === k ? null : k; M.query = ''; renderMods(i, shot); });
+  if ($('mReset')) $('mReset').onclick = () => { M.pend = {}; renderMods(i, shot); };
+  if ($('mApply')) $('mApply').onclick = async () => {
+    if (!auth.valid()){ setStatus('Sign in with Bungie first (top right).', true); return; }
+    $('mApply').disabled = true; state.busy = true;
+    try {
+      if (!i.charId){ setStatus('Pulling ' + i.name + ' to your character first...'); await pullTo(i, selChar()); await sleep(300); }
+      // free energy first: apply the changes that lower cost before the ones that raise it
+      const order = changed.slice().sort((a, b) => (modCost(M.defs[M.pend[a.k]]) - modCost(M.defs[a.cur])) - (modCost(M.defs[M.pend[b.k]]) - modCost(M.defs[b.cur])));
+      let n = 0;
+      for (const sl of order){
+        setStatus('Applying mods to ' + i.name + ': ' + (++n) + ' of ' + order.length + '...');
+        await bungieAction('/Destiny2/Actions/Items/InsertSocketPlugFree/', { plug: { socketIndex: sl.k, socketArrayType: 0, plugItemHash: M.pend[sl.k] }, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+        sl.cur = M.pend[sl.k]; if (i.sockets[sl.k]) i.sockets[sl.k].plugHash = sl.cur; delete M.pend[sl.k];
+        await sleep(600);   // Bungie allows about 2 socket changes per second
+      }
+      setStatus('Mods applied to ' + i.name + '.'); toast('Mods applied');
+    } catch (e){ setStatus(i.name + ': ' + e.message + '\nMod changes only work in orbit, a social space, or offline.', true); }
+    finally { state.busy = false; }
+    // re-read stats from Bungie, then reopen this piece
+    const id = i.id; delete MODS[id];
+    await scan({ silent: true });
+    const fresh = byId(id); if (fresh && !$('detail').classList.contains('hidden')) openArmor(fresh);
+  };
+}
+
+/* ===================== footer ===================== */
+function updateFooter(){
+  $('sitefoot').innerHTML = ['<b>Armor data:</b> Bungie.net manifest ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : '(loads on first scan)') + ' · stats, archetypes and tiers read from your items through the Bungie.net API',
+    '<b>Rules:</b> Armor 3.0 pieces have an archetype and a tier; anything without them is old armor (marked Get newer). Archetype sets the primary and secondary stat, the tertiary is random, Tier 5 rolls 30/25/20. Duplicates are grouped by class, slot, set, archetype and tertiary, and the best is kept.',
+    '<b>Builds:</b> <a href="https://d2armorpicker.com/" target="_blank" rel="noopener">D2ArmorPicker</a> (separate site, signs in with its own Bungie login)',
+    'Not affiliated with Bungie, DIM or D2ArmorPicker'].join('<br>');
+}
+
+// ---- refresh: button, on returning to the tab, and every 60s while visible ----
+$('btnRefresh2').onclick = () => { if (!state.items.length && !state.acct) { scan(); return; } scan({ silent: true }); };
+$('autoRefresh').checked = ls.get('autoRefresh') !== '0';
+$('autoRefresh').onchange = () => { ls.set('autoRefresh', $('autoRefresh').checked ? '1' : '0'); tickRefresh(); };
+function autoRefreshOk(minAge){
+  return $('autoRefresh').checked && state.acct && !state.scanning && !state.busy && !document.hidden &&
+    $('detail').classList.contains('hidden') && Date.now() - (state.lastScan || 0) > minAge;
+}
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+document.addEventListener('visibilitychange', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+const REFRESH_SECS = 60;
+// once a second: show when data was read and the countdown, and refresh when it hits zero
+function tickRefresh(){
+  const el = $('lastScan'); if (!el) return;
+  if (!state.lastScan){ el.textContent = ''; return; }
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  // Bungie's own timestamp: if it lags far behind "Updated", Bungie is serving cached data
+  const lag = state.bungieTime ? Math.round((state.lastScan - state.bungieTime) / 1000) : 0;
+  const updated = 'Updated ' + fmt(state.lastScan) + (state.bungieTime ? ' · Bungie data from ' + fmt(state.bungieTime) + (lag > 90 ? ' (Bungie is ' + Math.round(lag / 60) + ' min behind)' : '') : '');
+  if (!$('autoRefresh').checked){ el.textContent = updated + ' · auto-refresh off'; return; }
+  const why = state.scanning ? 'refreshing now' : state.busy ? 'paused while an action runs' : !$('detail').classList.contains('hidden') ? 'paused while a detail view is open' : document.hidden ? 'paused while this tab is hidden' : '';
+  if (why){ el.textContent = updated + ' · ' + why; return; }
+  const left = Math.max(0, Math.ceil((state.lastScan + REFRESH_SECS * 1000 - Date.now()) / 1000));
+  el.textContent = updated + ' · next refresh in ' + left + 's';
+  if (left === 0 && autoRefreshOk(REFRESH_SECS * 1000 - 500)) scan({ silent: true });
+}
+setInterval(tickRefresh, 1000);
+
+const PAGE = 'armor';
+const streamInfo = i => ({ v: i.v, label: VLABEL[i.v], extra: [i.clsName, i.slot, i.tier ? 'Tier ' + i.tier : '', i.arch, i.tert ? '+' + i.tert : '', 'Total ' + i.total].filter(Boolean).join(' · ') });
+const streamOpen = i => openArmor(i);
+
+const PM_BUCKET = 215593132;   // Lost Items (postmaster)
+// The activity stream lives in stream.js (shared with the other pages); it is loaded after this script.
+
+
+/* ===================== startup ===================== */
+updateFooter();
+updateAuthUi();
+if (auth.valid()) scan();
+</script>
+<script src="stream.js"></script>
+</body>
+</html>

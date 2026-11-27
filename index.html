@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+    --god:#e8b84a; --close:#4aa3e8; --trash:#d9534f; --unrated:#6b7585; --exotic:#ceae33; --ok:#3fb37f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:17px;margin:0;letter-spacing:.04em;text-transform:uppercase}
+  header .tabs{display:flex;gap:4px;margin-left:12px}
+  .tab{background:none;border:1px solid transparent;color:var(--dim);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit}
+  .tab.active{color:var(--text);border-color:var(--line);background:var(--panel2)}
+  header .spacer{flex:1}
+  main{padding:18px 22px 20px;max-width:1400px;margin:0 auto}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;font:inherit}
+  input:focus,select:focus{outline:1px solid var(--close)}
+  button.primary{background:#2f6fb0;border:0;color:#fff;padding:8px 16px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}
+  button.primary:disabled{opacity:.5;cursor:default}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--dim);padding:7px 12px;border-radius:6px;font:inherit;cursor:pointer}
+  #status{color:var(--dim);font-size:13px;min-height:20px;margin-bottom:10px;white-space:pre-line}
+  #status.err{color:var(--trash)}
+  .warn{background:#3a2a10;border:1px solid #6b4d16;color:#f0d08a;padding:10px 12px;border-radius:6px;margin-bottom:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--panel);color:var(--dim);padding:5px 11px;border-radius:999px;cursor:pointer;font-size:13px}
+  .chip.on{color:var(--text);border-color:var(--text)}
+  .chip b{margin-left:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--unrated);border-radius:8px;padding:12px;display:flex;gap:12px}
+  .card.god{border-left-color:var(--god)} .card.close{border-left-color:var(--close)}
+  .card.trash{border-left-color:var(--trash)} .card.exotic{border-left-color:var(--exotic)}
+  .card img{width:56px;height:56px;border-radius:4px;flex:none;background:#000}
+  .card .body{flex:1;min-width:0}
+  .card .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .card .name{font-weight:650;font-size:15px}
+  .card .meta{color:var(--dim);font-size:12px}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .badge.god{background:var(--god);color:#1a1300} .badge.close{background:var(--close);color:#041320}
+  .badge.trash{background:var(--trash);color:#fff} .badge.unrated{background:var(--unrated);color:#fff}
+  .badge.exotic{background:var(--exotic);color:#1a1300}
+  .perks{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+  .perk{font-size:12px;padding:2px 7px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+  .perk.hit{color:var(--ok);border-color:#2b6b50}
+  .perk.swap{color:#f0c060;border-color:#7a5a1a}
+  .swapnote{font-size:12.5px;color:#f0c060;margin-top:4px}
+  .scoreline{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .score{font-size:11.5px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+  .dup{font-size:11.5px;padding:1px 7px;border-radius:4px;color:var(--dim);border:1px dashed var(--line)}
+  .dup.best{color:var(--ok);border:1px solid #2b6b50}
+  .roles{font-size:12.5px;color:#9fc6ef;margin-top:3px}
+  .presets{display:flex;flex-direction:column;gap:6px;max-width:760px}
+  .settings label.preset{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text);margin:0}
+  .settings label.preset input{width:auto;max-width:none;flex:none;margin-top:3px}
+  textarea{width:100%;max-width:760px;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;font:inherit;font-size:13px}
+  .aegis{font-size:11.5px;font-weight:700;padding:1px 7px;border-radius:4px;border:1px solid var(--line)}
+  .aegis.tS{background:#e8b84a;color:#1a1300;border-color:#e8b84a} .aegis.tA{color:#3fb37f;border-color:#2b6b50}
+  .aegis.tB{color:#4aa3e8;border-color:#2b4f6b} .aegis.tC{color:var(--dim)}
+  .aegis.tD,.aegis.tE,.aegis.tF{color:var(--trash);border-color:#6b2b2b}
+  .srcs{font-size:12px;color:var(--dim);margin-top:2px}
+  .perk.miss{color:var(--trash);border-color:#6b2b2b;text-decoration:line-through}
+  .reason{font-size:12.5px;margin-top:6px}
+  details{margin-top:6px;font-size:12px;color:var(--dim)}
+  details summary{cursor:pointer}
+  details p{margin:6px 0 0;white-space:pre-wrap}
+  .settings{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px;display:none}
+  .settings.open{display:block}
+  .settings label{display:block;font-size:12px;color:var(--dim);margin:8px 0 4px}
+  .settings input{width:100%;max-width:520px}
+  .settings small{color:var(--dim);display:block;margin-top:8px}
+  .roll{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+  .roll .tags{color:var(--dim);font-size:12px;margin-top:4px}
+  .hidden{display:none!important}
+  .lookup-results{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .lookup-item{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:6px;cursor:pointer;background:var(--panel)}
+  .lookup-item:hover{background:var(--panel2)}
+  .lookup-item img{width:36px;height:36px;border-radius:3px}
+  .dimbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+  .dimbar select{padding:5px 8px}
+  .dim-lbl{color:var(--dim);font-size:13px}
+  .dimhelp{flex-basis:100%;font-size:12.5px;color:var(--dim);margin-top:2px}
+  body:not(.authed) .needauth{display:none!important}
+  .card .actions{flex-wrap:wrap}
+  .card .actions button.apply{color:#f0c060;border-color:#7a5a1a}
+  .card .actions button:disabled{opacity:.45;cursor:default}
+  #charSel{padding:6px 8px;font-size:13px}
+  .card .actions{margin-top:8px;display:flex;gap:6px}
+  .card .actions button{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:3px 8px;border-radius:4px;cursor:pointer}
+  .card .actions button:hover{color:var(--text)}
+  .card{cursor:pointer} .card:hover{border-color:#3a4656}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .dpanel{position:relative;width:min(1300px,100%);background:#12161c;border:1px solid var(--line);border-radius:10px;padding:0 0 18px}
+  .dloading{padding:40px;color:var(--dim)} .dloading.err{color:var(--trash)}
+  .dhead{position:relative;display:flex;gap:14px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);border-radius:10px 10px 0 0;
+    background:linear-gradient(90deg,#12161cee 35%,#12161c99),var(--shot) center/cover}
+  .dicon{width:64px;height:64px;border:2px solid #e8b84a;border-radius:4px}
+  .dname{font-size:22px;font-weight:700;display:flex;gap:10px;align-items:center}
+  .dclose{position:absolute;right:16px;top:16px}
+  .dgrid{display:grid;grid-template-columns:300px 1fr 240px;gap:22px;padding:18px 20px}
+  .dgrid h4{margin:0 0 10px;font-size:15px} .dgrid h4 small{color:var(--dim);font-weight:400;font-size:12px}
+  .srow{margin-bottom:9px} .shead{display:flex;justify-content:space-between;font-size:13.5px;color:#c9d1db}
+  .srow.num{display:flex;justify-content:space-between;font-size:13.5px;color:#c9d1db;padding:3px 0}
+  .sval{font-weight:700} .sval.up{color:#3fb37f} .sval.down{color:var(--trash)} .sval small{font-weight:400}
+  .sbar{position:relative;height:6px;background:#2a3038;border-radius:3px;margin-top:4px;overflow:hidden}
+  .sbar i{position:absolute;left:0;top:0;bottom:0;background:#e6e9ee} .sbar i.up{background:#3fb37f} .sbar i.down{background:var(--trash)}
+  .pcols{display:flex;gap:14px;flex-wrap:wrap}
+  .pcol{display:flex;flex-direction:column;gap:8px;padding-right:12px;border-right:1px solid var(--line)}
+  .perk-o{position:relative;width:56px;height:56px;border-radius:50%;border:2px solid transparent;background:#1f2630;padding:3px;cursor:pointer}
+  .perk-o img{width:100%;height:100%;border-radius:50%;display:block}
+  .perk-o.notown{opacity:.38} .perk-o.own{border-color:#2b6b50}
+  .perk-o.sel{border-color:#2fd3c8;background:#2b5f8a;box-shadow:0 0 0 2px #2fd3c855}
+  .perk-o .chk{position:absolute;right:-3px;bottom:-3px;background:#3b82f6;color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px}
+  .perk-o .thumb,.perk-o .star{position:absolute;left:-5px;top:-5px;font-size:13px}
+  .perk-o .star{color:#e8b84a;font-size:16px}
+  .dside{display:flex;flex-direction:column;gap:8px} .dside button{width:100%}
+  .dside button.apply{color:#f0c060;border-color:#7a5a1a} .dside button:disabled{opacity:.45;cursor:default}
+  .dtip{position:absolute;z-index:60;width:290px;background:#0b0e12;border:1px solid #3a4656;border-radius:8px;padding:12px;pointer-events:none;box-shadow:0 8px 24px #000a}
+  .dtip p{font-size:13px;color:#c9d1db;margin:6px 0} .tstats .up{color:#3fb37f} .tstats .down{color:var(--trash)} .tstats div{font-size:13px}
+  @media (max-width:1000px){ .dgrid{grid-template-columns:1fr} }
+  .card{position:relative} .card.picked{outline:2px solid #2fd3c8;outline-offset:-1px}
+  .card{padding-left:34px} .pickbox{position:absolute;left:9px;top:14px;z-index:2;cursor:pointer}
+  .pickbox input{width:17px;height:17px;cursor:pointer;accent-color:#2fd3c8}
+  .tagboxes{display:flex;flex-wrap:wrap;gap:4px}
+  .tagbox{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--dim);cursor:pointer;background:none;font-family:inherit}
+  .tagbox input{width:13px;height:13px;margin:0;cursor:pointer}
+  .tagbox.on{color:var(--text)}
+  .tagbox.on.t-favorite{border-color:#e8b84a;color:#e8b84a} .tagbox.on.t-keep{border-color:#3fb37f;color:#3fb37f}
+  .tagbox.on.t-infuse{border-color:#4aa3e8;color:#4aa3e8} .tagbox.on.t-junk{border-color:#d9534f;color:#d9534f} .tagbox.on.t-archive{border-color:#8b95a5;color:#c9d1db}
+  .card .actions .tagboxes{flex-basis:100%}
+  .bulkbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:calc(100% - 32px);
+    background:#161b22;border:1px solid #2fd3c8;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px #000c}
+  .bulkbar .sep{width:1px;height:22px;background:var(--line)}
+  .bulkbar button.apply{color:#f0c060;border-color:#7a5a1a}
+  .dside .tagboxes{margin-bottom:4px}
+  .tagapply{font:inherit;font-size:12px;padding:3px 10px;border-radius:4px;border:1px solid var(--line);background:none;color:var(--dim);cursor:pointer}
+  .tagapply:disabled{opacity:.4;cursor:default}
+  .tagapply.ready:not(:disabled){background:#2f6fb0;border-color:#2f6fb0;color:#fff;font-weight:600}
+  .mynote{font-size:12.5px;color:#e6d9a8;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .dside textarea{max-width:none;min-height:80px;resize:vertical}
+  .sitefoot{max-width:1400px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  a.tab{text-decoration:none;display:inline-flex;align-items:center}
+  .navlink{color:#9fc6ef!important}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .eqbadge{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;color:#ffd27a;background:#3a2a10;border:1px solid #6b4d16;border-radius:4px;padding:1px 8px}
+  .actions button.uneq{color:#ffd27a;border-color:#6b4d16}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;bottom:auto;z-index:70;left:50%;transform:translateX(-50%);background:var(--ok);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
+  .sb-new{background:#2fd3c8;color:#04201e}
+</style>
+</head>
+<body>
+<header>
+  <h1>D2 Roll Check</h1>
+  <div class="tabs">
+    <button class="tab active" data-view="scan">My weapons</button>
+    <button class="tab" data-view="lookup">Look up a weapon</button>
+    <a class="tab navlink" href="armor.html">Armor triage →</a>
+    <a class="tab navlink" href="vendors.html">Vendors &amp; Xûr →</a>
+  </div>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull weapons to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <button class="ghost" id="btnSettings">Settings</button>
+</header>
+<div id="bulkbar" class="bulkbar hidden">
+  <b id="bulkCount">0 selected</b>
+  <span class="dim-lbl">Tag:</span><span id="bulkTags" class="tagboxes"></span>
+  <span class="sep"></span>
+  <button class="ghost needauth" id="bulkLock">🔒 Lock</button>
+  <button class="ghost needauth" id="bulkUnlock">🔓 Unlock</button>
+  <button class="ghost needauth" id="bulkPull">Pull</button>
+  <button class="ghost needauth" id="bulkVault">To vault</button>
+  <button class="ghost needauth apply" id="bulkApply">Apply god roll perks</button>
+  <span class="sep"></span>
+  <button class="ghost" id="bulkAll">Select all shown</button>
+  <button class="ghost" id="bulkNone">Clear selection</button>
+</div>
+<div id="detail" class="modal hidden"><div class="dpanel" id="dbody"></div></div>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <section class="settings" id="settings">
+    <label for="apiKey">Bungie API key</label>
+    <input id="apiKey" type="password" placeholder="Paste key from bungie.net/en/Application" autocomplete="off">
+    <label for="clientId">OAuth client_id (for Sign in with Bungie: lock, pull, apply perks)</label>
+    <input id="clientId" type="text" placeholder="Number shown as OAuth client_id on your Bungie app page" autocomplete="off">
+    <label>God roll lists (combined)</label>
+    <div id="presetList" class="presets"></div>
+    <label for="wlCustom">Extra wishlist URLs, one per line (DIM format, optional)</label>
+    <textarea id="wlCustom" rows="2" placeholder="https://raw.githubusercontent.com/..."></textarea>
+    <small>The key, client_id and sign-in token are stored only in this browser. Your Bungie app's Origin Header must match this page's address (https://localhost:8443 when using start-server-https.ps1), and its Redirect URL must be https://localhost:8443/</small>
+    <div class="bar" style="margin-top:12px">
+      <button class="primary" id="btnSave">Save</button>
+      <button class="ghost" id="btnRefresh">Re-download wishlist and manifest</button>
+    </div>
+  </section>
+
+  <div id="status"></div>
+
+  <section id="view-scan">
+    <div class="bar">
+      <input id="bungieName" placeholder="BungieName#1234 or bungie.net profile link" style="min-width:320px">
+      <select id="mode">
+        <option value="all">PvE + PvP</option>
+        <option value="pve">PvE only</option>
+        <option value="pvp">PvP only</option>
+      </select>
+      <button class="primary" id="btnScan">Scan my weapons</button>
+      <button class="ghost" id="btnRefresh2" title="Re-read your inventory from Bungie (keeps your filters)">↻ Refresh</button>
+      <label class="dim-lbl" title="Re-reads your inventory when you switch back to this tab, and every 60 seconds while it's open"><input type="checkbox" id="autoRefresh"> Auto-refresh</label>
+      <span class="dim-lbl" id="lastScan"></span>
+    </div>
+    <div id="privacyWarn" class="warn hidden">Your vault and character inventories are private, so only equipped weapons are shown. On Bungie.net go to Settings, Privacy, and turn on "Show my non-equipped Inventory", then scan again.</div>
+    <div class="bar">
+      <div class="chips" id="chips"></div>
+      <input id="filterText" placeholder="Filter by name or type" style="margin-left:auto;min-width:220px">
+      <select id="sort">
+        <option value="verdict">Sort: verdict</option>
+        <option value="name">Sort: name</option>
+        <option value="type">Sort: weapon type</option>
+        <option value="dupes">Sort: duplicates, best copy first</option>
+        <option value="score">Sort: roll score</option>
+      </select>
+      <label class="dim-lbl"><input type="checkbox" id="onlyDupes"> only duplicates</label>
+    </div>
+    <div class="dimbar hidden" id="dimbar">
+      <b>DIM</b>
+      <span class="dim-lbl">Tag god rolls as</span>
+      <select id="tagGod"><option>favorite</option><option>keep</option><option value="">(skip)</option></select>
+      <span class="dim-lbl">close as</span>
+      <select id="tagClose"><option value="">(skip)</option><option>keep</option><option>infuse</option><option>archive</option></select>
+      <span class="dim-lbl">trash as</span>
+      <select id="tagTrash"><option>junk</option><option value="">(skip)</option></select>
+      <label class="dim-lbl"><input type="checkbox" id="tagNotes" checked> add notes</label>
+      <label class="dim-lbl" title="When you click Apply on tags: favorite or keep locks the weapon in game, junk unlocks it. Needs Sign in with Bungie."><input type="checkbox" id="tagLockSync"> Apply also locks favorite/keep, unlocks junk</label>
+      <button class="primary" id="btnCsv">Export DIM tags (CSV)</button>
+      <button class="ghost" id="btnSearchGod">Copy DIM search: god rolls (to lock)</button>
+      <button class="ghost" id="btnSearchTrash">Copy DIM search: trash (to pull)</button>
+      <button class="ghost" id="btnSearchDupes">Copy DIM search: weaker duplicates</button>
+      <span class="dim-lbl">weaker duplicates as</span>
+      <select id="tagDupe"><option value="">(same as verdict)</option><option>archive</option><option>junk</option></select>
+      <button class="ghost" id="btnSearch">Copy DIM search for shown weapons</button>
+      <button class="primary needauth" id="btnLockGod">🔒 Lock all god rolls</button>
+      <button class="ghost needauth" id="btnLockFav">🔒 Lock everything tagged favorite</button>
+      <div class="dimhelp">The dropdowns above suggest tags for weapons you haven't tagged yourself. Tick tags on a card and click <b>Apply</b> to set your own. DIM allows one tag per weapon, so the highest one (favorite, keep, infuse, archive, junk) becomes the DIM tag and all ticks go into the note. To send tags to DIM: click <b>Export DIM tags (CSV)</b>, then in DIM open Settings (gear icon), scroll to <b>Spreadsheets</b>, click <b>Import tags/notes from CSV</b> and pick the downloaded file. Refresh DIM afterward.</div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="view-lookup" class="hidden">
+    <div class="bar">
+      <input id="lookupText" placeholder="Weapon name, e.g. Fatebringer" style="min-width:320px">
+      <select id="lookupMode">
+        <option value="all">PvE + PvP</option>
+        <option value="pve">PvE only</option>
+        <option value="pvp">PvP only</option>
+      </select>
+    </div>
+    <div class="lookup-results" id="lookupResults"></div>
+    <div id="lookupRolls"></div>
+  </section>
+</main>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API (weapon and perk definitions) · god roll lists load on first scan</footer>
+
+<script>
+/* ===================== CORE (wishlist parsing + rating) ===================== */
+const WILDCARD = 69420;
+
+function splitTags(s){
+  const i = s.indexOf('|tags:');
+  return i >= 0 ? [s.slice(0, i).trim(), s.slice(i + 6).trim()] : [s.trim(), ''];
+}
+
+function modeOf(tags, notes){
+  const s = (tags + ' ' + (tags ? '' : (notes || ''))).toLowerCase();
+  const pve = /pve/.test(s), pvp = /pvp/.test(s);
+  return pve && pvp ? 'both' : pve ? 'pve' : pvp ? 'pvp' : '';
+}
+
+// Parses DIM wishlist text. Returns { good: Map<itemHash, entry[]>, trash: Map<itemHash, entry[]>, notes: string[] }
+// entry = { p: perkHash[], n: noteIndex, m: 'pve'|'pvp'|'both'|'' }
+// Parses one DIM wishlist into acc (so several lists can be merged). src = list index, defMode = 'pve'/'pvp'/'' for untagged rolls.
+function parseWishlist(text, acc, src, defMode){
+  acc = acc || { good: new Map(), trash: new Map(), notes: [''], noteIdx: new Map([['', 0]]) };
+  src = src || 0; defMode = defMode || '';
+  const { good, trash, notes, noteIdx } = acc;
+  const noteId = s => {
+    s = s || '';
+    let i = noteIdx.get(s);
+    if (i === undefined){ i = notes.length; notes.push(s); noteIdx.set(s, i); }
+    return i;
+  };
+  let blockNotes = '', blockTags = '', blockTitle = '';
+  let start = 0;
+  const len = text.length;
+  while (start < len){
+    let end = text.indexOf('\n', start);
+    if (end < 0) end = len;
+    const line = text.slice(start, end).trim();
+    start = end + 1;
+    if (!line){ blockNotes = ''; blockTags = ''; blockTitle = ''; continue; }
+    if (line.startsWith('//notes:')){ [blockNotes, blockTags] = splitTags(line.slice(8)); continue; }
+    if (line.startsWith('//')){
+      // roll titles look like "// 21% Delirium - PvE Boss god AB 1"
+      const c = line.replace(/^\/\/\s*/, '');
+      const i = c.indexOf(' - ');
+      if (i > 0 && !c.startsWith('(') && !/^https?:|taken from/i.test(c)) blockTitle = c.slice(i + 3).replace(/\s+\d+$/, '').trim();
+      continue;
+    }
+    if (!line.startsWith('dimwishlist:')) continue;
+    let body = line.slice(12), n = '', t = '';
+    const hi = body.indexOf('#notes:');
+    if (hi >= 0){ [n, t] = splitTags(body.slice(hi + 7)); body = body.slice(0, hi); }
+    const m = /item=(-?\d+)(?:&perks=([\d,]*))?/.exec(body);
+    if (!m) continue;
+    const item = parseInt(m[1], 10);
+    if (Math.abs(item) === WILDCARD) continue;           // perk-only wildcard rolls are skipped
+    const perks = m[2] ? m[2].split(',').filter(Boolean).map(Number) : [];
+    const noteText = n || blockNotes, tagText = t || blockTags;
+    const entry = { p: perks, n: noteId(noteText), m: modeOf(tagText, noteText) || defMode, ti: noteId(blockTitle), g: /god/i.test(tagText + ' ' + blockTitle), s: src };
+    const at = /\bAegis ([SABCDEF])\b/.exec(noteText);
+    if (at) entry.at = at[1];
+    const map = item < 0 ? trash : good, key = Math.abs(item);
+    let arr = map.get(key);
+    if (!arr){ arr = []; map.set(key, arr); }
+    arr.push(entry);
+  }
+  return acc;
+}
+
+// Enhanced perks have different hashes but the same name, so compare by normalized name.
+function normName(s){ return (s || '').toLowerCase().replace(/\benhanced\b/g, '').replace(/[^a-z0-9]/g, ''); }
+
+// Readable role from a roll title like "PvE Boss god AB" -> "PvE Boss"
+function roleName(e){
+  const t = (typeof state !== 'undefined' && state.wl) ? state.wl.notes[e.ti] : '';
+  if (!t) return e.m === 'pvp' ? 'PvP' : e.m === 'pve' ? 'PvE' : '';
+  return t.replace(/\bgod\b/ig, '').replace(/\bAB\b/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function modeOk(e, mode){
+  if (mode === 'all' || !e.m) return true;
+  return e.m === 'both' || e.m === mode;
+}
+
+// have: Set of normalized perk names available on the item (selected + selectable)
+// nameOf: perkHash -> display name
+function rateItem(itemHash, have, nameOf, wl, mode){
+  const owned = h => have.has(normName(nameOf(h)));
+  for (const e of (wl.trash.get(itemHash) || [])){
+    if (!modeOk(e, mode)) continue;
+    if (e.p.length === 0 || e.p.every(owned)) return { verdict: 'trash', reason: 'On the community trash list', entry: e };
+  }
+  const rolls = (wl.good.get(itemHash) || []).filter(e => modeOk(e, mode));
+  if (!rolls.length) return { verdict: 'unrated', reason: 'No community recommendations for this weapon' };
+  let best = null, bestScore = -1, full = [];
+  for (const e of rolls){
+    if (!e.p.length){ full.push(e); continue; }
+    let hit = 0;
+    for (const p of e.p) if (owned(p)) hit++;
+    const score = hit / e.p.length;
+    if (score === 1) full.push(e);
+    if (score > bestScore){ bestScore = score; best = e; }
+  }
+  if (full.length){
+    const modes = new Set(full.map(e => e.m).filter(Boolean));
+    const label = modes.has('both') || (modes.has('pve') && modes.has('pvp')) ? 'PvE + PvP' : modes.has('pve') ? 'PvE' : modes.has('pvp') ? 'PvP' : '';
+    return { verdict: 'god', reason: 'Matches a recommended roll' + (label ? ' (' + label + ')' : ''), entry: full[0], full, matches: full.length };
+  }
+  if (bestScore >= 0.5) return { verdict: 'close', reason: 'Has ' + Math.round(bestScore * best.p.length) + ' of ' + best.p.length + ' perks from a recommended roll', entry: best, frac: bestScore };
+  return { verdict: 'trash', reason: 'Has none of the recommended perk combos', entry: best, frac: Math.max(0, bestScore) };
+}
+
+/* ===================== APP ===================== */
+const PRESETS = [
+  { id: 'voltron', short: 'Community', on: true, mode: '',
+    url: 'https://raw.githubusercontent.com/48klocs/dim-wish-list-sources/master/voltron.txt',
+    label: 'DIM Community (voltron), broad PvE + PvP picks from many creators. Updated Aug 2026, about 30 MB' },
+  { id: 'aegis', short: 'Aegis', on: true, mode: 'pve',
+    url: 'https://raw.githubusercontent.com/flossyboy/aegis-dim-wishlist/main/aegis_endgame_pve_dim_wishlist.txt',
+    label: 'Aegis Endgame PvE, strict endgame picks with S to F weapon tiers. Updated Oct 2026, about 16 MB' },
+  { id: 'gigpve', short: 'Monument PvE', on: true, mode: 'pve',
+    url: 'https://raw.githubusercontent.com/NewbieTeebee/DIM-Wishlists/main/monument-of-triumph/monument-pve.txt',
+    label: 'Giggletwig Monument of Triumph PvE, small current-meta list. Updated Nov 2026' },
+  { id: 'gigpvp', short: 'Monument PvP', on: true, mode: 'pvp',
+    url: 'https://raw.githubusercontent.com/NewbieTeebee/DIM-Wishlists/main/monument-of-triumph/monument-pvp.txt',
+    label: 'Giggletwig Monument of Triumph PvP, small current-meta list. Updated Nov 2026' },
+  { id: 'gigtrash', short: 'Trash list', on: false, mode: '',
+    url: 'https://raw.githubusercontent.com/NewbieTeebee/DIM-Wishlists/main/complete-dim-wishlist/complete-dim-wishlist-part-10-of-10.txt',
+    label: 'Giggletwig trash list, marks D/E/F-tier weapons as trash no matter the perks. Strict, off by default' }
+];
+function getPresetState(){
+  let s = {};
+  try { s = JSON.parse(ls.get('wlPresets') || '{}'); } catch {}
+  const out = {};
+  PRESETS.forEach(p => out[p.id] = p.id in s ? !!s[p.id] : p.on);
+  return out;
+}
+const $ = id => document.getElementById(id);
+const state = { defs: null, wl: null, items: [], picked: new Set(), filter: new Set(['god','close','trash','unrated','exotic']) };
+const VERDICT_ORDER = { god: 0, close: 1, exotic: 2, unrated: 3, trash: 4 };
+const LABEL = { god: 'God roll', close: 'Close', trash: 'Trash', unrated: 'Unrated', exotic: 'Exotic' };
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+// ---- tiny IndexedDB cache ----
+function idb(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('d2rollcheck', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
+async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+
+// ---- settings ----
+const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+$('apiKey').value = ls.get('apiKey') || '';
+(function renderPresets(){
+  const on = getPresetState();
+  $('presetList').innerHTML = PRESETS.map(p =>
+    '<label class="preset"><input type="checkbox" data-preset="' + p.id + '"' + (on[p.id] ? ' checked' : '') + '> ' + esc(p.label) + '</label>').join('');
+  const legacy = ls.get('wlUrl');
+  $('wlCustom').value = ls.get('wlCustom') || (legacy && !PRESETS.some(p => p.url === legacy) ? legacy : '');
+})();
+$('bungieName').value = ls.get('bungieName') || '';
+$('btnSettings').onclick = () => $('settings').classList.toggle('open');
+$('clientId').value = ls.get('clientId') || '';
+$('btnSave').onclick = () => {
+  ls.set('apiKey', $('apiKey').value.trim());
+  ls.set('clientId', $('clientId').value.trim());
+  updateAuthUi();
+  const before = JSON.stringify(activeLists());
+  const s = {}; document.querySelectorAll('[data-preset]').forEach(c => s[c.dataset.preset] = c.checked);
+  ls.set('wlPresets', JSON.stringify(s));
+  ls.set('wlCustom', $('wlCustom').value.trim());
+  const changed = before !== JSON.stringify(activeLists());
+  if (changed){ state.wl = null; }
+  $('settings').classList.remove('open');
+  setStatus(changed ? 'Settings saved. Wishlists changed, click Scan again to re-rate your weapons.' : 'Settings saved.');
+};
+$('btnRefresh').onclick = async () => { await cacheSet('manifest2', null); for (const L of activeLists()) await cacheSet('wl:' + L.url, null); state.defs = null; state.wl = null; setStatus('Cache cleared. Data will download again on the next scan or lookup.'); };
+if (!ls.get('apiKey')) $('settings').classList.add('open');
+
+// fetch wrapper that names which download failed
+async function net(url, what, opts){
+  try { return await fetch(url, opts); }
+  catch (e){
+    console.error('Fetch failed for', what, url, e);
+    throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nThis is usually an ad blocker, browser shield, or firewall blocking the request. Press F12 and check the Console tab for the exact reason.');
+  }
+}
+
+// ---- Bungie sign-in (OAuth, public client: no refresh token, about 1 hour per sign-in) ----
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  const a = auth.get();
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.items.length) render(); }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); updateAuthUi(); render && state.items.length && render(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid){ $('settings').classList.add('open'); setStatus('Add your OAuth client_id in Settings first (from your Bungie app page).', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+// Bungie sends the user back to https://localhost:8443/?code=...&state=...
+async function handleOAuthRedirect(){
+  const q = new URLSearchParams(location.search);
+  const code = q.get('code');
+  if (!code) return false;
+  history.replaceState(null, '', location.pathname);
+  let expected = null; try { expected = sessionStorage.getItem('oauthState'); sessionStorage.removeItem('oauthState'); } catch {}
+  if (!expected || q.get('state') !== expected){ setStatus('Sign-in was rejected: the response did not match this browser session. Try Sign in again.', true); return false; }
+  setStatus('Finishing Bungie sign-in...');
+  const r = await net('https://www.bungie.net/Platform/App/OAuth/Token/', 'Bungie sign-in token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-API-Key': ls.get('apiKey') || '' },
+    body: 'grant_type=authorization_code&code=' + encodeURIComponent(code) + '&client_id=' + encodeURIComponent(ls.get('clientId') || '')
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.access_token){ setStatus('Bungie sign-in failed: ' + (j.error_description || j.error || ('HTTP ' + r.status)), true); return false; }
+  auth.set({ token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, bnetId: j.membership_id });
+  updateAuthUi();
+  let back = null; try { back = sessionStorage.getItem('returnTo'); sessionStorage.removeItem('returnTo'); } catch {}
+  if (back && /^[a-z]+\.html$/.test(back)){ location.href = back; return false; }
+  return true;
+}
+
+// ---- Bungie API ----
+async function bungie(path, body, plainBody){
+  const key = ls.get('apiKey');
+  if (!key) throw new Error('Add your Bungie API key in Settings first.');
+  const headers = { 'X-API-Key': key };
+  if (body && !plainBody) headers['Content-Type'] = 'application/json';
+  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
+  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', {
+    method: body ? 'POST' : 'GET',
+    headers,
+    cache: 'no-store',   // always read your current inventory, never a cached copy
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let j;
+  try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
+  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
+  return j.Response;
+}
+// POST for item actions; retries without the JSON content type if the browser blocks the first try
+async function bungieAction(path, body){
+  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right). Sign-in lasts about an hour.');
+  try { return await bungie(path, body); }
+  catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+}
+
+async function loadDefs(){
+  if (state.defs) return state.defs;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version;
+  updateFooter();
+  const cached = await cacheGet('manifest2');
+  if (cached && cached.version === man.version){ state.defs = cached.data; return state.defs; }
+  setStatus('Downloading weapon and perk definitions (first run only, about 30 to 60 MB)...');
+  const path = man.jsonWorldComponentContentPaths.en.DestinyInventoryItemLiteDefinition;
+  const resp = await net('https://www.bungie.net' + path, 'the Bungie weapon definitions file');
+  if (!resp.ok) throw new Error('Bungie definitions file returned HTTP ' + resp.status);
+  const raw = await resp.json();
+  const data = {};
+  for (const h in raw){
+    const d = raw[h], dp = d.displayProperties || {};
+    data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: d.inventory ? d.inventory.tierType : 0, b: d.inventory ? d.inventory.bucketTypeHash : 0 };
+  }
+  await cacheSet('manifest2', { version: man.version, data });
+  state.defs = data;
+  return data;
+}
+
+// The active lists: enabled presets plus any custom URLs from Settings
+function activeLists(){
+  const on = getPresetState();
+  const lists = PRESETS.filter(p => on[p.id]).map(p => ({ name: p.short, url: p.url, mode: p.mode }));
+  (ls.get('wlCustom') || '').split(/\s+/).filter(u => /^https?:\/\//.test(u)).forEach((u, i) => lists.push({ name: 'Custom ' + (i + 1), url: u, mode: '' }));
+  return lists;
+}
+
+async function loadWishlist(){
+  if (state.wl) return state.wl;
+  const lists = activeLists();
+  if (!lists.length) throw new Error('No wishlists are turned on. Open Settings and pick at least one.');
+  let acc = null;
+  for (let i = 0; i < lists.length; i++){
+    const L = lists[i];
+    const key = 'wl:' + L.url;
+    const cached = await cacheGet(key);
+    let text;
+    if (cached && Date.now() - cached.at < 24 * 3600e3) text = cached.text;
+    else {
+      setStatus('Downloading wishlist ' + (i + 1) + ' of ' + lists.length + ': ' + L.name + '...');
+      const r = await net(L.url, 'the wishlist "' + L.name + '"');
+      if (!r.ok) throw new Error('Could not download wishlist "' + L.name + '": HTTP ' + r.status);
+      text = await r.text();
+      await cacheSet(key, { at: Date.now(), text });
+    }
+    setStatus('Parsing wishlist ' + (i + 1) + ' of ' + lists.length + ': ' + L.name + '...');
+    await new Promise(r => setTimeout(r, 0));
+    acc = parseWishlist(text, acc, i, L.mode);
+    L.rolls = (text.match(/^dimwishlist:/gm) || []).length;
+    L.at = cached && cached.at ? cached.at : Date.now();
+    const tm = /^title:(.*)$/m.exec(text); L.title = tm ? tm[1].trim() : '';
+  }
+  acc.sources = lists.map(l => l.name);
+  state.wlInfo = lists;
+  updateFooter();
+  state.wl = acc;
+  return state.wl;
+}
+
+const nameOf = h => (state.defs[h] && state.defs[h].n) || '';
+const HIDE_PLUG = /shader|ornament|tracker|memento|masterwork|catalyst|mod|weapon level|deepsight|empty|default|kill tracker|transmog/i;
+
+// ---- scan ----
+$('btnScan').onclick = scan;
+$('bungieName').addEventListener('keydown', e => { if (e.key === 'Enter') scan(); });
+$('mode').onchange = () => { if (state.items.length) rerate(); };
+
+// Tries several ways to find the account, since some browsers/networks block the POST search.
+async function findAccount(input){
+  const prof = /Profile\/(\d+)\/(\d+)/i.exec(input);
+  if (prof){
+    const [, type, id] = prof;
+    if (type === '254'){   // bungie.net account link -> look up its Destiny memberships
+      const r = await bungie('/User/GetMembershipsById/' + id + '/254/');
+      return r.destinyMemberships || [];
+    }
+    return [{ membershipType: +type, membershipId: id, crossSaveOverride: 0 }];
+  }
+  const m = /^(.+)#(\d{1,4})$/.exec(input);
+  if (!m) throw new Error('Enter your full Bungie name, like Guardian#1234, or paste your bungie.net profile link.');
+  const name = m[1], code = parseInt(m[2], 10), body = { displayName: name, displayNameCode: code };
+  const attempts = [
+    () => bungie('/Destiny2/SearchDestinyPlayerByBungieName/-1/', body),
+    () => bungie('/Destiny2/SearchDestinyPlayerByBungieName/-1/', body, true),
+    () => bungie('/Destiny2/SearchDestinyPlayer/-1/' + encodeURIComponent(name + '#' + String(code).padStart(4, '0')) + '/')
+  ];
+  let last;
+  for (const a of attempts){
+    try { const r = await a(); if (r && r.length) return r; last = new Error('No Destiny account found for ' + input); }
+    catch (e){ console.warn('Account search attempt failed:', e.message); last = e; }
+  }
+  throw new Error(last.message + '\n\nWorkaround: paste your bungie.net profile link instead (bungie.net, click your avatar, View Profile, copy the address).');
+}
+
+async function scan(opts = {}){
+  if (state.scanning) return;
+  const silent = !!opts.silent, prevStatus = $('status').textContent;
+  const prevIds = new Set(state.items.map(i => i.id));
+  const full = $('bungieName').value.trim();
+  if (!full && !auth.valid()){ setStatus('Enter your full Bungie name, like Guardian#1234, or Sign in with Bungie', true); return; }
+  if (full) ls.set('bungieName', full);
+  $('btnScan').disabled = true; state.scanning = true;
+  try {
+    await loadDefs();
+    await loadWishlist();
+    let acct = null;
+    if (auth.valid()){
+      setStatus('Loading your signed-in account...');
+      const me = await bungie('/User/GetMembershipsForCurrentUser/');
+      const ms = me.destinyMemberships || [];
+      acct = ms.find(m => m.membershipId === me.primaryMembershipId) || ms.find(m => m.crossSaveOverride && m.membershipType === m.crossSaveOverride) || ms[0];
+      if (!acct) throw new Error('No Destiny account found on your signed-in Bungie account.');
+    } else {
+    setStatus('Finding ' + full + '...');
+    acct = ls.get('acct:' + full) ? JSON.parse(ls.get('acct:' + full)) : null;
+    }
+    if (!acct){
+      const found = await findAccount(full);
+      if (!found.length) throw new Error('No Destiny account found for ' + full);
+      acct = found[0];
+      const cs = found.find(a => a.crossSaveOverride && a.membershipType === a.crossSaveOverride);
+      if (cs) acct = cs;
+      ls.set('acct:' + full, JSON.stringify({ membershipType: acct.membershipType, membershipId: acct.membershipId }));
+    }
+    setStatus('Loading inventory...');
+    state.acct = { membershipType: acct.membershipType, membershipId: acct.membershipId };
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,305,310');
+    state.bungieTime = p.responseMintedTimestamp ? new Date(p.responseMintedTimestamp).getTime() : 0;
+    buildItems(p);
+    rerate();
+    trackDrops(p);
+    // what disappeared since the last scan (dismantled, or moved off this account view)
+    const nowIds = new Set(state.items.map(i => i.id));
+    const gone = prevIds.size ? [...prevIds].filter(id => !nowIds.has(id)) : [];
+    gone.forEach(id => state.picked.delete(id));
+    state.lastScan = Date.now();
+    tickRefresh();
+    if (gone.length){ const m = gone.length + (gone.length === 1 ? ' weapon' : ' weapons') + ' gone since last check (dismantled or deleted).'; toast(m); setStatus(m); }
+    else if (silent) setStatus(prevStatus);
+  } catch (e){
+    setStatus(e.message, true);
+  } finally {
+    $('btnScan').disabled = false; state.scanning = false;
+  }
+}
+
+function buildItems(p){
+  const out = [];
+  const sockets = (p.itemComponents.sockets && p.itemComponents.sockets.data) || {};
+  const reusable = (p.itemComponents.reusablePlugs && p.itemComponents.reusablePlugs.data) || {};
+  const chars = (p.characters && p.characters.data) || {};
+  const instances = (p.itemComponents.instances && p.itemComponents.instances.data) || {};
+  const where = cid => cid ? CLASS[(chars[cid] || {}).classType] || 'Character' : 'Vault';
+  // characters for the "pull to" picker, most recently played first
+  state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
+    .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light }));
+  fillCharSel(p);
+  updateAuthUi();
+  const add = (items, loc, charId, equipped) => {
+    for (const it of items || []){
+      const d = state.defs[it.itemHash];
+      if (!d || d.it !== 3 || !it.itemInstanceId) continue;   // itemType 3 = weapon
+      const sk = (sockets[it.itemInstanceId] || {}).sockets || [];
+      const active = [], have = new Set(), sel = new Set();
+      sk.forEach(s => {
+        if (!s.plugHash) return;
+        const n = nameOf(s.plugHash);
+        if (!n) return;
+        have.add(normName(n)); sel.add(normName(n));
+        const def = state.defs[s.plugHash];
+        if (s.isVisible !== false && !HIDE_PLUG.test(def.t) && !HIDE_PLUG.test(n)) active.push(n);
+      });
+      const rp = (reusable[it.itemInstanceId] || {}).plugs || {};
+      const plugAt = {};   // normalized perk name -> where to insert it (for Apply perks)
+      for (const k in rp) for (const pl of rp[k]) {
+        const n = nameOf(pl.plugItemHash); if (!n) continue;
+        have.add(normName(n));
+        if (pl.canInsert !== false) plugAt[normName(n)] = { socketIndex: +k, plugItemHash: pl.plugItemHash };
+      }
+      let gearTier = 0;
+      for (const s of sk){ const tm = /^Tier (\d)/i.exec(nameOf(s.plugHash)); if (tm) gearTier = +tm[1]; }
+      const inst = instances[it.itemInstanceId] || {};
+      const power = inst.primaryStat ? inst.primaryStat.value : (inst.itemLevel || 0);
+      const cur = {}, owned = {};   // socketIndex -> current plug; socketIndex -> plugs this copy can switch to
+      sk.forEach((s, idx) => { if (s.plugHash) cur[idx] = s.plugHash; });
+      for (const k in rp) owned[k] = rp[k].map(p => p.plugItemHash);
+      const pm = it.bucketHash === PM_BUCKET;
+      out.push({ hash: it.itemHash, id: it.itemInstanceId, name: d.n, icon: d.i, type: d.t, tier: d.tier, bucket: d.b, loc: pm ? 'Postmaster (' + loc + ')' : loc, postmaster: pm, active, have, sel, gearTier, power,
+        charId: charId || null, equipped: !!equipped, locked: !!(it.state & 1), plugAt, cur, owned });
+    }
+  };
+  const privacyHidden = !p.profileInventory || !p.profileInventory.data;
+  $('privacyWarn').classList.toggle('hidden', !privacyHidden);
+  if (p.profileInventory && p.profileInventory.data) add(p.profileInventory.data.items, 'Vault');
+  for (const cid in ((p.characterInventories && p.characterInventories.data) || {})) add(p.characterInventories.data[cid].items, where(cid), cid, false);
+  for (const cid in ((p.characterEquipment && p.characterEquipment.data) || {})) add(p.characterEquipment.data[cid].items, where(cid) + ' (equipped)', cid, true);
+  state.items = out;
+}
+
+function rerate(){
+  const mode = $('mode').value;
+  for (const it of state.items){
+    it.r = it.tier === 6 ? { verdict: 'exotic', reason: 'Exotic, perks are fixed' } : rateItem(it.hash, it.have, nameOf, state.wl, mode);
+    // your own saved god roll for this weapon (by name, so reissues count) wins over the lists
+    const mine = myRolls()[normName(it.name)];
+    it.mine = null;
+    if (mine && it.tier !== 6){
+      const hit = mine.names.filter(n => it.have.has(n)).length;
+      it.mine = { hit, total: mine.names.length };
+      if (hit === mine.names.length){
+        const e = { p: mine.hashes, n: 0, m: '', ti: 0, g: true, s: -1 };
+        it.r = { verdict: 'god', reason: 'Matches MY god roll', entry: e, full: [e], matches: 1, isMine: true };
+      }
+    }
+    const swapsFor = e => e.p.filter(h => { const k = normName(nameOf(h)); return it.have.has(k) && !it.sel.has(k); }).map(nameOf);
+    it.roles = []; it.score = null; it.srcs = [];
+    // Aegis letter tier for the weapon itself (from the Aegis list, matched or not)
+    it.aegis = '';
+    for (const e of (state.wl.good.get(it.hash) || [])) if (e.at){ it.aegis = e.at; break; }
+    const aegisBonus = { S: 8, A: 5, B: 2, C: 0, D: -3, E: -6, F: -8 }[it.aegis] || 0;
+    if (it.r.isMine){
+      it.srcs = ['My god roll'];
+      it.swap = swapsFor(it.r.entry);
+      it.score = Math.max(0, Math.min(100, 100 - it.swap.length * 3));
+    } else if (it.r.verdict === 'god'){
+      // a "god roll" needs a real recommendation: 2+ trait perks, or a full 4+ perk roll.
+      // Partial lines (barrel + mag only, or a single trait) only count as close.
+      const typeOf = h => (state.defs[h] || {}).t || '';
+      const strong = e => e.p.length === 0 || e.p.length >= 4 || e.p.filter(h => /trait/i.test(typeOf(h))).length >= 2;
+      const strongFull = it.r.full.filter(strong);
+      if (!strongFull.length){
+        it.r = { verdict: 'close', reason: 'Only matches part of a recommended roll (not both traits)', entry: it.r.full.sort((a, b) => b.p.length - a.p.length)[0], frac: 0.6 };
+      } else {
+        it.r.full = strongFull; it.r.matches = strongFull.length;
+      }
+    }
+    if (it.r.verdict === 'god' && !it.r.isMine){
+      it.srcs = [...new Set(it.r.full.map(e => state.wl.sources[e.s]))];
+      // prefer the matched roll that needs the fewest swaps, then a "god" tagged one
+      const ranked = it.r.full.map(e => ({ e, s: swapsFor(e).length })).sort((a, b) => a.s - b.s || b.e.p.length - a.e.p.length || (b.e.g - a.e.g));
+      it.r.entry = ranked[0].e;
+      const roles = new Set(it.r.full.map(e => roleName(e)).filter(Boolean));
+      it.roles = [...roles];
+      it.score = Math.max(0, Math.min(100, 64 + (it.r.full.some(e => e.g) ? 8 : 0) + Math.min(roles.size, 3) * 4 + Math.min(it.srcs.length, 3) * 3 - ranked[0].s * 3 + it.gearTier * 2 + aegisBonus));
+    } else if (it.r.verdict === 'close'){
+      it.score = Math.max(0, Math.round(30 + 30 * it.r.frac + it.gearTier * 2 + aegisBonus));
+    } else if (it.r.verdict === 'trash'){
+      it.score = Math.round(25 * (it.r.frac || 0) + it.gearTier);
+    }
+    // perks from the matched roll that are on the gun but not currently selected
+    it.swap = (it.r.verdict === 'god' || it.r.verdict === 'close') && it.r.entry ? swapsFor(it.r.entry) : [];
+  }
+  // duplicates: rank copies of the same weapon by score, then power
+  const groups = new Map();
+  for (const it of state.items){ if (it.tier === 6) continue; const g = groups.get(it.name) || []; g.push(it); groups.set(it.name, g); }
+  for (const it of state.items){ it.dupCount = 1; it.dupRank = 1; }
+  for (const g of groups.values()){
+    if (g.length < 2) continue;
+    g.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || b.power - a.power);
+    g.forEach((it, i) => { it.dupCount = g.length; it.dupRank = i + 1; });
+  }
+  // what you own, so the Vendors page can tell you if a vendor weapon beats it
+  try {
+    const wi = {};
+    for (const it of state.items){
+      const k = normName(it.name), w = wi[k] || (wi[k] = { n: 0, best: 'unrated', s: -1 });
+      w.n++; if ((VERDICT_ORDER[it.r.verdict] ?? 9) < (VERDICT_ORDER[w.best] ?? 9)) w.best = it.r.verdict; if ((it.score ?? -1) > w.s) w.s = it.score ?? -1;
+    }
+    ls.set('weaponIndex', JSON.stringify({ at: Date.now(), m: wi }));
+  } catch {}
+  const c = {}; state.items.forEach(i => c[i.r.verdict] = (c[i.r.verdict] || 0) + 1);
+  setStatus('Scanned ' + state.items.length + ' weapons. ' + (c.god || 0) + ' god rolls, ' + (c.close || 0) + ' close, ' + (c.trash || 0) + ' trash.');
+  renderChips(c);
+  $('dimbar').classList.remove('hidden');
+  render();
+}
+
+function renderChips(c){
+  $('chips').innerHTML = ['god','close','trash','unrated','exotic'].map(v =>
+    '<span class="chip ' + (state.filter.has(v) ? 'on' : '') + '" data-v="' + v + '">' + LABEL[v] + '<b>' + (c[v] || 0) + '</b></span>').join('');
+  $('chips').querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
+    const v = ch.dataset.v; state.filter.has(v) ? state.filter.delete(v) : state.filter.add(v); renderChips(c); render();
+  });
+}
+$('filterText').oninput = render;
+$('onlyDupes').onchange = render;
+$('sort').onchange = render;
+
+function perkChips(entry, have, sel){
+  if (!entry || !entry.p.length) return '';
+  return '<div class="perks">' + entry.p.map(h => {
+    const n = nameOf(h), k = normName(n);
+    const cls = !have.has(k) ? 'miss' : sel && !sel.has(k) ? 'swap' : 'hit';
+    return '<span class="perk ' + cls + '"' + (cls === 'swap' ? ' title="On the gun but not selected. Swap to it in game."' : '') + '>' + (cls === 'swap' ? '⇄ ' : '') + esc(n || h) + '</span>';
+  }).join('') + '</div>';
+}
+
+function render(){
+  const q = $('filterText').value.trim().toLowerCase();
+  const sort = $('sort').value;
+  const onlyDupes = $('onlyDupes').checked;
+  let list = state.items.filter(i => state.filter.has(i.r.verdict) && (!onlyDupes || i.dupCount > 1) && (!q || (i.name + ' ' + i.type).toLowerCase().includes(q)));
+  list.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name)
+    : sort === 'type' ? a.type.localeCompare(b.type) || a.name.localeCompare(b.name)
+    : sort === 'dupes' ? (b.dupCount > 1) - (a.dupCount > 1) || a.name.localeCompare(b.name) || a.dupRank - b.dupRank
+    : sort === 'score' ? (b.score ?? -1) - (a.score ?? -1) || a.name.localeCompare(b.name)
+    : VERDICT_ORDER[a.r.verdict] - VERDICT_ORDER[b.r.verdict] || a.name.localeCompare(b.name));
+  $('grid').innerHTML = list.map(i => {
+    const r = i.r, note = r.entry ? state.wl.notes[r.entry.n] : '';
+    const showRoll = r.verdict === 'god' || r.verdict === 'close' || (r.verdict === 'trash' && r.entry && r.reason.startsWith('On'));
+    return '<div class="card ' + r.verdict + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for perks and stats">' +
+      '<label class="pickbox" title="Select for bulk actions"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
+      '<img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">' +
+      '<div class="body"><div class="top"><span class="name">' + esc(i.name) + '</span><span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + '</span></div>' +
+      '<div class="meta">' + esc(i.type) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · Power ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + '</div>' +
+      (i.postmaster ? '<div class="eqbadge pm" title="In the postmaster. Pull takes it out first.">📬 In the postmaster (' + esc(i.loc.replace('Postmaster (', '').replace(')', '')) + ')</div>' : '') +
+      (i.equipped ? '<div class="eqbadge" title="Bungie can\'t move an equipped item. Use Unequip, or swap it in game.">⚔ Equipped on ' + esc(i.loc.replace(' (equipped)', '')) + '</div>' : '') +
+      (noteFor(i.id) ? '<div class="mynote" title="Your note. Click the card to edit.">📝 ' + esc(noteFor(i.id)) + '</div>' : '') +
+      '<div class="scoreline">' + (i.score != null ? '<span class="score">Score ' + i.score + '</span>' : '') +
+        (i.aegis ? '<span class="aegis t' + i.aegis + '" title="Weapon tier from Aegis Endgame Analysis">Aegis ' + i.aegis + '</span>' : '') +
+        (i.dupCount > 1 ? (i.dupRank === 1 ? '<span class="dup best">Best of ' + i.dupCount + ' copies</span>' : '<span class="dup">Copy ' + i.dupRank + ' of ' + i.dupCount + ', weaker than your best</span>') : '') + '</div>' +
+      '<div class="reason">' + esc(r.reason) + (r.matches > 1 ? ' · ' + r.matches + ' matching rolls' : '') + '</div>' +
+      (i.roles && i.roles.length ? '<div class="roles">Good for: ' + i.roles.map(esc).join(', ') + '</div>' : '') +
+      (i.mine && !i.r.isMine ? '<div class="roles">My god roll: has ' + i.mine.hit + ' of ' + i.mine.total + ' perks</div>' : '') +
+      (i.srcs && i.srcs.length ? '<div class="srcs">Matched in: ' + i.srcs.map(esc).join(', ') + '</div>' : '') +
+      (i.swap && i.swap.length ? '<div class="swapnote">Swap in game to: ' + i.swap.map(esc).join(', ') + '</div>' : '') +
+      (showRoll ? perkChips(r.entry, i.have, i.sel) : '') +
+      '<div class="perks">' + i.active.map(n => '<span class="perk">' + esc(n) + '</span>').join('') + '</div>' +
+      (note ? '<details><summary>Community notes</summary><p>' + esc(note) + '</p></details>' : '') +
+      '<div class="actions">' +
+        tagBoxes(i.id, tagFor(i)) +
+        '<button class="needauth" data-act="lock" data-id="' + esc(i.id) + '">' + (i.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
+        (i.equipped ? '<button class="needauth uneq" data-act="unequip" data-id="' + esc(i.id) + '" title="Equips another weapon for this slot so this one can be moved or dismantled">Unequip</button>' :
+          (i.postmaster || i.charId !== selChar() ? '<button class="needauth" data-act="pull" data-id="' + esc(i.id) + '">' + (i.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' : '') +
+          (i.charId ? '<button class="needauth" data-act="vault" data-id="' + esc(i.id) + '">To vault</button>' : '')) +
+        (i.swap && i.swap.length ? '<button class="needauth apply" data-act="apply" data-id="' + esc(i.id) + '" title="Switches the perks in game. Must be in orbit, a social space, or offline.">Apply god roll perks</button>' : '') +
+        '<button data-copy="id:' + esc(i.id) + '">Copy DIM search</button>' +
+      '</div>' +
+      '</div></div>';
+  }).join('') || '<div style="color:var(--dim)">Nothing to show.</div>';
+  $('grid').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText(b.dataset.copy, 'Copied. Paste it into the DIM search bar.'));
+  wireTagBoxes($('grid'), () => render());
+  $('grid').querySelectorAll('[data-pick]').forEach(cb => cb.onchange = () => { cb.checked ? state.picked.add(cb.dataset.pick) : state.picked.delete(cb.dataset.pick); cb.closest('.card').classList.toggle('picked', cb.checked); updateBulkBar(); });
+  updateBulkBar();
+  $('grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => runAction(b.dataset.act, b.dataset.id, b));
+  $('grid').querySelectorAll('.card[data-open]').forEach(c => c.onclick = e => {
+    if (e.target.closest('button,select,details,summary,a,label')) return;
+    const it = byId(c.dataset.open); if (it) openDetail(it, it.hash);
+  });
+  state.shown = list;
+}
+
+// ---- My god rolls (saved from the detail view; keyed by weapon name so reissues count) ----
+function myRolls(){ try { return JSON.parse(ls.get('myRolls') || '{}'); } catch { return {}; } }
+function saveMyRoll(name, hashes){
+  const all = myRolls();
+  if (hashes && hashes.length) all[normName(name)] = { name, hashes, names: hashes.map(h => normName(plugName(h))) };
+  else delete all[normName(name)];
+  ls.set('myRolls', JSON.stringify(all));
+}
+
+// ---- full manifest entities, fetched per weapon and cached ----
+const entMem = new Map();
+async function ent(type, hash){
+  const k = type + ':' + hash;
+  if (entMem.has(k)) return entMem.get(k);
+  const p = (async () => {
+    const c = await cacheGet('ent:' + k);
+    if (c && c.v === state.manVer) return c.d;
+    // retry a few times: Bungie sometimes rejects a request right after app settings change, or under load
+    let d, lastErr;
+    for (const wait of [0, 1500, 4000]){
+      if (wait) await sleep(wait);
+      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
+      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
+    }
+    if (lastErr) throw lastErr;
+    await cacheSet('ent:' + k, { v: state.manVer, d });
+    return d;
+  })();
+  entMem.set(k, p);
+  try { return await p; } catch (e){ entMem.delete(k); throw e; }
+}
+async function entMany(type, hashes){
+  const out = {}, list = [...new Set(hashes.filter(Boolean))];
+  for (let i = 0; i < list.length; i += 8){
+    await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
+  }
+  return out;
+}
+
+// ---- weapon detail view ----
+const CAT_PERKS = 4241085061, CAT_INTRINSIC = 3956125808;
+const D = { item: null, data: null, preview: {}, base: {} };
+const plugName = h => (D.data && D.data.plugs[h] && D.data.plugs[h].displayProperties.name) || nameOf(h);
+
+async function loadDetail(hash, item){
+  const def = await ent('DestinyInventoryItemDefinition', hash);
+  const cats = (def.sockets && def.sockets.socketCategories) || [];
+  const entries = (def.sockets && def.sockets.socketEntries) || [];
+  const perkIdx = (cats.find(c => c.socketCategoryHash === CAT_PERKS) || {}).socketIndexes || [];
+  const intrIdx = (cats.find(c => c.socketCategoryHash === CAT_INTRINSIC) || {}).socketIndexes || [];
+  const sets = await entMany('DestinyPlugSetDefinition', perkIdx.flatMap(k => [entries[k].randomizedPlugSetHash, entries[k].reusablePlugSetHash]));
+  const columns = perkIdx.map(k => {
+    const e = entries[k];
+    const ps = sets[e.randomizedPlugSetHash] || sets[e.reusablePlugSetHash];
+    let pool = ps ? ps.reusablePlugItems.filter(p => p.currentlyCanRoll !== false).map(p => p.plugItemHash)
+      : (e.reusablePlugItems || []).map(p => p.plugItemHash);
+    if (!pool.length && e.singleInitialItemHash) pool = [e.singleInitialItemHash];
+    if (item){   // make sure this copy's own perks are in the column
+      for (const h of (item.owned[k] || [])) if (!pool.includes(h)) pool.push(h);
+      if (item.cur[k] && !pool.includes(item.cur[k])) pool.push(item.cur[k]);
+    }
+    return { socketIndex: k, pool: [...new Set(pool)] };
+  }).filter(c => c.pool.length);
+  const plugHashes = columns.flatMap(c => c.pool).concat(item ? Object.values(item.cur) : entries.map(e => e.singleInitialItemHash))
+    .concat(intrIdx.map(k => entries[k].singleInitialItemHash));
+  const plugs = await entMany('DestinyInventoryItemDefinition', plugHashes);
+  const sg = def.stats && def.stats.statGroupHash ? await ent('DestinyStatGroupDefinition', def.stats.statGroupHash) : null;
+  const scaled = sg ? sg.scaledStats : [];
+  const statDefs = await entMany('DestinyStatDefinition', scaled.map(s => s.statHash).concat(plugHashes.flatMap(h => ((plugs[h] || {}).investmentStats || []).map(s => s.statTypeHash))));
+  // collapse enhanced/normal versions of a perk into one icon, preferring the one this copy has
+  for (const c of columns){
+    const byName = new Map();
+    for (const h of c.pool){
+      const p = plugs[h]; if (!p) continue;
+      const k = normName(p.displayProperties.name);
+      const mineHas = item && ((item.owned[c.socketIndex] || []).includes(h) || item.cur[c.socketIndex] === h);
+      const prev = byName.get(k);
+      if (!prev || (mineHas && !prev.mine) || (!prev.mine && /enhanced/i.test(plugs[prev.h].itemTypeDisplayName || '') && !/enhanced/i.test(p.itemTypeDisplayName || ''))) byName.set(k, { h, mine: !!mineHas });
+    }
+    c.opts = [...byName.values()].map(v => v.h);
+  }
+  return { def, columns, plugs, scaled, statDefs, intrinsic: intrIdx.map(k => plugs[entries[k].singleInitialItemHash]).filter(Boolean) };
+}
+
+function interp(v, st){
+  const pts = st.displayInterpolation || [];
+  if (!pts.length) return v;
+  v = Math.max(pts[0].value, Math.min(v, pts[pts.length - 1].value));
+  let lo = pts[0], hi = pts[pts.length - 1];
+  for (let k = 0; k < pts.length - 1; k++) if (v >= pts[k].value && v <= pts[k + 1].value){ lo = pts[k]; hi = pts[k + 1]; break; }
+  const t = hi.value === lo.value ? 0 : (v - lo.value) / (hi.value - lo.value);
+  return Math.round(lo.weight + t * (hi.weight - lo.weight));
+}
+function calcStats(selection){
+  const { def, plugs, scaled, statDefs } = D.data;
+  const inv = {};
+  const addInv = list => (list || []).forEach(s => { if (!s.isConditionallyActive) inv[s.statTypeHash] = (inv[s.statTypeHash] || 0) + s.value; });
+  addInv(def.investmentStats);
+  for (const si in selection) if (plugs[selection[si]]) addInv(plugs[selection[si]].investmentStats);
+  return scaled.map(st => {
+    const name = ((statDefs[st.statHash] || {}).displayProperties || {}).name || '';
+    const v = st.statHash in inv ? interp(inv[st.statHash], st) : (((def.stats || {}).stats || {})[st.statHash] || {}).value || 0;
+    return { hash: st.statHash, name, value: v, numeric: !!st.displayAsNumeric, max: st.maximumValue || 100 };
+  }).filter(s => s.name);
+}
+
+async function openDetail(item, hash){
+  D.item = item; D.preview = {}; D.data = null;
+  $('detail').classList.remove('hidden');
+  $('dbody').innerHTML = '<div class="dloading">Loading perks and stats from Bungie...</div>';
+  try {
+    D.data = await loadDetail(hash, item);
+    // starting selection: this copy's current perks, or the default plugs for a weapon you don't own
+    D.base = {};
+    if (item) Object.assign(D.base, item.cur);
+    else (D.data.def.sockets.socketEntries || []).forEach((e, k) => { if (e.singleInitialItemHash) D.base[k] = e.singleInitialItemHash; });
+    renderDetail();
+  } catch (e){
+    $('dbody').innerHTML = '<div class="dloading err">Could not load this weapon: ' + esc(e.message) +
+      (/origin/i.test(e.message) ? '<br><span class="dim-lbl">If you just changed your Bungie app settings, Bungie can take a few minutes to update all its servers. Wait a minute and retry.</span>' : '') +
+      '<div class="bar" style="margin-top:14px"><button class="primary" id="dRetry">Retry</button><button class="ghost" id="dClose2">Close</button></div></div>';
+    $('dRetry').onclick = () => openDetail(item, hash);
+    $('dClose2').onclick = closeDetail;
+  }
+}
+function closeDetail(){ $('detail').classList.add('hidden'); D.item = null; }
+$('detail').addEventListener('click', e => { if (e.target.id === 'detail') closeDetail(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+function godPicks(hash){
+  // how often each perk appears in the lists' recommended rolls for this weapon (by name)
+  const mode = $('mode').value, count = new Map();
+  for (const e of (state.wl ? state.wl.good.get(hash) || [] : [])) if (modeOk(e, mode)) for (const h of e.p){ const k = normName(nameOf(h)); count.set(k, (count.get(k) || 0) + 1); }
+  return count;
+}
+
+function renderDetail(){
+  const { def, columns, plugs, intrinsic } = D.data;
+  const item = D.item;
+  const sel = Object.assign({}, D.base, D.preview);
+  const baseStats = calcStats(D.base), newStats = calcStats(sel);
+  const picks = godPicks(def.hash);
+  const mine = myRolls()[normName(def.displayProperties.name)];
+  const mineNames = new Set(mine ? mine.names : []);
+  const statHtml = newStats.map((s, idx) => {
+    const b = baseStats[idx].value, d = s.value - b;
+    const val = '<span class="sval ' + (d > 0 ? 'up' : d < 0 ? 'down' : '') + '">' + s.value + (d ? ' <small>(' + (d > 0 ? '+' : '') + d + ')</small>' : '') + '</span>';
+    if (s.numeric) return '<div class="srow num"><span>' + esc(s.name) + '</span>' + val + '</div>';
+    const pct = v => Math.max(0, Math.min(100, v / s.max * 100));
+    const lo = Math.min(b, s.value), hi = Math.max(b, s.value);
+    return '<div class="srow"><div class="shead"><span>' + esc(s.name) + '</span>' + val + '</div><div class="sbar"><i style="width:' + pct(lo) + '%"></i>' +
+      (d ? '<i class="' + (d > 0 ? 'up' : 'down') + '" style="left:' + pct(lo) + '%;width:' + (pct(hi) - pct(lo)) + '%"></i>' : '') + '</div></div>';
+  }).join('');
+  const colHtml = columns.map(c => {
+    const maxPick = Math.max(0, ...c.opts.map(h => picks.get(normName(plugName(h))) || 0));
+    return '<div class="pcol">' + c.opts.map(h => {
+      const p = plugs[h]; if (!p) return '';
+      const k = normName(p.displayProperties.name);
+      const owned = item && ((item.owned[c.socketIndex] || []).some(x => normName(plugName(x)) === k) || normName(plugName(item.cur[c.socketIndex])) === k);
+      const selected = normName(plugName(sel[c.socketIndex])) === k;
+      const pc = picks.get(k) || 0;
+      const isPick = pc && maxPick && pc >= maxPick * 0.25;
+      return '<button class="perk-o' + (selected ? ' sel' : '') + (owned ? ' own' : '') + (item && !owned ? ' notown' : '') + '" data-col="' + c.socketIndex + '" data-plug="' + h + '">' +
+        '<img src="https://www.bungie.net' + esc(p.displayProperties.icon) + '" alt="">' +
+        (selected ? '<b class="chk">✓</b>' : '') + (mineNames.has(k) ? '<b class="star" title="In MY god roll">★</b>' : isPick ? '<b class="thumb" title="Recommended in the god roll lists">👍</b>' : '') +
+        '</button>';
+    }).join('') + '</div>';
+  }).join('');
+  const changed = Object.keys(D.preview).filter(k => normName(plugName(D.preview[k])) !== normName(plugName(D.base[k])));
+  const notOwned = item ? changed.filter(k => !((item.owned[k] || []).some(x => normName(plugName(x)) === normName(plugName(D.preview[k]))))) : [];
+  const r = item && item.r;
+  $('dbody').innerHTML =
+    '<div class="dhead" style="--shot:url(' + (def.screenshot ? 'https://www.bungie.net' + esc(def.screenshot) : '') + ')">' +
+      '<img class="dicon" src="https://www.bungie.net' + esc(def.displayProperties.icon) + '" alt="">' +
+      '<div><div class="dname">' + esc(def.displayProperties.name) + (r ? ' <span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + '</span>' : '') + '</div>' +
+      '<div class="meta">' + esc(def.itemTypeDisplayName || '') + (intrinsic[0] ? ' · ' + esc(intrinsic[0].displayProperties.name) : '') +
+        (item ? ' · ' + esc(item.loc) + (item.power ? ' · Power ' + item.power : '') + (item.gearTier ? ' · Tier ' + item.gearTier : '') + (item.locked ? ' · 🔒 Locked' : '') : ' · not one of your copies') + '</div>' +
+      (r ? '<div class="reason">' + esc(r.reason) + (item.score != null ? ' · Score ' + item.score : '') + (item.aegis ? ' · Aegis ' + item.aegis : '') + '</div>' : '') +
+      '</div><button class="ghost dclose" id="dClose">✕</button></div>' +
+    '<div class="dgrid"><div class="dstats"><h4>Stats' + (changed.length ? ' <small>(preview)</small>' : '') + '</h4>' + statHtml + '</div>' +
+      '<div class="dperks"><h4>Perks <small>click to preview · ✓ selected' + (item ? ' · bright = on this copy' : '') + ' · 👍 list pick · ★ my god roll</small></h4><div class="pcols">' + colHtml + '</div>' +
+      (changed.length && notOwned.length ? '<div class="swapnote">This copy does not have: ' + notOwned.map(k => esc(plugName(D.preview[k]))).join(', ') + '. Those can only be saved as your god roll, not applied.</div>' : '') +
+      '</div>' +
+      '<div class="dside">' +
+        '<button class="primary" id="dSave">★ Save as My god roll</button>' +
+        (mine ? '<button class="ghost" id="dClear">Clear my god roll</button>' : '') +
+        (changed.length ? '<button class="ghost" id="dReset">Reset to ' + (item ? 'current perks' : 'default') + '</button>' : '') +
+        (item ? '<button class="ghost needauth apply" id="dApply"' + (!changed.length || notOwned.length ? ' disabled title="Pick perks this copy has, different from the current ones"' : '') + '>Apply selected perks in game</button>' +
+          '<button class="ghost needauth" id="dLock">' + (item.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
+          (item.equipped ? '<button class="ghost needauth" id="dUneq">Unequip (swap in another weapon)</button>' : (item.charId !== selChar() ? '<button class="ghost needauth" id="dPull">Pull to character</button>' : '')) : '') +
+        (item ? '<div class="dim-lbl">DIM tag</div>' + tagBoxes(item.id, tagFor(item)) : '') +
+        (item ? '<div class="dim-lbl">My notes</div><textarea id="dNote" rows="4" maxlength="1000" placeholder="Anything about this copy, e.g. keep for raid DPS, swap to Rolling Storm">' + esc(noteFor(item.id)) + '</textarea>' +
+          '<button class="tagapply" id="dNoteSave" disabled>Save note</button>' : '') +
+        '<div class="dimhelp">Applying perks only works while your character is in orbit, a social space, or offline. Lock, Pull and Apply need Sign in with Bungie.</div>' +
+      '</div></div>' +
+    '<div id="dtip" class="dtip hidden"></div>';
+  const tip = $('dtip');
+  $('dbody').querySelectorAll('.perk-o').forEach(b => {
+    b.onclick = () => { const col = b.dataset.col, h = +b.dataset.plug; if (normName(plugName(D.base[col])) === normName(plugName(h))) delete D.preview[col]; else D.preview[col] = h; renderDetail(); };
+    b.onmouseenter = () => {
+      const p = plugs[b.dataset.plug]; if (!p) return;
+      const st = (p.investmentStats || []).filter(s => !s.isConditionallyActive && s.value && D.data.statDefs[s.statTypeHash]).map(s =>
+        '<div class="' + (s.value > 0 ? 'up' : 'down') + '">' + (s.value > 0 ? '+' : '') + s.value + ' ' + esc(D.data.statDefs[s.statTypeHash].displayProperties.name) + '</div>').join('');
+      tip.innerHTML = '<b>' + esc(p.displayProperties.name) + '</b><div class="meta">' + esc(p.itemTypeDisplayName || '') + '</div><p>' + esc(p.displayProperties.description || '') + '</p>' + (st ? '<div class="tstats">' + st + '</div>' : '');
+      const rc = b.getBoundingClientRect(), host = $('dbody').getBoundingClientRect();
+      tip.style.left = Math.min(rc.right - host.left + 8, host.width - 300) + 'px'; tip.style.top = (rc.top - host.top) + 'px';
+      tip.classList.remove('hidden');
+    };
+    b.onmouseleave = () => tip.classList.add('hidden');
+  });
+  $('dClose').onclick = closeDetail;
+  if ($('dReset')) $('dReset').onclick = () => { D.preview = {}; renderDetail(); };
+  $('dSave').onclick = () => {
+    // save the selected perk in every column that has a real choice (skips fixed and origin columns)
+    const hashes = columns.filter(c => c.opts.length > 1 && !/origin/i.test((plugs[c.opts[0]] || {}).itemTypeDisplayName || '')).map(c => sel[c.socketIndex]).filter(Boolean);
+    if (!hashes.length){ toast('Pick perks first'); return; }
+    saveMyRoll(def.displayProperties.name, hashes);
+    toast('Saved My god roll for ' + def.displayProperties.name);
+    if (state.items.length) rerate();
+    renderDetail();
+  };
+  if ($('dClear')) $('dClear').onclick = () => { saveMyRoll(def.displayProperties.name, null); toast('Cleared'); if (state.items.length) rerate(); renderDetail(); };
+  wireTagBoxes($('dbody'), () => { render(); renderDetail(); });
+  if ($('dNote')){
+    $('dNote').oninput = () => { $('dNoteSave').disabled = false; $('dNoteSave').classList.add('ready'); };
+    $('dNoteSave').onclick = () => { setNote(item.id, $('dNote').value.trim()); $('dNoteSave').disabled = true; toast($('dNote').value.trim() ? 'Note saved. Export to DIM to send it there.' : 'Note cleared'); render(); };
+  }
+  if ($('dLock')) $('dLock').onclick = async () => { try { await setLock(item, !item.locked); toast((item.locked ? 'Locked ' : 'Unlocked ') + item.name); } catch (e){ setStatus(e.message, true); } render(); renderDetail(); };
+  if ($('dPull')) $('dPull').onclick = async () => { try { await pullTo(item, selChar()); toast('Pulled to ' + item.loc); } catch (e){ setStatus(e.message, true); } render(); renderDetail(); };
+  if ($('dUneq')) $('dUneq').onclick = async () => { try { const sub = await unequip(item); toast('Equipped ' + sub.name + ' instead'); } catch (e){ setStatus(e.message, true); } render(); renderDetail(); };
+  if ($('dApply')) $('dApply').onclick = async () => {
+    $('dApply').disabled = true;
+    try {
+      if (!item.charId){ toast('Pulling to your character first...'); await pullTo(item, selChar()); await sleep(300); }
+      for (const k of changed){
+        const want = normName(plugName(D.preview[k]));
+        const h = (item.owned[k] || []).find(x => normName(plugName(x)) === want);
+        await bungieAction('/Destiny2/Actions/Items/InsertSocketPlugFree/', { plug: { socketIndex: +k, socketArrayType: 0, plugItemHash: h }, itemId: item.id, characterId: item.charId, membershipType: state.acct.membershipType });
+        item.cur[k] = h; item.sel = new Set(Object.values(item.cur).map(x => normName(nameOf(x))));
+        await sleep(600);
+      }
+      D.base = Object.assign({}, item.cur); D.preview = {};
+      toast('Perks applied to ' + item.name);
+      rerate();
+    } catch (e){ setStatus(item.name + ': ' + e.message + '\nPerk changes only work in orbit, a social space, or offline.', true); }
+    renderDetail();
+  };
+}
+
+// ---- tag tick boxes: tick any number, then Apply ----
+// DIM allows one tag per weapon: the highest-priority ticked tag becomes the DIM tag, all ticks go in the note.
+const TAG_PRIORITY = ['favorite', 'keep', 'infuse', 'archive', 'junk'];
+const primaryTag = arr => TAG_PRIORITY.find(t => arr.includes(t)) || '';
+function tagBoxes(id, cur){
+  return '<div class="tagboxes" data-tagset="' + esc(id) + '">' + TAG_PRIORITY.map(t =>
+    '<label class="tagbox t-' + t + (cur.includes(t) ? ' on' : '') + '"><input type="checkbox" value="' + t + '"' + (cur.includes(t) ? ' checked' : '') + '>' + t + '</label>').join('') +
+    '<button class="tagapply" disabled>Apply</button></div>';
+}
+// what Apply does in game (if signed in and the option is on): favorite/keep lock it, junk unlocks it
+async function applyTags(i, arr){
+  setTags(i.id, arr);
+  let extra = '';
+  if ($('tagLockSync').checked && auth.valid() && state.acct){
+    const want = (arr.includes('favorite') || arr.includes('keep')) ? true : arr.includes('junk') ? false : null;
+    if (want !== null && i.locked !== want){ await setLock(i, want); extra = want ? ' and locked' : ' and unlocked'; }
+  }
+  return extra;
+}
+function wireTagBoxes(root, after){
+  root.querySelectorAll('[data-tagset]').forEach(box => {
+    const btn = box.querySelector('.tagapply');
+    box.querySelectorAll('input').forEach(cb => cb.onchange = () => { cb.closest('label').classList.toggle('on', cb.checked); btn.disabled = false; btn.classList.add('ready'); });
+    btn.onclick = async () => {
+      const i = byId(box.dataset.tagset); if (!i) return;
+      const arr = [...box.querySelectorAll('input:checked')].map(c => c.value);
+      btn.disabled = true;
+      try {
+        const extra = await applyTags(i, arr);
+        toast(arr.length ? 'Tagged ' + arr.join(' + ') + extra + '. Export to DIM to send tags there.' : 'Tags cleared' + extra);
+      } catch (e){ setStatus(i.name + ': tags saved, but lock change failed: ' + e.message, true); }
+      after();
+    };
+  });
+}
+
+// ---- bulk actions on ticked cards ----
+function updateBulkBar(){
+  const n = state.picked.size;
+  $('bulkbar').classList.toggle('hidden', !n);
+  $('bulkCount').textContent = n + ' selected';
+}
+async function bulkRun(label, fn){
+  const list = state.items.filter(i => state.picked.has(i.id));
+  let done = 0, failed = 0, skipped = 0, gone = 0;
+  state.busy = true;
+  try {
+  for (const i of list){
+    setStatus(label + ': ' + (done + failed + skipped + 1) + ' of ' + list.length + ' (' + i.name + ')...');
+    try { const r = await fn(i); if (r === 'skip') skipped++; else done++; } catch (e){ if (isGoneError(e)){ gone++; state.items = state.items.filter(x => x.id !== i.id); state.picked.delete(i.id); } else { failed++; console.warn(label, i.name, e.message); } }
+  }
+  } finally { state.busy = false; }
+  setStatus(label + ': ' + done + ' done' + (skipped ? ', ' + skipped + ' skipped' : '') + (gone ? ', ' + gone + ' already dismantled (removed from list)' : '') + (failed ? ', ' + failed + ' failed (F12 console has details)' : '') + '.', !!failed);
+  render();
+}
+function wireBulkBar(){
+  $('bulkTags').innerHTML = TAG_PRIORITY.map(t => '<label class="tagbox t-' + t + '"><input type="checkbox" value="' + t + '">' + t + '</label>').join('') +
+    '<button class="tagapply ready" id="bulkTagApply" title="Sets exactly the ticked tags on every selected weapon. Nothing ticked clears their tags.">Apply tags to selected</button>';
+  $('bulkTags').querySelectorAll('input').forEach(cb => cb.onchange = () => cb.closest('label').classList.toggle('on', cb.checked));
+  $('bulkTagApply').onclick = async () => {
+    const arr = [...$('bulkTags').querySelectorAll('input:checked')].map(c => c.value);
+    await bulkRun(arr.length ? 'Tagging ' + arr.join(' + ') : 'Clearing tags', async i => { await applyTags(i, arr); await sleep($('tagLockSync').checked && auth.valid() ? 250 : 0); });
+  };
+  const needAuth = fn => async () => { if (!auth.valid()){ setStatus('Sign in with Bungie first (top right). Sign-in lasts about an hour.', true); return; } await fn(); };
+  $('bulkLock').onclick = needAuth(() => bulkRun('Locking', async i => { if (i.locked) return 'skip'; await setLock(i, true); await sleep(250); }));
+  $('bulkUnlock').onclick = needAuth(() => bulkRun('Unlocking', async i => { if (!i.locked) return 'skip'; await setLock(i, false); await sleep(250); }));
+  $('bulkPull').onclick = needAuth(() => bulkRun('Pulling', async i => { const t = selChar(); if (i.charId === t) return 'skip'; await pullTo(i, t); await sleep(300); }));
+  $('bulkVault').onclick = needAuth(() => bulkRun('Sending to vault', async i => { if (!i.charId) return 'skip'; if (i.equipped) throw new Error('equipped'); await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }));
+  $('bulkApply').onclick = needAuth(() => bulkRun('Applying god roll perks', async i => { if (!i.swap || !i.swap.length) return 'skip'; await applyPerks(i); }));
+  $('bulkAll').onclick = () => { (state.shown || []).forEach(i => state.picked.add(i.id)); render(); };
+  $('bulkNone').onclick = () => { state.picked.clear(); render(); };
+}
+
+
+// Bungie says the item doesn't exist: it was dismantled (or deleted) after the last refresh. Drop it from the list.
+function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+function dropGone(i){
+  state.items = state.items.filter(x => x.id !== i.id);
+  state.picked.delete(i.id);
+  toast(i.name + ' is already gone (dismantled). Removed from the list.');
+}
+
+
+// Unequip = equip another item for that slot on the same character (Bungie has no plain "unequip").
+// Prefers a non-exotic keeper already on that character, then one in the vault (pulled first).
+async function unequip(i){
+  const cid = i.charId;
+  const rank = x => (x.charId === cid ? 0 : x.charId ? 2 : 1) * 10 + (x.v === 'trash' || (x.r && x.r.verdict === 'trash') ? 5 : 0);
+  const cands = state.items.filter(x => x.id !== i.id && x.bucket === i.bucket && !x.equipped && x.tier !== 6 && !(x.exotic) &&
+      (x.cls === undefined || x.cls === i.cls || x.cls === 3))
+    .sort((a, b) => rank(a) - rank(b) || ((b.score || b.total || 0) - (a.score || a.total || 0)));
+  const sub = cands[0];
+  if (!sub) throw new Error('No other non-exotic item for that slot to swap in. Equip something else in game first.');
+  if (sub.charId !== cid){ setStatus('Moving ' + sub.name + ' to that character to swap in...'); await pullTo(sub, cid); await sleep(300); }
+  await bungieAction('/Destiny2/Actions/Items/EquipItem/', { itemId: sub.id, characterId: cid, membershipType: state.acct.membershipType });
+  const who = (state.chars.find(c => c.id === cid) || {}).name || 'Character';
+  sub.equipped = true; sub.loc = who + ' (equipped)';
+  i.equipped = false; i.loc = who;
+  return sub;
+}
+
+// ---- per-weapon tags (stored in this browser, exported to DIM) ----
+function noteStore(){ try { return JSON.parse(ls.get('notes') || '{}'); } catch { return {}; } }
+function noteFor(id){ return noteStore()[id] || ''; }
+function setNote(id, text){ const s = noteStore(); if (text) s[id] = text; else delete s[id]; ls.set('notes', JSON.stringify(s)); }
+function tagStore(){ try { return JSON.parse(ls.get('tags') || '{}'); } catch { return {}; } }
+function setTags(id, arr){ const s = tagStore(); s[id] = arr; ls.set('tags', JSON.stringify(s)); }
+// your applied tags win; otherwise the suggestion from the DIM bar settings. Always returns an array.
+function tagFor(i){
+  const s = tagStore();
+  if (i.id in s){ const v = s[i.id]; return Array.isArray(v) ? v : (v ? [v] : []); }
+  const map = { god: $('tagGod').value, close: $('tagClose').value, trash: $('tagTrash').value };
+  const weakerDupe = i.dupCount > 1 && i.dupRank > 1 && i.r.verdict !== 'trash';
+  const t = (weakerDupe && $('tagDupe').value) || map[i.r.verdict] || '';
+  return t ? [t] : [];
+}
+['tagGod', 'tagClose', 'tagTrash', 'tagDupe'].forEach(id => $(id).addEventListener('change', () => state.items.length && render()));
+
+// ---- in-game actions (need Bungie sign-in) ----
+// "Auto" follows the character you're playing: the one Bungie reports in an activity now, else the last played
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+function fillCharSel(p){
+  const acts = (p.characterActivities && p.characterActivities.data) || {};
+  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
+  state.activeChar = (live || state.chars[0] || {}).id;
+  const a = state.chars.find(c => c.id === state.activeChar);
+  const saved = ls.get('pullChar2') || 'auto';
+  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
+    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
+  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
+}
+$('charSel').onchange = () => { ls.set('pullChar2', $('charSel').value); render(); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const byId = id => state.items.find(i => i.id === id);
+
+async function setLock(i, state_){
+  await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: state_, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType });
+  i.locked = state_;
+}
+async function transfer(i, toVault, charId){
+  await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType });
+}
+async function pullFromPostmaster(i){
+  await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
+}
+async function pullTo(i, target){
+  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }   // postmaster items go to their own character first
+  if (i.charId === target) return;
+  if (i.equipped) throw new Error(i.name + ' is equipped on another character. Unequip it in game first.');
+  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  await transfer(i, false, target);
+  i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
+}
+async function applyPerks(i){
+  const target = selChar();
+  if (!i.charId){ setStatus('Pulling ' + i.name + ' to your character first...'); await pullTo(i, target); await sleep(300); }
+  for (const name of i.swap){
+    const at = i.plugAt[normName(name)];
+    if (!at) throw new Error('Could not find where to put ' + name + ' on this ' + i.name + '.');
+    await bungieAction('/Destiny2/Actions/Items/InsertSocketPlugFree/', {
+      plug: { socketIndex: at.socketIndex, socketArrayType: 0, plugItemHash: at.plugItemHash },
+      itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+    i.sel.add(normName(name));
+    await sleep(600);   // Bungie allows about 2 perk changes per second
+  }
+  i.swap = [];
+}
+async function runAction(act, id, btn){
+  const i = byId(id); if (!i) return;
+  if (!state.acct){ setStatus('Scan first.', true); return; }
+  btn.disabled = true;
+  try {
+    if (act === 'lock'){ await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); }
+    else if (act === 'pull'){ await pullTo(i, selChar()); toast('Pulled ' + i.name + ' to ' + i.loc); }
+    else if (act === 'unequip'){ const sub = await unequip(i); toast('Equipped ' + sub.name + ' instead. ' + i.name + ' is free to move.'); }
+    else if (act === 'vault'){ if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); } if (i.equipped) throw new Error('Unequip it in game first.'); await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; toast('Sent ' + i.name + ' to the vault'); }
+    else if (act === 'apply'){ const n = i.swap.length; await applyPerks(i); toast('Applied ' + n + ' perk' + (n > 1 ? 's' : '') + ' to ' + i.name); }
+    setStatus('');
+  } catch (e){
+    if (isGoneError(e)){ dropGone(i); setStatus(''); return; }
+    setStatus(i.name + ': ' + e.message + (act === 'apply' ? '\nPerk changes only work while your character is in orbit, a social space, or offline.' : ''), true);
+  } finally {
+    render();
+  }
+}
+
+// Lock every god roll that isn't locked yet
+async function bulkLock(filterFn, label){
+  if (!auth.valid()){ setStatus('Sign in with Bungie first (top right).', true); return; }
+  const list = state.items.filter(i => filterFn(i) && !i.locked);
+  if (!list.length){ toast('Nothing to lock'); return; }
+  let done = 0, failed = 0;
+  for (const i of list){
+    setStatus('Locking ' + label + ': ' + (done + failed + 1) + ' of ' + list.length + ' (' + i.name + ')...');
+    try { await setLock(i, true); done++; } catch (e){ failed++; console.warn(i.name, e); }
+    await sleep(250);
+  }
+  setStatus('Locked ' + done + ' ' + label + (failed ? ', ' + failed + ' failed (see F12 console)' : '') + '.', !!failed);
+  render();
+}
+
+// ---- DIM integration ----
+function toast(msg){
+  let t = document.querySelector('.toast');
+  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+async function copyText(text, msg){
+  try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); }
+  catch { prompt('Copy this:', text); }
+}
+function dimSearch(items){ return items.map(i => 'id:' + i.id).join(' or '); }
+
+$('btnSearch').onclick = () => {
+  const list = state.shown || [];
+  if (!list.length){ toast('No weapons shown'); return; }
+  copyText(dimSearch(list), 'Copied a DIM search for ' + list.length + ' weapons');
+};
+
+function copyVerdict(v, what){
+  const list = state.items.filter(i => i.r.verdict === v);
+  if (!list.length){ toast('No ' + LABEL[v].toLowerCase() + ' weapons'); return; }
+  copyText(dimSearch(list), 'Copied ' + list.length + ' ' + LABEL[v].toLowerCase() + ' weapons. Paste into DIM, select all, then ' + what + '.');
+}
+$('btnSearchGod').onclick = () => copyVerdict('god', 'Lock');
+$('btnSearchTrash').onclick = () => copyVerdict('trash', 'move to your character');
+$('btnSearchDupes').onclick = () => {
+  const list = state.items.filter(i => i.dupCount > 1 && i.dupRank > 1);
+  if (!list.length){ toast('No weaker duplicates'); return; }
+  copyText(dimSearch(list), 'Copied ' + list.length + ' weaker duplicates. Your best copy of each weapon is left out.');
+};
+
+const csvCell = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+$('btnCsv').onclick = () => {
+  const map = { god: $('tagGod').value, close: $('tagClose').value, trash: $('tagTrash').value };
+  const withNotes = $('tagNotes').checked;
+  const rows = [['Id', 'Hash', 'Name', 'Tag', 'Notes']];
+  for (const i of state.items){
+    const tags = tagFor(i);   // your applied tags, or the DIM bar suggestion
+    const myNote = noteFor(i.id);
+    if (!tags.length && !myNote) continue;
+    const tag = primaryTag(tags);
+    const label = LABEL[i.r.verdict] + ' (' + $('mode').options[$('mode').selectedIndex].text + ')';
+    rows.push([i.id, i.hash, i.name, tag, (myNote ? myNote + (withNotes ? ' | ' : '') : '') + (!withNotes ? '' : (tags.length ? 'Tags: ' + tags.join(', ') + '. ' : '') + 'D2 Roll Check: ' + label + (i.score != null ? ', score ' + i.score : '') + (i.dupCount > 1 ? ', copy ' + i.dupRank + ' of ' + i.dupCount : '') + (i.roles && i.roles.length ? '. Good for: ' + i.roles.join(', ') : '') + '. ' + i.r.reason + (i.swap && i.swap.length ? '. Swap to: ' + i.swap.join(', ') : ''))]);
+  }
+  if (rows.length === 1){ toast('Nothing to export with these settings'); return; }
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'dim-tags-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Exported ' + (rows.length - 1) + ' weapons');
+};
+
+// ---- lookup ----
+document.querySelectorAll('.tab').forEach(t => t.onclick = async () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+  $('view-scan').classList.toggle('hidden', t.dataset.view !== 'scan');
+  $('view-lookup').classList.toggle('hidden', t.dataset.view !== 'lookup');
+  if (t.dataset.view === 'lookup'){
+    try { await loadDefs(); await loadWishlist(); setStatus('Ready. Type a weapon name.'); } catch (e){ setStatus(e.message, true); }
+  }
+});
+let lookupTimer, lastLookup = null;
+$('lookupText').oninput = () => { clearTimeout(lookupTimer); lookupTimer = setTimeout(lookup, 200); };
+$('lookupMode').onchange = () => { if (lastLookup) showRolls(lastLookup); };
+
+function lookup(){
+  if (!state.defs || !state.wl) return;
+  const q = $('lookupText').value.trim().toLowerCase();
+  $('lookupRolls').innerHTML = '';
+  if (q.length < 2){ $('lookupResults').innerHTML = ''; return; }
+  const hits = [];
+  for (const h of state.wl.good.keys()){
+    const d = state.defs[h];
+    if (d && d.it === 3 && d.n.toLowerCase().includes(q)) hits.push(h);
+    if (hits.length > 40) break;
+  }
+  $('lookupResults').innerHTML = hits.map(h => {
+    const d = state.defs[h];
+    return '<div class="lookup-item" data-h="' + h + '"><img src="https://www.bungie.net' + esc(d.i) + '" alt=""><div><b>' + esc(d.n) + '</b><div class="meta">' + esc(d.t) + ' · ' + state.wl.good.get(h).length + ' recommended combos</div></div></div>';
+  }).join('') || '<div style="color:var(--dim)">No recommended rolls found for that name.</div>';
+  $('lookupResults').querySelectorAll('.lookup-item').forEach(el => el.onclick = () => { showRolls(+el.dataset.h); openDetail(null, +el.dataset.h); });
+}
+
+function showRolls(h){
+  lastLookup = h;
+  const mode = $('lookupMode').value;
+  const groups = new Map();
+  for (const e of state.wl.good.get(h).filter(e => modeOk(e, mode))){
+    let g = groups.get(e.n);
+    if (!g){ g = { perks: new Set(), m: e.m, count: 0 }; groups.set(e.n, g); }
+    e.p.forEach(p => g.perks.add(nameOf(p) || p)); g.count++;
+  }
+  const d = state.defs[h];
+  $('lookupRolls').innerHTML = '<h3>' + esc(d.n) + ' · ' + esc(d.t) + '</h3>' + [...groups].map(([n, g]) =>
+    '<div class="roll"><div class="perks">' + [...g.perks].map(p => '<span class="perk hit">' + esc(p) + '</span>').join('') + '</div>' +
+    '<div class="tags">' + (g.m ? g.m.toUpperCase() + ' · ' : '') + g.count + ' combos</div>' +
+    (state.wl.notes[n] ? '<details><summary>Notes</summary><p>' + esc(state.wl.notes[n]) + '</p></details>' : '') + '</div>'
+  ).join('');
+}
+// ---- footer: which data this page is using ----
+function updateFooter(){
+  const f = $('sitefoot'); if (!f) return;
+  const parts = ['<b>Weapon data:</b> Bungie.net manifest ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : '(loads on first scan)')];
+  if (state.wlInfo && state.wlInfo.length){
+    parts.push('<b>God roll lists:</b> ' + state.wlInfo.map(L => '<a href="' + esc(L.url) + '" target="_blank" rel="noopener">' + esc(L.name) + '</a> (' +
+      (L.rolls || 0).toLocaleString() + ' rolls, downloaded ' + new Date(L.at).toLocaleDateString() + ')').join(' · '));
+  }
+  const mine = Object.keys(myRolls()).length;
+  if (mine) parts.push('<b>My god rolls:</b> ' + mine + ' saved in this browser');
+  parts.push('Not affiliated with Bungie, DIM or godroll.tv');
+  f.innerHTML = parts.join('<br>');
+}
+
+// ---- refresh: button, on returning to the tab, and every 60s while visible ----
+$('btnRefresh2').onclick = () => { if (!state.items.length && !state.acct) { scan(); return; } scan({ silent: true }); };
+$('autoRefresh').checked = ls.get('autoRefresh') !== '0';
+$('autoRefresh').onchange = () => { ls.set('autoRefresh', $('autoRefresh').checked ? '1' : '0'); tickRefresh(); };
+function autoRefreshOk(minAge){
+  return $('autoRefresh').checked && state.acct && !state.scanning && !state.busy && !document.hidden &&
+    $('detail').classList.contains('hidden') && Date.now() - (state.lastScan || 0) > minAge;
+}
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+document.addEventListener('visibilitychange', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+const REFRESH_SECS = 60;
+// once a second: show when data was read and the countdown, and refresh when it hits zero
+function tickRefresh(){
+  const el = $('lastScan'); if (!el) return;
+  if (!state.lastScan){ el.textContent = ''; return; }
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  // Bungie's own timestamp: if it lags far behind "Updated", Bungie is serving cached data
+  const lag = state.bungieTime ? Math.round((state.lastScan - state.bungieTime) / 1000) : 0;
+  const updated = 'Updated ' + fmt(state.lastScan) + (state.bungieTime ? ' · Bungie data from ' + fmt(state.bungieTime) + (lag > 90 ? ' (Bungie is ' + Math.round(lag / 60) + ' min behind)' : '') : '');
+  if (!$('autoRefresh').checked){ el.textContent = updated + ' · auto-refresh off'; return; }
+  const why = state.scanning ? 'refreshing now' : state.busy ? 'paused while an action runs' : !$('detail').classList.contains('hidden') ? 'paused while a detail view is open' : document.hidden ? 'paused while this tab is hidden' : '';
+  if (why){ el.textContent = updated + ' · ' + why; return; }
+  const left = Math.max(0, Math.ceil((state.lastScan + REFRESH_SECS * 1000 - Date.now()) / 1000));
+  el.textContent = updated + ' · next refresh in ' + left + 's';
+  if (left === 0 && autoRefreshOk(REFRESH_SECS * 1000 - 500)) scan({ silent: true });
+}
+setInterval(tickRefresh, 1000);
+
+const PAGE = 'weapons';
+const streamInfo = i => ({ v: i.r.verdict, label: LABEL[i.r.verdict], extra: [i.type, i.score != null ? 'Score ' + i.score : '', i.aegis ? 'Aegis ' + i.aegis : '', i.swap && i.swap.length ? 'swap to ' + i.swap.join(', ') : ''].filter(Boolean).join(' · ') });
+const streamOpen = i => openDetail(i, i.hash);
+
+const PM_BUCKET = 215593132;   // Lost Items (postmaster)
+// The activity stream lives in stream.js (shared with the other pages); it is loaded after this script.
+
+
+// ---- startup ----
+updateFooter();
+if (location.hash === '#settings') $('settings').classList.add('open');
+$('tagLockSync').checked = ls.get('tagLockSync') !== '0';
+$('tagLockSync').onchange = () => ls.set('tagLockSync', $('tagLockSync').checked ? '1' : '0');
+wireBulkBar();
+updateAuthUi();
+(async () => {
+  try {
+    if (await handleOAuthRedirect()){ setStatus('Signed in with Bungie. Scanning your weapons...'); scan(); }
+    else if (auth.valid()) scan();   // signed in already: load right away, like the Armor and Vendors pages
+  } catch (e){ setStatus(e.message, true); }
+})();
+$('btnLockGod').onclick = () => bulkLock(i => i.r.verdict === 'god', 'god rolls');
+$('btnLockFav').onclick = () => bulkLock(i => tagFor(i).includes('favorite'), 'favorites');
+</script>
+<script src="stream.js"></script>
+</body>
+</html>
