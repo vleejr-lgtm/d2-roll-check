@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check · Today</title>
+<style>
+  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+    --keep:#3fb37f; --trash:#d9534f; --legacy:#c98a2e; --review:#4aa3e8; --exotic:#ceae33; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:17px;margin:0;letter-spacing:.04em;text-transform:uppercase}
+  .tabs{display:flex;gap:4px;margin-left:12px}
+  .tab{background:none;border:1px solid transparent;color:var(--dim);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit;text-decoration:none}
+  .tab.active{color:var(--text);border-color:var(--line);background:var(--panel2)}
+  .spacer{flex:1}
+  main{padding:18px 22px 20px;max-width:1500px;margin:0 auto}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;font:inherit}
+  button.primary{background:#2f6fb0;border:0;color:#fff;padding:8px 16px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}
+  button.primary:disabled{opacity:.5}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--dim);padding:7px 12px;border-radius:6px;font:inherit;cursor:pointer}
+  button.ghost:hover{color:var(--text)}
+  #status{color:var(--dim);font-size:13px;min-height:20px;margin-bottom:10px;white-space:pre-line}
+  #status.err{color:var(--trash)}
+  .dim-lbl{color:var(--dim);font-size:13px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+  .panel h3{margin:0 0 8px;font-size:14px}
+  .rules{display:flex;flex-wrap:wrap;gap:6px 18px}
+  .rules label{font-size:13px;display:flex;gap:6px;align-items:center}
+  .help{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--panel);color:var(--dim);padding:5px 11px;border-radius:999px;cursor:pointer;font-size:13px}
+  .chip.on{color:var(--text);border-color:var(--text)} .chip b{margin-left:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+  .card{position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--dim);border-radius:8px;padding:12px 12px 12px 34px;display:flex;gap:12px}
+  .card.keep{border-left-color:var(--keep)} .card.trash{border-left-color:var(--trash)}
+  .card.legacy{border-left-color:var(--legacy)} .card.review{border-left-color:var(--review)}
+  .card.picked{outline:2px solid #2fd3c8;outline-offset:-1px}
+  .pickbox{position:absolute;left:9px;top:14px} .pickbox input{width:17px;height:17px;accent-color:#2fd3c8;cursor:pointer}
+  .card img.icon{width:52px;height:52px;border-radius:4px;flex:none;background:#000}
+  .card .body{flex:1;min-width:0}
+  .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .name{font-weight:650;font-size:15px}
+  .meta{color:var(--dim);font-size:12px}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .badge.keep{background:var(--keep);color:#04140b} .badge.trash{background:var(--trash);color:#fff}
+  .badge.legacy{background:var(--legacy);color:#1a1000} .badge.review{background:var(--review);color:#041320}
+  .pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .pill{font-size:11.5px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);color:#c9d1db}
+  .pill.tier5{border-color:#e8b84a;color:#e8b84a} .pill.tier4{border-color:#4aa3e8;color:#4aa3e8} .pill.exotic{border-color:var(--exotic);color:var(--exotic)}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+  .st{font-size:11px;color:var(--dim);text-align:center}
+  .st b{display:block;font-size:13px;color:var(--text)} .st.arch b{color:#e8b84a} .st.tert b{color:#9fc6ef}
+  .st i{display:block;height:3px;background:#2a3038;border-radius:2px;margin-top:2px;overflow:hidden} .st i span{display:block;height:100%;background:#c9d1db}
+  .reason{font-size:12.5px;margin-top:6px}
+  .mynote{font-size:12.5px;color:#e6d9a8;margin-top:4px}
+  .actions{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .actions button{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:3px 8px;border-radius:4px;cursor:pointer}
+  .actions button:hover{color:var(--text)} .actions button:disabled{opacity:.45;cursor:default}
+  .tagboxes{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}
+  .tagbox{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--dim);cursor:pointer}
+  .tagbox input{width:13px;height:13px;margin:0}
+  .tagbox.on{color:var(--text)}
+  .tagbox.on.t-favorite{border-color:#e8b84a;color:#e8b84a} .tagbox.on.t-keep{border-color:#3fb37f;color:#3fb37f}
+  .tagbox.on.t-infuse{border-color:#4aa3e8;color:#4aa3e8} .tagbox.on.t-junk{border-color:#d9534f;color:#d9534f} .tagbox.on.t-archive{border-color:#8b95a5;color:#c9d1db}
+  .tagapply{font:inherit;font-size:12px;padding:3px 10px;border-radius:4px;border:1px solid var(--line);background:none;color:var(--dim);cursor:pointer}
+  .tagapply:disabled{opacity:.4;cursor:default}
+  .tagapply.ready:not(:disabled){background:#2f6fb0;border-color:#2f6fb0;color:#fff;font-weight:600}
+  body:not(.authed) .needauth{display:none!important}
+  .bulkbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:calc(100% - 32px);
+    background:#161b22;border:1px solid #2fd3c8;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px #000c}
+  .bulkbar .sep{width:1px;height:22px;background:var(--line)}
+  .hidden{display:none!important}
+  .pill.new{border-color:#2b6b50;color:#3fb37f} .pill.old{border-color:#7a5a1a;color:#e0a948}
+  .card{cursor:pointer} .card:hover{border-color:#3a4656}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .dpanel{position:relative;width:min(1200px,100%);background:#12161c;border:1px solid var(--line);border-radius:10px;padding:0 0 18px}
+  .dhead{position:relative;display:flex;gap:14px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);border-radius:10px 10px 0 0;background:linear-gradient(90deg,#12161cee 40%,#12161c99),var(--shot) center/cover}
+  .dicon{width:64px;height:64px;border:2px solid #e8b84a;border-radius:4px}
+  .dname{font-size:22px;font-weight:700;display:flex;gap:10px;align-items:center}
+  .dclose{position:absolute;right:16px;top:16px}
+  .dgrid{display:grid;grid-template-columns:280px 1fr 250px;gap:22px;padding:18px 20px}
+  .dgrid h4{margin:0 0 10px;font-size:15px} .dgrid h4 small{color:var(--dim);font-weight:400;font-size:12px}
+  .srow{margin-bottom:10px} .shead{display:flex;justify-content:space-between;font-size:13.5px;color:#c9d1db}
+  .shead .a{color:#e8b84a} .shead .t{color:#9fc6ef}
+  .sbar{position:relative;height:6px;background:#2a3038;border-radius:3px;margin-top:4px;overflow:hidden}
+  .sbar i{position:absolute;left:0;top:0;bottom:0;background:#e6e9ee} .sbar i.mod{background:#4aa3e8;opacity:.6}
+  table.cmp{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.cmp th,table.cmp td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center}
+  table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+  table.cmp tr.me{background:#1c2a36} table.cmp tr{cursor:pointer} table.cmp tr:hover td{background:#18202a}
+  .dside{display:flex;flex-direction:column;gap:8px} .dside button{width:100%}
+  .dside textarea{width:100%;min-height:80px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit;font-size:13px;resize:vertical}
+  .verdictbox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px}
+  @media (max-width:1000px){ .dgrid{grid-template-columns:1fr} }
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}
+  .frow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .flbl{width:74px;flex:none;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .chip.cls-0.on{border-color:#d9534f;color:#ff8a85} .chip.cls-1.on{border-color:#4aa3e8;color:#8cc8ff} .chip.cls-2.on{border-color:#e8b84a;color:#f0d08a}
+  .setpick{position:relative;flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 30px 4px 6px;min-height:38px}
+  .setpick:focus-within{border-color:#2fd3c8}
+  .setpick input{border:0;background:none;padding:4px;flex:1;min-width:120px;outline:none}
+  .setchips{display:flex;flex-wrap:wrap;gap:4px}
+  .setchip{background:#173a3a;color:#5fe3d8;border-radius:4px;padding:2px 8px;font-size:12.5px;display:inline-flex;gap:6px;align-items:center}
+  .setchip b{cursor:pointer;font-weight:400}
+  .sx{position:absolute;right:6px;top:6px;background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer}
+  .setlist{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:300px;overflow:auto;background:#161b22;border:1px solid var(--line);border-radius:8px;z-index:30;padding:6px;box-shadow:0 10px 24px #000a}
+  .setopt{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13.5px;display:flex;justify-content:space-between}
+  .setopt:hover{background:#222a35} .setopt.on{background:#173a3a;color:#5fe3d8} .setopt small{color:var(--dim)}
+  .cov{border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
+  .cov th,.cov td{padding:5px 8px;border:1px solid var(--line);text-align:center}
+  .cov th{color:var(--dim);font-weight:500} .cov td:first-child{text-align:left;color:#c9d1db}
+  .cov td.t5{background:#3a2f10;color:#e8b84a;font-weight:700} .cov td.t4{background:#12304a;color:#8cc8ff}
+  .cov td.tlow{background:#1e2228;color:var(--dim)} .cov td.none{color:#6b4d4d}
+  .cov td[data-f]{cursor:pointer} .cov td[data-f]:hover{outline:1px solid #2fd3c8}
+  .getcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:10px}
+  .getbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+  .getbox h4{margin:0 0 6px;font-size:13.5px} .getbox ul{margin:0;padding-left:18px} .getbox li{margin:3px 0}
+  @media (max-width:1000px){ .fgrid{grid-template-columns:1fr} }
+  .energy{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--dim);margin-bottom:8px}
+  .ebar{display:flex;gap:3px} .ebar i{width:16px;height:8px;border:1px solid #556;border-radius:2px} .ebar i.on{background:#e6e9ee;border-color:#e6e9ee}
+  .modslots{display:flex;flex-wrap:wrap;gap:6px}
+  .modslot{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px 5px 5px;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer;text-align:left;max-width:240px}
+  .modslot img{width:34px;height:34px;border-radius:3px;flex:none} .modslot small{display:block;color:var(--dim);font-size:11px}
+  .modslot.open{border-color:#2fd3c8} .modslot.new{border-color:#e8b84a;box-shadow:0 0 0 1px #e8b84a55}
+  .modchanges{font-size:12.5px;color:#f0c060;margin-top:8px}
+  .modpicker{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#0f1318}
+  .modpicker input{width:100%;margin-bottom:8px}
+  .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;max-height:320px;overflow:auto}
+  .mopt{display:flex;gap:8px;align-items:flex-start;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}
+  .mopt:hover{border-color:#3a4656} .mopt.on{border-color:#2fd3c8}
+  .mopt img{width:32px;height:32px;border-radius:3px;flex:none} .mopt small{display:block;color:var(--dim)} .mopt em{display:block;color:#9aa4b2;font-style:normal;font-size:11.5px;margin-top:2px}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .eqbadge{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;color:#ffd27a;background:#3a2a10;border:1px solid #6b4d16;border-radius:4px;padding:1px 8px}
+  .actions button.uneq{color:#ffd27a;border-color:#6b4d16}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  .reason.dismantle{color:#ffb4b0}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);background:var(--keep);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+  .toast.show{opacity:1}
+  .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  #charSel{padding:6px 8px;font-size:13px}
+  .summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
+  .sum{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+  .sum b{font-size:18px;display:block}
+  .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
+  .sb-new{background:#2fd3c8;color:#04201e}
+
+  .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .badge.buy{background:var(--keep);color:#04140b} .badge.maybe{background:var(--review);color:#041320}
+  .badge.have{background:#3a4656;color:#fff} .badge.skip{background:var(--trash);color:#fff} .badge.unrated{background:#2a3038;color:#c9d1db}
+  .card.buy{border-left-color:var(--keep)} .card.maybe{border-left-color:var(--review)} .card.have{border-left-color:#3a4656} .card.skip{border-left-color:var(--trash)}
+  .vcard{cursor:default;padding-left:12px} .vcard:hover{border-color:var(--line)}
+  .vgroup{margin:18px 0 8px}
+  .vhead{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .vhead img{width:40px;height:40px;border-radius:6px;background:#000}
+  .vhead h2{margin:0;font-size:16px}
+  .vloc{color:#9fe7ff;font-size:13px} .vrot{color:var(--dim);font-size:12.5px}
+  .cost{font-size:12.5px;color:#c9d1db;margin-top:6px} .cost.cipher{color:#ffd27a}
+  .perk{font-size:11.5px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);color:#c9d1db}
+  .perk.hit{border-color:#3fb37f;color:#3fb37f}
+  .nobuy{font-size:12px;color:#ffb4b0;margin-top:4px}
+  .xur{border:1px solid #6b4d16;background:linear-gradient(90deg,#2a2010,#161b22 60%)}
+  .xur h3{font-size:16px;margin:0 0 4px}
+  .core{border-color:#2b4f6b;background:linear-gradient(90deg,#10202e,#161b22 60%)}
+  .corebox{margin-bottom:14px} .corebox:last-child{margin-bottom:0}
+  .coresay{font-size:15px;font-weight:600;margin:4px 0 8px} .coresay.go{color:#5fe0a0} .coresay.no{color:#ffb4b0} .coresay.meh{color:#9fc6ef}
+  .rlist{font-size:12.5px;color:#c9d1db;margin-top:6px}
+  details.xshop{margin-top:10px} details.xshop summary{cursor:pointer;color:var(--dim)}
+  .xurtime{font-size:22px;font-weight:700;color:#ffd27a}
+  .topinfo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .topinfo .sum{flex:1;min-width:220px}
+  details.skipped{margin-top:18px} details.skipped summary{cursor:pointer;color:var(--dim)}
+  details.skipped ul{columns:3 260px;font-size:13px;color:#c9d1db}
+  .cbtn{display:inline-block;margin-top:6px;margin-right:6px;font-size:12px;color:#9fc6ef;text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:2px 8px}
+
+  .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .topinfo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .topinfo .sum{flex:1;min-width:200px}
+  .sect{margin:22px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .sect h2{margin:0;font-size:18px} .sect .dim-lbl{font-size:12.5px}
+  .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .act{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .act.done{opacity:.72}
+  .act .hero{height:110px;background:#0b0e12 center/cover no-repeat;position:relative}
+  .act .hero .ty{position:absolute;left:10px;bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#000a;padding:2px 7px;border-radius:4px;color:#dfe7f0}
+  .act .hero .feat{position:absolute;right:10px;top:8px;font-size:11px;font-weight:700;background:#ffd27a;color:#2a1c00;padding:2px 8px;border-radius:4px}
+  .act .ab{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+  .act .an{font-weight:700;font-size:15px;display:flex;gap:8px;align-items:center}
+  .act .an img{width:22px;height:22px}
+  .act .ad{font-size:12.5px;color:#b9c3cf;line-height:1.4}
+  .act .meta{font-size:12px;color:var(--dim)}
+  .ends{font-size:12px;color:#9fe7ff}
+  .mods{display:flex;flex-wrap:wrap;gap:6px}
+  .mod{display:flex;gap:5px;align-items:center;font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 7px 2px 3px;cursor:help;color:#dfe7f0}
+  .mod img{width:18px;height:18px}
+  details.ax summary{cursor:pointer;font-size:12.5px;color:#9fc6ef;margin-top:2px}
+  details.ax .rw{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .rwi{display:flex;gap:5px;align-items:center;font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 7px 2px 2px}
+  .rwi img{width:20px;height:20px;border-radius:3px}
+  .chal{font-size:12.5px;display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #2a313b;padding:3px 0}
+  .chal.ok{color:#5fe0a0}
+  .modelist details{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:var(--panel)}
+  .modelist summary{padding:9px 12px;cursor:pointer;font-weight:600}
+  .modelist summary b{color:var(--dim);font-weight:400;margin-left:6px}
+  .modelist .agrid{padding:0 12px 12px}
+  .signin{border-color:#2b4f6b}
+  .lsbox{display:grid;grid-template-columns:minmax(260px,420px) 1fr;gap:0;border:1px solid #5a4a1c;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#221b0c,#161b22 70%);margin-bottom:12px}
+  .lsbox .hero{min-height:170px;background:#0b0e12 center/cover no-repeat}
+  .lsbox .ab{padding:14px 16px;display:flex;flex-direction:column;gap:7px}
+  .lsbox h3{margin:0;font-size:20px}
+  .diffs{display:flex;gap:8px;flex-wrap:wrap}
+  .diff{border:1px solid #6b5a22;border-radius:6px;padding:4px 10px;font-size:13px} .diff b{color:#ffd27a}
+  .lsrw{display:flex;flex-wrap:wrap;gap:6px}
+  @media (max-width:760px){ .lsbox{grid-template-columns:1fr} }
+  .topinfo a{color:#9fc6ef;text-decoration:none} .topinfo a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>D2 Roll Check</h1>
+  <div class="tabs">
+    <a class="tab active" href="today.html">Today</a>
+    <a class="tab" href="index.html">Weapons</a>
+    <a class="tab" href="armor.html">Armor triage</a>
+    <a class="tab" href="vendors.html">Vendors &amp; Xûr</a>
+  </div>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull drops to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <a class="ghost tab" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+</header>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <div id="status"></div>
+  <div class="bar">
+    <button class="primary" id="btnScan">Load today</button>
+    <label class="dim-lbl" title="Re-reads your inventory every 60 seconds for the Activity stream. Rotations reload by themselves at reset."><input type="checkbox" id="autoRefresh"> Auto-refresh</label>
+    <span class="dim-lbl" id="lastScan"></span>
+  </div>
+
+  <div class="topinfo" id="topinfo"></div>
+
+  <div class="panel hidden" id="toolbar">
+    <div class="fgrid">
+      <div class="frow"><span class="flbl">Character</span><div class="chips" id="tChar"></div></div>
+      <div class="frow"><span class="flbl">Search</span><input id="tSearch" placeholder="activity, modifier, reward or place" style="flex:1"></div>
+    </div>
+  </div>
+
+  <div id="lost"></div>
+  <div id="weekly"></div>
+  <div id="featured"></div>
+  <div id="challenges"></div>
+  <div id="allActs"></div>
+</main>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
+
+<script>
+/* ===================== shared helpers (same storage as the Weapons page) ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+function toast(msg){
+  let t = document.querySelector('.toast');
+  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+async function copyText(text, msg){ try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch { prompt('Copy this:', text); } }
+
+function idb(){ return new Promise((res, rej) => { const r = indexedDB.open('d2rollcheck', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
+async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+
+async function net(url, what, opts){
+  try { return await fetch(url, opts); }
+  catch (e){ console.error('Fetch failed for', what, url, e); throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nUsually an ad blocker, browser shield or firewall. Press F12, Console tab, for the exact reason.'); }
+}
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid(), a = auth.get();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid() && state.items.length) render(); }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); updateAuthUi(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443/today.html', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'today.html'); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+async function bungie(path, body, plainBody){
+  const key = ls.get('apiKey');
+  if (!key) throw new Error('Add your Bungie API key in Settings on the Weapons page first.');
+  const headers = { 'X-API-Key': key };
+  if (body && !plainBody) headers['Content-Type'] = 'application/json';
+  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
+  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', { method: body ? 'POST' : 'GET', headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+  let j; try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
+  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
+  return j.Response;
+}
+async function bungieAction(path, body){
+  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
+  try { return await bungie(path, body); } catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+}
+const entMem = new Map();
+async function ent(type, hash){
+  const k = type + ':' + hash;
+  if (entMem.has(k)) return entMem.get(k);
+  const p = (async () => {
+    const c = await cacheGet('ent:' + k);
+    if (c && c.v === state.manVer) return c.d;
+    let d, lastErr;
+    for (const wait of [0, 1500, 4000]){
+      if (wait) await sleep(wait);
+      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
+      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
+    }
+    if (lastErr) throw lastErr;
+    await cacheSet('ent:' + k, { v: state.manVer, d });
+    return d;
+  })();
+  entMem.set(k, p);
+  try { return await p; } catch (e){ entMem.delete(k); throw e; }
+}
+async function entMany(type, hashes){
+  const out = {}, list = [...new Set(hashes.filter(Boolean))];
+  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
+  return out;
+}
+
+
+
+/* ===================== item names (shared manifest cache with Armor and Vendors) ===================== */
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+const SLOT = { 3448274439: 'Helmet', 3551918588: 'Arms', 14239492: 'Chest', 20886954: 'Legs', 1585787867: 'Class item' };
+async function loadDefs(){
+  if (state.defs) return;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version; updateFooter();
+  const cached = await cacheGet('manifestArmor');   // same cache as the Armor page
+  if (cached && cached.version === man.version){ state.defs = cached.data; state.sets = cached.sets || {}; return; }
+  const paths = man.jsonWorldComponentContentPaths.en;
+  setStatus('Downloading item definitions (first run only, about 30 to 60 MB)...');
+  const r = await net('https://www.bungie.net' + paths.DestinyInventoryItemLiteDefinition, 'the Bungie item definitions file');
+  const raw = await r.json(), data = {};
+  for (const h in raw){
+    const d = raw[h], dp = d.displayProperties || {}, inv = d.inventory || {};
+    data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: inv.tierType || 0, b: inv.bucketTypeHash || 0, c: d.classType };
+  }
+  const sets = {};
+  if (paths.DestinyEquipableItemSetDefinition){
+    try {
+      const sr = await net('https://www.bungie.net' + paths.DestinyEquipableItemSetDefinition, 'armor set definitions');
+      const sraw = await sr.json();
+      for (const h in sraw){ const sd = sraw[h]; for (const ih of (sd.setItems || [])) sets[ih] = (sd.displayProperties || {}).name || ''; }
+    } catch (e){ console.warn('Set definitions unavailable', e.message); }
+  }
+  await cacheSet('manifestArmor', { version: man.version, data, sets });
+  state.defs = data; state.sets = sets;
+}
+
+
+
+/* ===================== activity definitions ===================== */
+// Trimmed copies of the activity, modifier, mode, milestone, destination and place tables, cached per manifest version
+const ACT_TABLES = ['DestinyActivityDefinition', 'DestinyActivityModifierDefinition', 'DestinyActivityModeDefinition', 'DestinyMilestoneDefinition', 'DestinyDestinationDefinition', 'DestinyPlaceDefinition'];
+const T = { act: {}, mod: {}, mode: {}, ms: {}, dest: {}, place: {} };
+async function loadActDefs(){
+  if (state.actVer && state.actVer === state.manVer) return;
+  const cached = await cacheGet('manifestToday');
+  if (cached && cached.version === state.manVer){ Object.assign(T, cached.data); state.actVer = state.manVer; return; }
+  const man = await bungie('/Destiny2/Manifest/');
+  const paths = man.jsonWorldComponentContentPaths.en;
+  const dp = d => d.displayProperties || {};
+  for (let k = 0; k < ACT_TABLES.length; k++){
+    const name = ACT_TABLES[k];
+    setStatus('Downloading activity definitions (first run only) ' + (k + 1) + ' of ' + ACT_TABLES.length + ': ' + name.replace(/^Destiny|Definition$/g, '') + '...');
+    if (!paths[name]) continue;
+    const raw = await (await net('https://www.bungie.net' + paths[name], 'Bungie ' + name)).json();
+    for (const h in raw){
+      const d = raw[h], p = dp(d);
+      if (name === 'DestinyActivityDefinition'){
+        const o = d.originalDisplayProperties || {};
+        T.act[h] = { n: p.name || '', d: p.description || '', i: p.icon || '', o: o.name || '', img: d.pgcrImage || '', dest: d.destinationHash || 0,
+          mode: d.directActivityModeHash || 0, pvp: !!d.isPvP, light: d.activityLightLevel || 0, pl: !!d.isPlaylist };
+      } else if (name === 'DestinyActivityModifierDefinition'){
+        if (p.name) T.mod[h] = { n: p.name, d: p.description || '', i: p.icon || '', s: d.displayInActivitySelection !== false };
+      } else if (name === 'DestinyActivityModeDefinition'){
+        T.mode[h] = { n: p.name || '', i: p.icon || '' };
+      } else if (name === 'DestinyMilestoneDefinition'){
+        T.ms[h] = { n: p.name || d.friendlyName || '', d: p.description || '', i: p.icon || '', img: d.image || '', ex: !!d.showInExplorer };
+      } else if (name === 'DestinyDestinationDefinition'){
+        T.dest[h] = { n: p.name || '', pl: d.placeHash || 0 };
+      } else {
+        T.place[h] = { n: p.name || '' };
+      }
+    }
+    await sleep(0);
+  }
+  await cacheSet('manifestToday', { version: state.manVer, data: T });
+  state.actVer = state.manVer;
+}
+
+/* ===================== state ===================== */
+const state = { defs: null, sets: {}, manVer: '', actVer: '', chars: [], acct: null, items: [], pub: null, pubAt: 0, char: {}, tchar: null, objs: {} };
+const nameOf = h => (state.defs && state.defs[h] && state.defs[h].n) || '';
+const PM_BUCKET = 215593132;
+
+/* ---- account, characters, inventory (for the Activity stream) ---- */
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+function fillCharSel(p){
+  const acts = (p.characterActivities && p.characterActivities.data) || {};
+  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
+  state.activeChar = (live || state.chars[0] || {}).id;
+  const a = state.chars.find(c => c.id === state.activeChar);
+  const saved = ls.get('pullChar2') || 'auto';
+  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
+    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
+  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
+}
+$('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
+async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
+async function transfer(i, toVault, charId){ await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType }); }
+async function pullFromPostmaster(i){
+  await bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
+  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
+}
+async function pullTo(i, target){
+  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }
+  if (i.charId === target) return;
+  if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
+  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
+}
+function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+
+async function getAccount(){
+  if (state.acct) return state.acct;
+  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const ms = me.destinyMemberships || [];
+  const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
+  if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
+  state.acct = { membershipType: a.membershipType, membershipId: a.membershipId };
+  return state.acct;
+}
+
+
+
+/* ===================== load ===================== */
+$('btnScan').onclick = () => scan({ force: true });
+async function scan(opts = {}){
+  if (state.scanning) return;
+  state.scanning = true; $('btnScan').disabled = true;
+  const prevStatus = $('status').textContent;
+  try {
+    await loadDefs();
+    await loadActDefs();
+    // weekly rotations are public: no sign-in needed
+    if (opts.force || !state.pub || Date.now() >= state.pubDue){
+      if (!opts.silent) setStatus('Reading this week\'s rotations...');
+      state.pub = await bungie('/Destiny2/Milestones/');
+      state.pubAt = Date.now(); state.pubDue = nextReset();
+      await loadObjectives(Object.values(state.pub).flatMap(m => (m.activities || []).flatMap(a => a.challengeObjectiveHashes || [])));
+    }
+    if (auth.valid()){
+      const acct = await getAccount();
+      if (!opts.silent) setStatus('Reading what your characters can play...');
+      const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300');
+      const chars = (p.characters && p.characters.data) || {};
+      state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
+        .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
+      fillCharSel(p); updateAuthUi();
+      trackDrops(p);
+      const acts = (p.characterActivities && p.characterActivities.data) || {};
+      for (const c of state.chars) state.char[c.id] = acts[c.id] || null;
+      await loadObjectives(Object.values(state.char).flatMap(c => ((c && c.availableActivities) || []).flatMap(a => (a.challenges || []).map(x => x.objective && x.objective.objectiveHash))));
+      if (!state.tchar || !state.chars.some(c => c.id === state.tchar)) state.tchar = ls.get('todayChar') && state.chars.some(c => c.id === ls.get('todayChar')) ? ls.get('todayChar') : state.activeChar;
+    }
+    state.lastScan = Date.now();
+    render();
+    const nAct = state.nActs || 0;
+    setStatus(opts.silent ? prevStatus : (Object.keys(state.pub || {}).length + ' weekly rotations' + (auth.valid() ? ', ' + nAct + ' activities your ' + ((state.chars.find(c => c.id === state.tchar) || {}).name || 'character') + ' can play.' : '. Sign in with Bungie to see what your characters can play, your challenge progress and rewards.')));
+    tickRefresh();
+  } catch (e){ setStatus(e.message, true); }
+  finally { state.scanning = false; $('btnScan').disabled = false; }
+}
+async function loadObjectives(hashes){
+  const need = [...new Set(hashes.filter(h => h && !(h in state.objs)))];
+  if (!need.length) return;
+  const d = await entMany('DestinyObjectiveDefinition', need);
+  for (const h of need){ const o = d[h] || {}; state.objs[h] = o.progressDescription || (o.displayProperties || {}).name || ''; }
+}
+
+/* ===================== time ===================== */
+const RESET_H = 17;   // daily and weekly reset: 17:00 UTC
+function nextUtc(dow){
+  const n = new Date(), d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), RESET_H));
+  if (dow == null){ if (d <= n) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); }
+  let add = (dow - d.getUTCDay() + 7) % 7; if (add === 0 && d <= n) add = 7;
+  d.setUTCDate(d.getUTCDate() + add); return d.getTime();
+}
+const nextReset = () => nextUtc(null) + 60e3;
+function xurWindow(){
+  const fri = nextUtc(5), lastFri = fri - 7 * 864e5, now = Date.now();
+  const here = now >= lastFri && now < lastFri + 4 * 864e5;
+  return { here, arrives: here ? lastFri : fri, leaves: (here ? lastFri : fri) + 4 * 864e5 };
+}
+const fmtWhen = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+function left(t){
+  let s = Math.max(0, Math.round((t - Date.now()) / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400; const h = Math.floor(s / 3600); s -= h * 3600; const m = Math.floor(s / 60); s -= m * 60;
+  return d ? d + 'd ' + h + 'h ' + m + 'm' : h ? h + 'h ' + m + 'm' : m + 'm ' + s + 's';
+}
+const cd = t => '<span data-cd="' + t + '">' + left(t) + '</span>';
+const endsTxt = iso => { const t = Date.parse(iso || ''); return t && t > Date.now() && t < Date.now() + 120 * 864e5 ? '<div class="ends">Ends ' + fmtWhen(t) + ' (in ' + cd(t) + ')</div>' : ''; };
+
+/* ===================== render ===================== */
+const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+function actName(h){ const a = T.act[h] || {}; return a.o || a.n || ''; }
+function actType(h){
+  const a = T.act[h] || {}, n = a.o || a.n || '';
+  if (/:/.test(n)) return n.split(':')[0].trim();
+  return (T.mode[a.mode] || {}).n || (a.pvp ? 'Crucible' : 'Other');
+}
+function where(h){ const a = T.act[h] || {}, d = T.dest[a.dest]; if (!d || !d.n) return ''; const p = T.place[d.pl]; return d.n + (p && p.n && p.n !== d.n ? ', ' + p.n : ''); }
+function modsHtml(hashes){
+  const ms = (hashes || []).map(h => T.mod[h]).filter(m => m && m.s && m.n);
+  const seen = new Set(), uniq = ms.filter(m => !seen.has(m.n) && seen.add(m.n));
+  return uniq.length ? '<div class="mods">' + uniq.map(m => '<span class="mod" title="' + esc(m.d) + '">' + (m.i ? '<img src="' + img(m.i) + '" alt="">' : '') + esc(m.n) + '</span>').join('') + '</div>' : '';
+}
+function rewardsHtml(vr){
+  const items = (vr || []).flatMap(r => r.rewardItems || []).map(x => x.itemQuantity || {}).filter(q => q.itemHash && nameOf(q.itemHash));
+  if (!items.length) return '';
+  const seen = new Set(), uniq = items.filter(q => !seen.has(q.itemHash) && seen.add(q.itemHash));
+  return '<details class="ax"><summary>Rewards (' + uniq.length + ')</summary><div class="rw">' + uniq.map(q => {
+    const d = state.defs[q.itemHash] || {};
+    return '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + (q.quantity > 1 ? ' ×' + q.quantity : '') + '</span>';
+  }).join('') + '</div></details>';
+}
+function chalHtml(list){
+  if (!list || !list.length) return '';
+  return '<details class="ax" open><summary>Challenges</summary>' + list.map(c => {
+    const o = c.objective || c, txt = state.objs[o.objectiveHash] || 'Challenge';
+    const prog = o.completionValue ? (o.progress || 0) + ' / ' + o.completionValue : '';
+    return '<div class="chal' + (o.complete ? ' ok' : '') + '"><span>' + (o.complete ? '✓ ' : '') + esc(txt) + '</span><span>' + prog + '</span></div>';
+  }).join('') + '</details>';
+}
+function actCard(h, extra = {}){
+  const a = T.act[h] || {};
+  const name = extra.title || actName(h) || 'Activity', type = extra.type || actType(h);
+  const loc = where(h);
+  return '<div class="act' + (extra.done ? ' done' : '') + '"><div class="hero" style="background-image:url(\'' + img(extra.image || a.img) + '\')"><span class="ty">' + esc(type) + '</span>' + (extra.feat ? '<span class="feat">Featured</span>' : '') + '</div>' +
+    '<div class="ab"><div class="an">' + (a.i ? '<img src="' + img(a.i) + '" alt="">' : '') + esc(name) + '</div>' +
+    (extra.sub ? '<div class="meta">' + esc(extra.sub) + '</div>' : '') +
+    ((extra.desc || a.d) ? '<div class="ad">' + esc(extra.desc || a.d) + '</div>' : '') +
+    '<div class="meta">' + [loc ? '📍 ' + esc(loc) : '', (extra.light || a.light) ? 'Power ' + (extra.light || a.light) : ''].filter(Boolean).join(' · ') + '</div>' +
+    (extra.ends || '') + modsHtml(extra.mods) + chalHtml(extra.chal) + rewardsHtml(extra.rewards) + '</div></div>';
+}
+const q = () => $('tSearch').value.trim().toLowerCase();
+function matches(h, extra = []){
+  const s = q(); if (!s) return true;
+  const a = T.act[h] || {};
+  return [a.n, a.o, a.d, actType(h), where(h), ...extra].join(' ').toLowerCase().includes(s);
+}
+const modNames = hs => (hs || []).map(h => (T.mod[h] || {}).n || '');
+const rewardNames = vr => (vr || []).flatMap(r => r.rewardItems || []).map(x => nameOf((x.itemQuantity || {}).itemHash));
+
+/* ---- lost sector of the day ----
+   Bungie doesn't publish this rotation as a milestone. The day's lost sector is the one your character can run at
+   Expert/Master/Legend difficulty (the others only have the normal version), usually with champion modifiers. */
+const LS_DIFF = /\b(grandmaster|master|legend|expert|advanced)\b/i;
+const DIFF_RANK = { advanced: 1, expert: 2, legend: 3, master: 4, grandmaster: 5 };
+const isLostSector = h => { const a = T.act[h] || {}; return /lost sector/i.test([a.n, a.o, (T.mode[a.mode] || {}).n].join(' ')); };
+const lsBase = h => { const a = T.act[h] || {}; return (a.o || a.n || '').replace(/^lost sector\s*:\s*/i, '').replace(/\s*[(:\-–]\s*(grandmaster|master|legend|expert|advanced|normal)\)?\s*$/i, '').replace(/\s*\((grandmaster|master|legend|expert|advanced|normal)\)/i, '').trim(); };
+const isChampMod = h => /champion|overload|unstoppable|barrier/i.test(((T.mod[h] || {}).n || '') + ' ' + ((T.mod[h] || {}).d || ''));
+function findLostSectors(c){
+  const ls = ((c && c.availableActivities) || []).filter(a => a.isVisible !== false && isLostSector(a.activityHash));
+  const daily = ls.filter(a => { const a2 = T.act[a.activityHash] || {}; return LS_DIFF.test((a2.o || '') + ' ' + (a2.n || '')) || a.isFocusedActivity || (a.modifierHashes || []).some(isChampMod); });
+  const groups = new Map();
+  for (const a of daily){
+    const base = lsBase(a.activityHash) || actName(a.activityHash);
+    const g = groups.get(base) || { name: base, hash: a.activityHash, diffs: [], mods: [], rewards: [], feat: false };
+    const a2 = T.act[a.activityHash] || {}, m = ((a2.o || '') + ' ' + (a2.n || '')).match(LS_DIFF);
+    g.diffs.push({ label: m ? m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() : 'Normal', light: a.recommendedLight || a2.light || 0 });
+    g.mods.push(...(a.modifierHashes || []));
+    for (const r of a.visibleRewards || []) for (const x of r.rewardItems || []) if (x.itemQuantity && x.itemQuantity.itemHash) g.rewards.push(x.itemQuantity.itemHash);
+    g.feat = g.feat || !!a.isFocusedActivity;
+    if (m) g.hash = a.activityHash;
+    groups.set(base, g);
+  }
+  const out = [...groups.values()];
+  out.forEach(g => { g.diffs.sort((x, y) => (DIFF_RANK[x.label.toLowerCase()] || 0) - (DIFF_RANK[y.label.toLowerCase()] || 0)); g.mods = [...new Set(g.mods)]; g.rewards = [...new Set(g.rewards)]; });
+  return out;
+}
+// remember today's lost sector so it still shows when you're signed out later the same day
+const lastReset = () => nextUtc(null) - 864e5;
+function lsCache(list){
+  if (list){ ls.set('lsToday', JSON.stringify({ day: lastReset(), list })); return list; }
+  try { const c = JSON.parse(ls.get('lsToday') || 'null'); return c && c.day === lastReset() ? c.list : null; } catch { return null; }
+}
+function renderLost(){
+  const el = $('lost');
+  const c = state.tchar && state.char[state.tchar];
+  let list = c ? lsCache(findLostSectors(c).map(g => ({ name: g.name, hash: g.hash, diffs: g.diffs, mods: g.mods, rewards: g.rewards }))) : lsCache();
+  const fromCache = !c && list;
+  const head = '<div class="sect"><h2>Lost Sector today</h2><span class="dim-lbl">Changes at the daily reset, in ' + cd(nextUtc(null)) + '.' + (fromCache ? ' Seen on your account earlier today.' : '') + '</span></div>';
+  if (!list){
+    el.innerHTML = head + '<div class="panel signin">' + (auth.valid() ? 'Loading…' : 'Sign in with Bungie (top right) to see today\'s lost sector. Bungie only lists the daily rotation in your character\'s activities, not in the public data.') + '</div>';
+    return;
+  }
+  if (!list.length){ el.innerHTML = head + '<div class="panel dim-lbl">Bungie isn\'t listing a rotating lost sector for this character right now. If you haven\'t unlocked Expert or Master lost sectors on this character yet, try another one.</div>'; return; }
+  const s = q();
+  list = list.filter(g => !s || [g.name, where(g.hash), ...modNames(g.mods), ...g.rewards.map(nameOf)].join(' ').toLowerCase().includes(s));
+  el.innerHTML = head + list.map(g => {
+    const a = T.act[g.hash] || {}, loc = where(g.hash);
+    const rw = g.rewards.map(h => (state.defs || {})[h]).filter(d => d && d.n);
+    return '<div class="lsbox"><div class="hero" style="background-image:url(\'' + img(a.img) + '\')"></div><div class="ab">' +
+      '<h3>' + esc(g.name) + '</h3>' + (loc ? '<div class="vloc" style="color:#9fe7ff">📍 ' + esc(loc) + '</div>' : '') +
+      '<div class="diffs">' + g.diffs.map(d => '<span class="diff"><b>' + esc(d.label) + '</b>' + (d.light ? ' · Power ' + d.light : '') + '</span>').join('') + '</div>' +
+      modsHtml(g.mods) +
+      (rw.length ? '<div class="lsrw">' + rw.map(d => '<span class="rwi">' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '') + esc(d.n) + '</span>').join('') + '</div>' : '') +
+      ((a.d) ? '<div class="ad">' + esc(a.d) + '</div>' : '') + '</div></div>';
+  }).join('');
+}
+
+function render(){
+  const daily = nextUtc(null), weekly = nextUtc(2), xw = xurWindow();
+  $('topinfo').innerHTML =
+    '<div class="sum"><span class="dim-lbl">Daily reset</span><b>' + cd(daily) + '</b><span class="dim-lbl">' + fmtWhen(daily) + ' your time</span></div>' +
+    '<div class="sum"><span class="dim-lbl">Weekly reset</span><b>' + cd(weekly) + '</b><span class="dim-lbl">' + fmtWhen(weekly) + ' your time</span></div>' +
+    (() => { const c = state.tchar && state.char[state.tchar]; const l = c ? findLostSectors(c) : (lsCache() || []); return l.length ? '<div class="sum"><span class="dim-lbl">Lost Sector today</span><b style="font-size:16px">' + esc(l.map(g => g.name).join(' / ')) + '</b><span class="dim-lbl">' + esc(where(l[0].hash)) + '</span></div>' : ''; })() +
+    '<div class="sum"><span class="dim-lbl">' + (xw.here ? 'Xûr leaves in' : 'Xûr arrives in') + '</span><b>' + cd(xw.here ? xw.leaves : xw.arrives) + '</b><span class="dim-lbl"><a href="vendors.html">Vendors &amp; Xûr →</a></span></div>';
+  renderLost(); renderWeekly(); renderChar();
+}
+function renderWeekly(){
+  const el = $('weekly');
+  if (!state.pub){ el.innerHTML = ''; return; }
+  const ms = Object.values(state.pub).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const cards = [];
+  for (const m of ms){
+    const md = T.ms[m.milestoneHash] || {};
+    const acts = m.activities || [];
+    if (!acts.length && !md.n) continue;
+    if (!acts.length){
+      if (!matches(0, [md.n, md.d])) continue;
+      cards.push('<div class="act"><div class="hero" style="background-image:url(\'' + img(md.img) + '\')"><span class="ty">Weekly</span></div><div class="ab"><div class="an">' + (md.i ? '<img src="' + img(md.i) + '" alt="">' : '') + esc(md.n || 'Milestone') + '</div>' +
+        (md.d ? '<div class="ad">' + esc(md.d) + '</div>' : '') + endsTxt(m.endDate) + '</div></div>');
+      continue;
+    }
+    // one card per milestone: its first activity, with the modifiers and challenges they share
+    const a0 = acts[0];
+    if (!matches(a0.activityHash, [md.n, md.d, ...acts.flatMap(a => modNames(a.modifierHashes))])) continue;
+    const variants = [...new Set(acts.map(a => actName(a.activityHash)).filter(Boolean))];
+    cards.push(actCard(a0.activityHash, {
+      title: md.n || actName(a0.activityHash), type: 'This week', image: (T.act[a0.activityHash] || {}).img || md.img,
+      desc: md.d || undefined, sub: variants.length > 1 ? variants.slice(0, 6).join(' · ') + (variants.length > 6 ? ' …' : '') : (variants[0] && variants[0] !== md.n ? variants[0] : ''),
+      ends: endsTxt(m.endDate), mods: acts.flatMap(a => a.modifierHashes || []),
+      chal: [...new Set(acts.flatMap(a => a.challengeObjectiveHashes || []))].map(h => ({ objectiveHash: h }))
+    }));
+  }
+  el.innerHTML = '<div class="sect"><h2>This week</h2><span class="dim-lbl">Weekly rotations from Bungie, the same for everyone. They change at the weekly reset.</span></div>' +
+    (cards.length ? '<div class="agrid">' + cards.join('') + '</div>' : '<div class="panel dim-lbl">Nothing matches the search.</div>');
+}
+function renderChar(){
+  const c = state.tchar && state.char[state.tchar];
+  if (!auth.valid() || !c){
+    $('toolbar').classList.toggle('hidden', !state.pub);
+    $('tChar').innerHTML = '<span class="dim-lbl">Sign in with Bungie to pick a character.</span>';
+    $('featured').innerHTML = state.pub && !auth.valid() ? '<div class="panel signin" style="margin-top:18px">Sign in with Bungie (top right) to add what your characters can play right now: featured activities, weekly challenges with your progress, modifiers and rewards.</div>' : '';
+    $('challenges').innerHTML = ''; $('allActs').innerHTML = '';
+    return;
+  }
+  $('toolbar').classList.remove('hidden');
+  $('tChar').innerHTML = state.chars.map(ch => '<span class="chip ' + (ch.id === state.tchar ? 'on' : '') + '" data-c="' + ch.id + '">' + esc(ch.name) + (ch.light ? ' <b>' + ch.light + '</b>' : '') + '</span>').join('');
+  $('tChar').querySelectorAll('.chip').forEach(x => x.onclick = () => { state.tchar = x.dataset.c; ls.set('todayChar', state.tchar); renderLost(); renderChar(); });
+  const list = (c.availableActivities || []).filter(a => a.isVisible !== false && actName(a.activityHash));
+  // same name, several difficulty variants: keep one card (the featured or highest-power one)
+  const byName = new Map();
+  for (const a of list){
+    const n = actName(a.activityHash), cur = byName.get(n);
+    if (!cur || (a.isFocusedActivity && !cur.isFocusedActivity) || ((a.challenges || []).length > (cur.challenges || []).length) || (!cur.isFocusedActivity && (a.recommendedLight || 0) > (cur.recommendedLight || 0))) byName.set(n, a);
+  }
+  const acts = [...byName.values()];
+  state.nActs = acts.length;
+  const extra = a => ({ feat: a.isFocusedActivity, light: a.recommendedLight, mods: a.modifierHashes, chal: a.challenges, rewards: a.visibleRewards,
+    done: a.isCompleted && !(a.challenges || []).some(x => x.objective && !x.objective.complete) });
+  const ok = a => matches(a.activityHash, [...modNames(a.modifierHashes), ...rewardNames(a.visibleRewards)]);
+  const feat = acts.filter(a => a.isFocusedActivity && ok(a));
+  $('featured').innerHTML = '<div class="sect"><h2>Featured right now</h2><span class="dim-lbl">What the Portal is spotlighting for your ' + esc((state.chars.find(x => x.id === state.tchar) || {}).name || '') + '.</span></div>' +
+    (feat.length ? '<div class="agrid">' + feat.map(a => actCard(a.activityHash, extra(a))).join('') + '</div>' : '<div class="panel dim-lbl">' + (q() ? 'Nothing featured matches the search.' : 'Bungie isn\'t flagging any featured activities for this character.') + '</div>');
+  const ch = acts.filter(a => (a.challenges || []).length && !a.isFocusedActivity && ok(a))
+    .sort((x, y) => (x.challenges.every(c => c.objective && c.objective.complete) ? 1 : 0) - (y.challenges.every(c => c.objective && c.objective.complete) ? 1 : 0));
+  $('challenges').innerHTML = ch.length ? '<div class="sect"><h2>Weekly challenges</h2><span class="dim-lbl">Activities with challenges this week, with your progress. Finished ones are faded and sorted last.</span></div><div class="agrid">' + ch.map(a => actCard(a.activityHash, extra(a))).join('') + '</div>' : '';
+  const groups = {};
+  for (const a of acts){ if (!ok(a)) continue; (groups[actType(a.activityHash)] = groups[actType(a.activityHash)] || []).push(a); }
+  const keys = Object.keys(groups).sort((x, y) => groups[y].length - groups[x].length || x.localeCompare(y));
+  const open = new Set(JSON.parse(ls.get('todayOpen') || '[]'));
+  $('allActs').innerHTML = '<div class="sect"><h2>Everything you can play</h2><span class="dim-lbl">' + acts.length + ' activities, grouped by type. Click a group to open it.</span></div><div class="modelist">' +
+    keys.map(k => '<details data-k="' + esc(k) + '"' + (open.has(k) || q() ? ' open' : '') + '><summary>' + esc(k) + '<b>' + groups[k].length + '</b></summary><div class="agrid">' +
+      groups[k].sort((x, y) => actName(x.activityHash).localeCompare(actName(y.activityHash))).map(a => actCard(a.activityHash, extra(a))).join('') + '</div></details>').join('') + '</div>';
+  $('allActs').querySelectorAll('details[data-k]').forEach(d => d.ontoggle = () => {
+    if (q()) return;
+    const s = new Set(JSON.parse(ls.get('todayOpen') || '[]')); d.open ? s.add(d.dataset.k) : s.delete(d.dataset.k); ls.set('todayOpen', JSON.stringify([...s]));
+  });
+}
+let searchT = 0;
+$('tSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(() => { renderLost(); renderWeekly(); renderChar(); }, 150); };
+
+/* ===================== footer, refresh, countdowns ===================== */
+function updateFooter(){
+  $('sitefoot').innerHTML = ['<b>Rotations:</b> Bungie.net API (public milestones) · <b>Your activities:</b> Bungie.net API (character activities, signed in)',
+    '<b>Names, images, modifiers:</b> Bungie manifest ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : '(loads on first visit)'),
+    'Not affiliated with Bungie'].join('<br>');
+}
+$('autoRefresh').checked = ls.get('autoRefresh') !== '0';
+$('autoRefresh').onchange = () => { ls.set('autoRefresh', $('autoRefresh').checked ? '1' : '0'); tickRefresh(); };
+const REFRESH_SECS = 60;
+function autoRefreshOk(minAge){ return $('autoRefresh').checked && state.acct && auth.valid() && !state.scanning && !document.hidden && Date.now() - (state.lastScan || 0) > minAge; }
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+function tickRefresh(){
+  document.querySelectorAll('[data-cd]').forEach(e => e.textContent = left(+e.dataset.cd));
+  if (state.pub && Date.now() >= state.pubDue && !state.scanning){ scan({ silent: true }); return; }   // reset passed: reload rotations
+  const el = $('lastScan'); if (!el || !state.lastScan) return;
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  const base = 'Rotations ' + fmt(state.pubAt) + (state.acct ? ' · your activities ' + fmt(state.lastScan) : '');
+  if (!state.acct || !$('autoRefresh').checked){ el.textContent = base + (state.acct ? ' · auto-refresh off' : ''); return; }
+  if (state.scanning){ el.textContent = base + ' · refreshing now'; return; }
+  const s = Math.max(0, Math.ceil((state.lastScan + REFRESH_SECS * 1000 - Date.now()) / 1000));
+  el.textContent = base + ' · next refresh in ' + s + 's';
+  if (s === 0 && autoRefreshOk(REFRESH_SECS * 1000 - 500)) scan({ silent: true });
+}
+setInterval(tickRefresh, 1000);
+
+/* ===================== activity stream hooks (stream.js) ===================== */
+const PAGE = 'today';
+const streamInfo = null, streamOpen = null;
+const byId = () => null;
+const runAction = () => {};
+
+updateFooter();
+updateAuthUi();
+render();
+if (ls.get('apiKey')) scan(); else setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
+</script>
+<script src="stream.js"></script>
+</body>
+</html>
