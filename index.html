@@ -1633,9 +1633,7 @@ function route(){
   }
 }
 window.addEventListener('hashchange', route);
-// only one card tag menu open at a time; clicking elsewhere closes it
-document.addEventListener('click', e => { document.querySelectorAll('details.tagpop[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
-document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.tagpop') && e.target.open) document.querySelectorAll('details.tagpop[open]').forEach(d => { if (d !== e.target) d.open = false; }); }, true);
+
 const homeRead = k => { try { return JSON.parse(ls.get(k) || 'null'); } catch { return null; } };
 const homeAgo = t => { const s = (Date.now() - t) / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : new Date(t).toLocaleDateString(); };
 const homeStat = (k, v, sub, cls, href) => '<a class="hstat ' + (cls || '') + '" href="' + href + '"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div>' + (sub ? '<div class="s">' + sub + '</div>' : '') + '</a>';

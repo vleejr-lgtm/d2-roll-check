@@ -167,4 +167,33 @@
   setInterval(renderStream, 30e3);
   window.addEventListener('storage', e => { if (e.key === 'stream') renderStream(); });
   renderStream();
+
+  // status line and toasts float in the bottom-right corner instead of pushing the page down
+  (function notices(){
+    const st = $('status'); if (!st) return;
+    const stack = document.createElement('div'); stack.id = 'noticeStack'; document.body.appendChild(stack);
+    let t = document.querySelector('.toast');
+    if (!t){ t = document.createElement('div'); t.className = 'toast'; }
+    stack.appendChild(t);            // toast() finds this one and reuses it
+    const box = document.createElement('div'); box.className = 'statusbox';
+    const x = document.createElement('button'); x.className = 'stclose'; x.type = 'button'; x.title = 'Dismiss'; x.textContent = '×';
+    box.appendChild(st);             // same #status element and setStatus(); the × sits beside it so the text stays clean
+    box.appendChild(x);
+    stack.appendChild(box);
+    let timer = 0;
+    const show = () => {
+      clearTimeout(timer);
+      const has = st.textContent.trim().length > 0;
+      box.classList.toggle('live', has);
+      box.classList.toggle('err', st.classList.contains('err'));
+      if (has && !st.classList.contains('err')) timer = setTimeout(() => box.classList.remove('live'), 6000);   // errors stay until dismissed
+    };
+    x.onclick = () => { clearTimeout(timer); box.classList.remove('live'); };
+    new MutationObserver(show).observe(st, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    show();
+  })();
+
+  // card tag menus (Weapons, Armor): one open at a time, and a click elsewhere closes it
+  document.addEventListener('click', e => { document.querySelectorAll('details.tagpop[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+  document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.tagpop') && e.target.open) document.querySelectorAll('details.tagpop[open]').forEach(d => { if (d !== e.target) d.open = false; }); }, true);
 })();
