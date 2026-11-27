@@ -219,7 +219,7 @@
   panel.id = 'pmPanel'; panel.className = 'stream pmpanel hidden';
   panel.innerHTML = '<div class="stream-head"><b>📬 Postmaster</b><span style="flex:1"></span><button class="ghost" id="pmRefresh" title="Re-read from Bungie">↻</button><button class="ghost" id="pmClose">✕</button></div>' +
     '<div class="dim-lbl" style="padding:0 14px 8px">Lost items on each character. Each postmaster holds ' + PM_CAP + '; anything past that is gone.</div>' +
-    '<label class="pmroom" title="When a slot is full, move the lowest rarity, lowest power unlocked item in that slot to the vault, then pull. Locked items are never moved."><input type="checkbox" id="pmMakeRoom"> Make room: move an unlocked item to the vault when a slot is full</label><div id="pmList"></div>';
+    '<label class="pmroom" title="When a slot is full, move the lowest rarity, lowest power unlocked item in that slot to the vault, then pull. Locked items are never moved."><input type="checkbox" id="pmMakeRoom"> Make room: when a slot is full, move an unlocked item to the vault first (postmaster pulls and moves to a character)</label><div id="pmList"></div>';
   document.body.appendChild(panel);
   pmBtn.onclick = () => { panel.classList.toggle('hidden'); if (!panel.classList.contains('hidden')){ $('stream').classList.add('hidden'); pmRender(); } };
   $('pmClose').onclick = () => panel.classList.add('hidden');
@@ -296,6 +296,8 @@
   window.pmEnsureRoom = (cid, hash, instanced, force) => ensureRoom(cid, hash, instanced, force);
   window.pmIsNoRoom = e => NO_ROOM.test((e && e.message) || '');
   window.pmLanded = async (cid, it) => landed(cid, it, await destBucket(it.hash));
+  // an item left a character (sent to the vault): free its slot in the model
+  window.pmLeft = (cid, id) => { const ch = pm && pm.chars.find(c => c.id === cid); if (ch && id) ch.inv = ch.inv.filter(x => x.id !== id); };
   async function pmPull(cid, pick, btn){
     if (pmBusy) return;
     if (!state.acct || !auth.valid()){ setStatus('Sign in with Bungie (top right) to pull from the postmaster.', true); return; }

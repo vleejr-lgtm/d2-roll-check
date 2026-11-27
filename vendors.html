@@ -213,6 +213,7 @@
     <a class="nav" href="index.html#weapons">Weapons</a>
     <a class="nav" href="armor.html">Armor triage</a>
     <a class="nav" href="vault.html">Vault</a>
+    <a class="nav" href="character.html">Character</a>
     <a class="nav active" href="vendors.html">Vendors &amp; Xûr</a>
     <a class="nav" href="shaders.html">Shaders</a>
   </nav>
@@ -587,7 +588,17 @@ function fillCharSel(p){
 }
 $('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
 async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
-async function transfer(i, toVault, charId){ await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType }); }
+async function transfer(i, toVault, charId){
+  const go = () => bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType });
+  if (toVault){ await go(); if (typeof pmLeft === 'function') pmLeft(charId, i.id); return; }
+  // to a character: when that slot is full, stream.js first moves the lowest rarity, lowest power unlocked item there to the vault
+  const room = async force => { if (typeof pmEnsureRoom !== 'function') return {}; const r = await pmEnsureRoom(charId, i.hash, true, force);
+    if (r.err) throw new Error('No room for ' + i.name + ': ' + r.err + '.'); if (r.moved){ toast('Moved ' + r.moved + ' to the vault to make room'); await sleep(300); } return r; };
+  await room(false);
+  try { await go(); }
+  catch (e){ if (typeof pmIsNoRoom !== 'function' || !pmIsNoRoom(e) || ls.get('pmMakeRoom') === '0') throw e; await room(true); await go(); }
+  if (typeof pmLanded === 'function') pmLanded(charId, { id: i.id, hash: i.hash, qty: 1 });
+}
 async function pullFromPostmaster(i){
   // stream.js (Postmaster panel) frees a slot first by moving an unlocked item to the vault when the slot is full
   const go = () => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: i.qty || 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });

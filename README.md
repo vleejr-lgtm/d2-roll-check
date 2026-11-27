@@ -12,6 +12,7 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | today.html | Today: this week's rotations, featured activities, weekly challenges and everything your character can play |
 | vendors.html | Vendors and Xûr: what's worth buying this week, where each vendor is, and when stock rotates |
 | vault.html | Vault: everything you own across the vault, characters and postmaster, with search and quick moves |
+| character.html | Character: each character laid out like the in-game screen, with every slot's inventory shown |
 | shaders.html | Shaders: every shader in the game, which ones you own, and where to get the rest |
 | theme.css | Shared look for every page: colors, header, spacing, cards. Keep it next to the .html files |
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
@@ -120,6 +121,17 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 * Search with plain words, and every word has to match: `hand cannon`, `exotic rocket`, `t5 titan`, `vault locked`. Press `/` to jump to the search box.
 * Filter by where it is and what it is (weapons, armor, mods and shaders, materials, cosmetics, quests), and sort by type, name, power, rarity or location.
 * Signed in, each weapon and armor piece has Pull (to the character in the Pull to menu), Vault and Lock buttons.
+
+## Character (character.html)
+
+* Pick a character at the top. You get the in-game Character screen: emblem, name, power and stats, weapons and ghost on the left, armor on the right.
+* Every slot is expanded: the equipped item plus everything else that character carries for that slot, with empty boxes for free space.
+* Click an item to Equip it, send it to the Vault, move it to another character, or lock it.
+* Click an empty box to bring something from the vault into that slot. It only lists items that fit, and you can filter them.
+
+## Full slots
+
+Moving an item from the vault to a character works like the postmaster now: if that slot is full, the site first moves the lowest rarity, lowest power **unlocked** item in that slot to the vault, then makes the move. Locked and equipped items are never touched. The Make room checkbox in the 📬 panel turns this on or off.
 
 ## Postmaster (every page)
 

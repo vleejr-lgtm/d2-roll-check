@@ -11,6 +11,7 @@ Personal Destiny 2 tool, run locally at `https://localhost:8443/` (`start-server
 | `vendors.html` | Vendors, Zavala & Shaxx panel, Xûr panel |
 | `today.html` | Lost sector of the day, weekly milestones, featured activities, challenges |
 | `vault.html` | Everything you own: vault, every character, equipped, postmaster. Search, filters, pull / vault / lock |
+| `character.html` | One character like the in-game Character screen, every slot expanded. Equip, vault, move, lock, fill a slot from the vault |
 | `shaders.html` | Every collectible shader, owned vs missing (Collections), source, detail modal with vendor check |
 | `stream.js` | Shared Activity stream, tag-menu behavior, bottom-right notices. Loaded **after** each page's inline script |
 | `theme.css` | Shared visual theme. Loaded **after** each page's inline `<style>` |
@@ -22,7 +23,7 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor authAuto pmMakeRoom vendSales shStatus shSource shSort vaultWhere vaultKind vaultSort enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor authAuto pmMakeRoom vendSales shStatus shSource shSort vaultWhere vaultKind vaultSort charView enhPerks armorMeta armorSetSort armorSetFilter armorTopSets` (legacy `known:weapons`/`known:armor` are only read for migration)
   - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `manifestShaders` (shader list), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
@@ -132,12 +133,23 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 
 ## Vault (vault.html)
 
-- Nav order on every page: Today, Weapons, Armor triage, Vault, Vendors & Xûr, Shaders. Home Jump to has a Vault card.
+- Nav order on every page: Today, Weapons, Armor triage, Vault, Character, Vendors & Xûr, Shaders. Home Jump to has Vault and Character cards.
 - Profile `components=102,103,200,201,204,205,300`; names/icons from the shared `manifestArmor` cache (`loadDefs`). `readItems()` turns vault + character inventories + equipment into rows `{id, hash, name, icon, type, it, kind, rar, cls, qty, charId, equipped, postmaster, locked, loc, where, power, gearTier, set}`. Subclasses (itemType 16) are skipped. `where` is `vault`, a character id, or `pm`.
 - Space strip (`#vSpace`, `readSpace()` / `spaceHtml()`): profile components now include `103` (currencies). Slots used = number of stacks per `profileInventory` bucket (General 138197802, Consumables 1469714392, Modifications 3313201758), against `itemCount` from `DestinyInventoryBucketDefinition` via `entMany` (cached), so capacity changes need no code change. Bars go gold at 85% and red at 95%. Currencies with a quantity above 0 are listed with their icons.
 - Groups (`KINDS` by DestinyItemType): Weapons, Armor, Mods & shaders, Consumables & materials, Ghosts & cosmetics, Quests & bounties, Other.
 - Filters: chips Where (`vaultWhere`) and What (`vaultKind`), sort (`vaultSort`), search box (not saved). Search is every word must match across name, type, location, rarity, class, `t5`/`tier 5`, set, `locked`, `equipped`, `postmaster`. `/` focuses the search box. 200 rows per page with Show more.
 - Actions only on instanced items when signed in: Pull (to the header Pull-to character, uses `pullTo`, handles postmaster), Vault (`transfer`), Lock for weapons/armor (`setLock`).
+
+## Character (character.html)
+
+- Profile `components=100,102,103,200,201,205,300`. Tabs per character (localStorage `charView`), emblem banner, Bungie name, race and class, power, stats (names and icons from `DestinyStatDefinition` via `entMany`, Power stat left out), currencies.
+- Slots like the in-game screen: left Subclass, Kinetic, Energy, Power, Ghost; right Helmet, Arms, Chest, Legs, Class item; then Emblem, Sparrow, Ship. Each slot shows the equipped item (large) and every inventory item for that bucket (the in-game side boxes, expanded), plus dashed empty boxes up to 10 per bucket.
+- Click an item: Equip (`EquipItem`), Vault, To <other character> (`pullTo`), Lock. Click an empty box: picker of vault items for that bucket and class (instanced only), with a filter box; picking calls `transfer(..., false, charId)`.
+- `sync()` moves items whose `charId` was cleared (by Make room through `byId`) out of the character view into `state.vault`.
+
+## Moving to a character (every page)
+
+- `transfer(i, false, charId)` on every page frees a slot first when the destination bucket is full, using the same Make room logic as the postmaster (`pmEnsureRoom` before, retry once after a no-room error). `transfer(i, true, charId)` tells stream.js the slot is free (`pmLeft`). Covers vault pulls on Weapons, Armor, Vault, Character and the Activity stream.
 
 ## Postmaster (stream.js, every page)
 
