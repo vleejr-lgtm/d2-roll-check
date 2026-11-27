@@ -258,6 +258,11 @@
   .lsrw{display:flex;flex-wrap:wrap;gap:6px}
   @media (max-width:760px){ .lsbox{grid-template-columns:1fr} }
   .topinfo a{color:#9fc6ef;text-decoration:none} .topinfo a:hover{text-decoration:underline}
+  .lsbox.lsproj{display:block;grid-template-columns:none} .lsproj .ab{padding:14px 16px;max-width:none} .lsproj-tag{display:inline-block;align-self:flex-start;width:max-content;font-size:11px;font-weight:700;color:#E2B74B;background:rgba(226,183,75,.12);border:1px solid rgba(226,183,75,.35);border-radius:6px;padding:1px 7px;margin-bottom:6px}
+  .lsrow{display:grid;grid-template-columns:84px 1fr;gap:8px;align-items:baseline;margin:5px 0;font-size:13px} .lstags{display:flex;gap:5px;flex-wrap:wrap}
+  .lstag{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid}
+  .lscal{margin-top:8px;font-size:12.5px} .lscal select{font-size:12.5px;padding:3px 6px}
+  .lsweek{margin-top:10px} table.lsw{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px} .lsw th{text-align:left;font-weight:600;color:var(--dim);padding:4px 8px;border-bottom:1px solid var(--line)} .lsw td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
 </style>
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -446,12 +451,12 @@ async function loadDefs(){
 
 /* ===================== activity definitions ===================== */
 // Trimmed copies of the activity, modifier, mode, milestone, destination and place tables, cached per manifest version
-const ACT_TABLES = ['DestinyActivityDefinition', 'DestinyActivityModifierDefinition', 'DestinyActivityModeDefinition', 'DestinyMilestoneDefinition', 'DestinyDestinationDefinition', 'DestinyPlaceDefinition'];
-const T = { act: {}, mod: {}, mode: {}, ms: {}, dest: {}, place: {} };
+const ACT_TABLES = ['DestinyActivityDefinition', 'DestinyActivityModifierDefinition', 'DestinyActivityModeDefinition', 'DestinyMilestoneDefinition', 'DestinyDestinationDefinition', 'DestinyPlaceDefinition', 'DestinyActivityTypeDefinition'];
+const T = { act: {}, mod: {}, mode: {}, ms: {}, dest: {}, place: {}, atype: {}, schema: 2 };   // bump schema when the cached shape changes
 async function loadActDefs(){
   if (state.actVer && state.actVer === state.manVer) return;
   const cached = await cacheGet('manifestToday');
-  if (cached && cached.version === state.manVer){ Object.assign(T, cached.data); state.actVer = state.manVer; return; }
+  if (cached && cached.version === state.manVer && cached.data && cached.data.schema === T.schema){ Object.assign(T, cached.data); state.actVer = state.manVer; return; }
   const man = await bungie('/Destiny2/Manifest/');
   const paths = man.jsonWorldComponentContentPaths.en;
   const dp = d => d.displayProperties || {};
@@ -465,13 +470,15 @@ async function loadActDefs(){
       if (name === 'DestinyActivityDefinition'){
         const o = d.originalDisplayProperties || {};
         T.act[h] = { n: p.name || '', d: p.description || '', i: p.icon || '', o: o.name || '', img: d.pgcrImage || '', dest: d.destinationHash || 0,
-          mode: d.directActivityModeHash || 0, pvp: !!d.isPvP, light: d.activityLightLevel || 0, pl: !!d.isPlaylist };
+          mode: d.directActivityModeHash || 0, at: d.activityTypeHash || 0, pvp: !!d.isPvP, light: d.activityLightLevel || 0, pl: !!d.isPlaylist };
       } else if (name === 'DestinyActivityModifierDefinition'){
         if (p.name) T.mod[h] = { n: p.name, d: p.description || '', i: p.icon || '', s: d.displayInActivitySelection !== false };
       } else if (name === 'DestinyActivityModeDefinition'){
         T.mode[h] = { n: p.name || '', i: p.icon || '' };
       } else if (name === 'DestinyMilestoneDefinition'){
         T.ms[h] = { n: p.name || d.friendlyName || '', d: p.description || '', i: p.icon || '', img: d.image || '', ex: !!d.showInExplorer };
+      } else if (name === 'DestinyActivityTypeDefinition'){
+        T.atype[h] = { n: p.name || '' };
       } else if (name === 'DestinyDestinationDefinition'){
         T.dest[h] = { n: p.name || '', pl: d.placeHash || 0 };
       } else {
@@ -657,7 +664,8 @@ const rewardNames = vr => (vr || []).flatMap(r => r.rewardItems || []).map(x => 
    Expert/Master/Legend difficulty (the others only have the normal version), usually with champion modifiers. */
 const LS_DIFF = /\b(grandmaster|master|legend|expert|advanced)\b/i;
 const DIFF_RANK = { advanced: 1, expert: 2, legend: 3, master: 4, grandmaster: 5 };
-const isLostSector = h => { const a = T.act[h] || {}; return /lost sector/i.test([a.n, a.o, (T.mode[a.mode] || {}).n].join(' ')); };
+// match on activity type, mode, name or description: catches Expert / Master / Legend world lost sectors, not only legacy hashes
+const isLostSector = h => { const a = T.act[h] || {}; return /lost sector/i.test([a.n, a.o, a.d, (T.mode[a.mode] || {}).n, (T.atype[a.at] || {}).n].join(' ')); };
 const lsBase = h => { const a = T.act[h] || {}; return (a.o || a.n || '').replace(/^lost sector\s*:\s*/i, '').replace(/\s*[(:\-–]\s*(grandmaster|master|legend|expert|advanced|normal)\)?\s*$/i, '').replace(/\s*\((grandmaster|master|legend|expert|advanced|normal)\)/i, '').trim(); };
 const isChampMod = h => /champion|overload|unstoppable|barrier/i.test(((T.mod[h] || {}).n || '') + ' ' + ((T.mod[h] || {}).d || ''));
 function findLostSectors(c){
@@ -687,37 +695,92 @@ function lsCache(list){
 }
 const LS_LINKS = '<div class="lslinks">Full daily rotation calendar: <a href="https://kyberscorner.com/destiny2/lost-sectors/" target="_blank" rel="noopener">Kyber\'s Corner ↗</a> · <a href="https://www.todayindestiny.com/" target="_blank" rel="noopener">TodayInDestiny ↗</a></div>';
 const slimLS = g => ({ name: g.name, hash: g.hash, diffs: g.diffs, mods: g.mods, rewards: g.rewards });
+// today's lost sector from every character you have: the selected one first, then the others; one card per lost sector
+function lostFromAccount(){
+  const order = [state.tchar, ...(state.chars || []).map(x => x.id).filter(id => id !== state.tchar)].filter(id => id && state.char[id]);
+  const seen = new Map();
+  for (const id of order) for (const g of findLostSectors(state.char[id])) if (!seen.has(g.name)) seen.set(g.name, { g: slimLS(g), on: id });
+  return [...seen.values()];
+}
+
+/* ---- daily rotation fallback ----
+   One Expert/Master lost sector a day, changing at the daily reset (17:00 UTC). Bungie only lists it in a character's
+   activities once that character has cleared it on normal (patrol), so the API can show nothing. Then we project the
+   day from a fixed cycle. Cycle and anchor: published 2025 schedules (progametalk July 2025: Jul 1 Thrilladrome ...
+   Jul 6 Veles Labyrinth; shacknews: Jul 10 Hydroponics Delta, Jul 11 Gilded Precept) and the d2rotations.report order.
+   Not confirmed for Monument of Triumph, so the page re-anchors itself (localStorage lsAnchor) every time Bungie shows
+   the real lost sector on any of your characters, or when you pick today's from the list. Champions and shields are the
+   last published Legend/Expert values; they can change by season. */
+const LS_CYCLE = [
+  { n: 'Gilded Precept',      dest: 'Neomuna',        champs: ['Barrier', 'Unstoppable'], shields: ['Void', 'Solar'] },
+  { n: 'Thrilladrome',        dest: 'Neomuna',        champs: ['Barrier', 'Overload'],    shields: [] },
+  { n: 'The Broken Deep',     dest: 'The Pale Heart', champs: [],                         shields: [] },
+  { n: 'The Blooming Deep',   dest: 'The Pale Heart', champs: ['Overload', 'Unstoppable'], shields: [] },
+  { n: 'Bunker E15',          dest: 'Europa',         champs: ['Overload', 'Barrier'],    shields: ['Void'] },
+  { n: 'Perdition',           dest: 'Europa',         champs: [],                         shields: [] },
+  { n: 'Veles Labyrinth',     dest: 'Cosmodrome',     champs: ['Barrier', 'Unstoppable'], shields: ['Arc', 'Solar'] },
+  { n: 'Exodus Garden 2A',    dest: 'Cosmodrome',     champs: ['Overload', 'Barrier'],    shields: ['Void'] },
+  { n: "Aphelion's Rest",     dest: 'Dreaming City',  champs: ['Overload', 'Unstoppable'], shields: ['Void'] },
+  { n: 'Chamber of Starlight', dest: 'Dreaming City', champs: ['Overload', 'Unstoppable'], shields: ['Void', 'Solar'] },
+  { n: 'Hydroponics Delta',   dest: 'Neomuna',        champs: ['Barrier', 'Unstoppable'], shields: [] },
+];
+const LS_DEFAULT_ANCHOR = { day: Date.UTC(2025, 6, 6, RESET_H), name: 'Veles Labyrinth', src: 'schedule' };
+const lsKey = n => String(n || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+const lsIdx = n => LS_CYCLE.findIndex(x => lsKey(x.n) === lsKey(n));
+function lsAnchor(){ try { const a = JSON.parse(ls.get('lsAnchor') || 'null'); if (a && lsIdx(a.name) >= 0) return a; } catch {} return LS_DEFAULT_ANCHOR; }
+function setLsAnchor(name, src){ if (lsIdx(name) < 0) return; const cur = lsAnchor(); if (cur.day === lastReset() && lsKey(cur.name) === lsKey(name) && cur.src === src) return; ls.set('lsAnchor', JSON.stringify({ day: lastReset(), name, src })); }
+// rotation entry for the reset that starts at `resetMs`
+function lsProject(resetMs){ const a = lsAnchor(), d = Math.round((resetMs - a.day) / 864e5); return LS_CYCLE[(((lsIdx(a.name) + d) % LS_CYCLE.length) + LS_CYCLE.length) % LS_CYCLE.length]; }
+const lsProjToday = () => lsProject(lastReset());
+const CHAMP_C = { Barrier: '#7fb2ff', Overload: '#c993ff', Unstoppable: '#ffb35c' }, SHIELD_C = { Void: '#b48cff', Arc: '#7fd6ff', Solar: '#ff9e57', Strand: '#5fe39a', Stasis: '#8fb6ff' };
+const tagList = (arr, col) => '<span class="lstags">' + (arr.length ? arr.map(x => '<span class="lstag" style="border-color:' + (col[x] || '#555') + '55;color:' + (col[x] || '#ccc') + '">' + esc(x) + '</span>').join('') : '<span class="dim-lbl">Not published, check in game</span>') + '</span>';
+function lsProjectionHtml(c, chName){
+  const today = lsProjToday(), a = lsAnchor(), calibrated = a.src !== 'schedule';
+  const s = q(), match = !s || [today.n, today.dest, ...today.champs, ...today.shields, 'lost sector'].join(' ').toLowerCase().includes(s);
+  const days = Array.from({ length: 7 }, (_, i) => { const r = lastReset() + (i + 1) * 864e5; return { r, e: lsProject(r) }; });
+  const wd = ms => new Date(ms).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return (match ? '<div class="lsbox lsproj" data-lsproj="' + esc(today.n) + '"><div class="ab">' +
+      '<div class="lsproj-tag">' + (calibrated ? 'Projected from the daily cycle' : 'Projected from the published cycle (estimate)') + '</div>' +
+      '<h3>' + esc(today.n) + '</h3><div class="vloc" style="color:#9fe7ff">📍 ' + esc(today.dest) + '</div>' +
+      '<div class="lsrow"><span class="dim-lbl">Champions</span>' + tagList(today.champs, CHAMP_C) + '</div>' +
+      '<div class="lsrow"><span class="dim-lbl">Shields</span>' + tagList(today.shields, SHIELD_C) + '</div>' +
+      '<div class="lsrow"><span class="dim-lbl">Drops</span><span>Solo Expert or Master clear: chance at an Exotic engram (Master has better odds), plus the lost sector\'s legendary weapons. Run Master for the best odds at Tier 5 gear.</span></div>' +
+      '<div class="ad">Lost sectors rotate once a day at the daily reset, 17:00 UTC (' + esc(new Date(nextUtc(null)).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + ' your time). ' +
+        'Bungie\'s API only lists the day\'s Expert and Master lost sector on a character that has already cleared that lost sector on normal in patrol, ' +
+        (c ? 'and none of your characters list it today, ' : '') + 'so this card is projected from the rotation order. ' +
+        (calibrated ? 'Last confirmed: ' + esc(a.name) + ' on ' + esc(wd(a.day)) + (a.src === 'api' ? ' (seen on your account).' : ' (you picked it).') : 'Not yet confirmed on your account: sign in on a character that has it, or pick today\'s below.') + '</div>' +
+      '<div class="lscal"><label class="dim-lbl" for="lsPick">Wrong one? Today it\'s</label> <select id="lsPick">' + LS_CYCLE.map(x => '<option' + (x === today ? ' selected' : '') + '>' + esc(x.n) + '</option>').join('') + '</select></div>' +
+    '</div></div>' : '<div class="panel dim-lbl">Today\'s lost sector doesn\'t match the search.</div>') +
+    '<div class="panel lsweek"><div class="lsf-title">Next 7 days</div><table class="lsw"><tr><th>Day</th><th>Lost Sector</th><th>Where</th><th>Champions</th><th>Shields</th></tr>' +
+      days.map(({ r, e }) => '<tr><td>' + esc(wd(r)) + '</td><td><b>' + esc(e.n) + '</b></td><td>' + esc(e.dest) + '</td><td>' + (esc(e.champs.join(', ')) || '<span class="dim-lbl">?</span>') + '</td><td>' + (esc(e.shields.join(', ')) || '<span class="dim-lbl">?</span>') + '</td></tr>').join('') +
+    '</table><div class="dim-lbl" style="margin-top:6px">Each day starts at the reset shown. Projected, so check a calendar if it matters.</div></div>';
+}
+
 function renderLost(){
   const el = $('lost');
   if (state.cat !== 'all' && state.cat !== 'lost'){ el.innerHTML = ''; return; }
   const c = state.tchar && state.char[state.tchar];
   const chName = (state.chars.find(x => x.id === state.tchar) || {}).name || 'character';
-  let list = c ? findLostSectors(c).map(slimLS) : null, note = '', other = null;
-  if (list && list.length) lsCache(list);
+  const found = lostFromAccount();
+  let list = found.map(x => x.g), note = '', other = null;
+  if (list.length){
+    lsCache(list);
+    list.forEach(g => setLsAnchor(g.name, 'api'));   // re-anchor the projection to what Bungie actually shows
+    const onSel = found.some(x => x.on === state.tchar);
+    if (!onSel){ other = (state.chars || []).find(x => x.id === found[0].on); if (other) note = 'Not listed on your ' + chName + ', but your ' + other.name + ' has it.'; }
+  } else { const cached = lsCache(); if (cached && cached.length){ list = cached; note = 'Seen on your account earlier today.'; } }
+  const head = '<div class="sect"><h2>Lost Sector today</h2><span class="dim-lbl">Changes at the daily reset (17:00 UTC), in ' + cd(nextUtc(null)) + '.' + (note ? ' ' + esc(note) : '') + '</span></div>';
   if (!list || !list.length){
-    // another character may have it unlocked
-    for (const ch of state.chars || []){
-      if (ch.id === state.tchar || !state.char[ch.id]) continue;
-      const l = findLostSectors(state.char[ch.id]);
-      if (l.length){ other = ch; list = l.map(slimLS); lsCache(list); break; }
-    }
-    if (other) note = 'Not listed on your ' + chName + ', but your ' + other.name + ' has it.';
-    else { const cached = lsCache(); if (cached && cached.length){ list = cached; note = 'Seen on your account earlier today.'; } }
-  }
-  const head = '<div class="sect"><h2>Lost Sector today</h2><span class="dim-lbl">Changes at the daily reset, in ' + cd(nextUtc(null)) + '.' + (note ? ' ' + esc(note) : '') + '</span></div>';
-  if (!list || !list.length){
-    // nothing rotating to show: still useful, list what this character can run and point to a calendar
+    // nothing from Bungie: project today's from the rotation, and keep the list of what this character can run
     const lsActs = c ? [...new Map((c.availableActivities || []).filter(a => a.isVisible !== false && isLostSector(a.activityHash)).map(a => [lsBase(a.activityHash) || actName(a.activityHash), a])).entries()] : [];
     const byDest = {};
     for (const [name, a] of lsActs){ const d = where(a.activityHash) || 'Other'; (byDest[d] = byDest[d] || []).push(name); }
-    const others = (state.chars || []).filter(x => x.id !== state.tchar);
-    el.innerHTML = head + '<div class="panel lsfall">' +
-      '<div class="lsf-title">' + (c ? 'No rotating lost sector on your ' + esc(chName) + ' right now' : auth.valid() ? 'Loading…' : 'Sign in with Bungie to see today\'s lost sector') + '</div>' +
-      '<div class="dim-lbl">' + (c ? 'Bungie only lists the daily Expert and Master lost sector for characters that have them unlocked, and none of your characters show it yet today.' : 'Bungie only lists the daily rotation in your character\'s activities, not in the public data.') + '</div>' +
-      (c && others.length ? '<div class="lsf-chars"><span class="dim-lbl">Check another character:</span>' + others.map(x => '<button class="ghost" data-switch="' + esc(x.id) + '">' + esc(x.name) + '</button>').join('') + '</div>' : '') +
+    el.innerHTML = head + lsProjectionHtml(c, chName) +
       (lsActs.length ? '<details class="lsall"><summary>Lost sectors your ' + esc(chName) + ' can run (' + lsActs.length + ')</summary><div class="lsdest">' +
         Object.keys(byDest).sort().map(d => '<div><b>' + esc(d) + '</b><span>' + byDest[d].map(esc).join(', ') + '</span></div>').join('') + '</div></details>' : '') +
-      LS_LINKS + '</div>';
+      (!c && !auth.valid() ? '<div class="dim-lbl" style="margin:6px 2px">Sign in with Bungie to confirm today\'s lost sector from your characters.</div>' : '') + LS_LINKS;
+    const pick = $('lsPick');
+    if (pick) pick.onchange = () => { setLsAnchor(pick.value, 'manual'); render(); };
   } else {
     const s = q();
     const shown = list.filter(g => !s || [g.name, where(g.hash), ...modNames(g.mods), ...g.rewards.map(nameOf)].join(' ').toLowerCase().includes(s));
@@ -764,6 +827,10 @@ function renderCats(){
     if (okSearch) seen.set('ms:' + m.milestoneHash, msCats(m));
   }
   for (const a of state.actsList || []) if (matches(a.activityHash, [...modNames(a.modifierHashes), ...rewardNames(a.visibleRewards)])) seen.set('a:' + actName(a.activityHash), actCats(a));
+  // the daily lost sector counts even when it's on another character, and the projected one counts when Bungie lists none
+  const acc = lostFromAccount().map(x => x.g), fb = acc.length ? acc : (lsCache() || []);
+  if (fb.length){ for (const g of fb) if (![...seen.keys()].includes('a:' + actName(g.hash))) seen.set('ls:' + g.name, new Set(['lost'])); }
+  else { const p = lsProjToday(); if (matches(0, [p.n, p.dest, 'lost sector', ...p.champs, ...p.shields])) seen.set('ls:proj', new Set(['lost'])); }
   const n = k => k === 'all' ? seen.size : [...seen.values()].filter(set => set.has(k)).length;
   $('tCat').innerHTML = CATS.map(([k, l]) => '<span class="chip' + (state.cat === k ? ' on' : '') + '" data-cat="' + k + '">' + esc(l) + '<b>' + n(k) + '</b></span>').join('');
   $('tCat').querySelectorAll('[data-cat]').forEach(c => c.onclick = () => {
@@ -785,7 +852,9 @@ function render(){
   $('topinfo').innerHTML =
     '<div class="sum"><span class="dim-lbl">Daily reset</span><b>' + cd(daily) + '</b><span class="dim-lbl">' + fmtWhen(daily) + ' your time</span></div>' +
     '<div class="sum"><span class="dim-lbl">Weekly reset</span><b>' + cd(weekly) + '</b><span class="dim-lbl">' + fmtWhen(weekly) + ' your time</span></div>' +
-    (() => { const c = state.tchar && state.char[state.tchar]; const l = c ? findLostSectors(c) : (lsCache() || []); return l.length ? '<div class="sum"><span class="dim-lbl">Lost Sector today</span><b style="font-size:16px">' + esc(l.map(g => g.name).join(' / ')) + '</b><span class="dim-lbl">' + esc(where(l[0].hash)) + '</span></div>' : ''; })() +
+    (() => { const acc = lostFromAccount().map(x => x.g), l = acc.length ? acc : (lsCache() || []);
+      if (l.length) return '<div class="sum"><span class="dim-lbl">Lost Sector today</span><b style="font-size:16px">' + esc(l.map(g => g.name).join(' / ')) + '</b><span class="dim-lbl">' + esc(where(l[0].hash)) + '</span></div>';
+      const p = lsProjToday(); return '<div class="sum" title="Projected from the daily rotation"><span class="dim-lbl">Lost Sector today (projected)</span><b style="font-size:16px">' + esc(p.n) + '</b><span class="dim-lbl">' + esc(p.dest) + '</span></div>'; })() +
     '<div class="sum"><span class="dim-lbl">' + (xw.here ? 'Xûr leaves in' : 'Xûr arrives in') + '</span><b>' + cd(xw.here ? xw.leaves : xw.arrives) + '</b><span class="dim-lbl"><a href="vendors.html">Vendors &amp; Xûr →</a></span></div>';
   renderLost(); renderWeekly(); renderChar(); renderCats();
 }
