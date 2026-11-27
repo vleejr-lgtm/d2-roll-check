@@ -493,3 +493,58 @@ body.streampinned .pmpanel{right:390px}
 }
 body.streampinned header{max-width:100%; box-sizing:border-box}
 body.streampinned .pmpanel{z-index:51}
+
+/* ---- PvE vs PvP graph (rating.js modeGraph) ---- */
+.mg{margin:8px 0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.02); font-size:12px}
+.mg.compact{padding:6px 8px; margin:6px 0}
+.mg-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.mg-call{letter-spacing:0; text-transform:none; font-size:12px; font-weight:800; padding:1px 8px; border-radius:4px}
+.mg-call.keep{background:rgba(63,179,127,.18); color:#5fd39c} .mg-call.maybe{background:rgba(226,183,75,.16); color:#E2B74B}
+.mg-call.trash{background:rgba(229,83,75,.18); color:#ff7b73} .mg-call.none{background:rgba(255,255,255,.06); color:var(--dim)}
+.mg-row{display:grid; grid-template-columns:32px minmax(70px,1fr) 16px auto; gap:8px; align-items:center; padding:2px 0}
+.mg.compact .mg-row{grid-template-columns:30px minmax(60px,1fr) 14px auto; gap:6px}
+.mg-m{font-weight:800; color:var(--text); font-size:11.5px}
+.mg-bar{position:relative; height:9px; border-radius:5px; overflow:hidden;
+  background:linear-gradient(90deg,#E5534B 0 20%,#e8833a 20% 40%,#E2B74B 40% 60%,#9ccc65 60% 80%,#3FB37F 80% 100%)}
+.mg-bar::before{content:""; position:absolute; inset:0; background:repeating-linear-gradient(90deg,transparent 0 calc(20% - 1px),rgba(13,15,18,.9) calc(20% - 1px) 20%)}
+.mg-bar u{position:absolute; top:0; bottom:0; right:0; background:rgba(13,15,18,.78); text-decoration:none}
+.mg-bar em{position:absolute; top:-1px; bottom:-1px; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 4px rgba(255,255,255,.7)}
+.mg-bar.off{background:rgba(255,255,255,.06)} .mg-bar.off::before,.mg-bar.off u{display:none}
+.mg-g{font-weight:900; text-align:center; font-size:12px}
+.mg-g.gS{color:#E2B74B} .mg-g.gA{color:#3FB37F} .mg-g.gB{color:#9ccc65} .mg-g.gC{color:#E2B74B} .mg-g.gD{color:#e8833a} .mg-g.gF{color:#E5534B} .mg-g.g–{color:var(--faint)}
+.mg-v{font-size:11px; font-weight:700; text-align:right; white-space:nowrap}
+.mg-v.keep{color:#5fd39c} .mg-v.maybe{color:#E2B74B} .mg-v.trash{color:#ff7b73} .mg-v.none{color:var(--faint); font-weight:500}
+.mg-sub{display:flex; flex-wrap:wrap; gap:4px 14px; padding:2px 0 6px 40px; color:var(--dim); font-size:11px}
+.mg-sub span{display:inline-flex; align-items:center; gap:6px}
+.mg-sub i{display:inline-block; width:54px; height:4px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden}
+.mg-sub i b{display:block; height:100%; background:var(--dim)}
+.mg-lean{margin-top:4px; color:var(--dim); font-size:11.5px}
+.mg-aegis{display:inline-block; margin-left:6px; font-size:10.5px; font-weight:800; color:#E2B74B; border:1px solid rgba(226,183,75,.4); border-radius:3px; padding:0 5px}
+.mgshort{font-size:10.5px; font-weight:700; color:var(--dim)}
+/* lookup: what a weapon is recommended for */
+.mgw{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 14px}
+.mgw > div{border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:rgba(255,255,255,.02)}
+.mgw h4{margin:0 0 4px; font-size:13px} .mgw .n{font-size:22px; font-weight:800} .mgw .dim-lbl{font-size:11.5px}
+.mgw .share{height:6px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; margin:6px 0} .mgw .share b{display:block; height:100%; background:#E2B74B}
+.mgcopies .mgcopy{display:grid; grid-template-columns:minmax(140px,220px) 1fr; gap:12px; align-items:center; border-top:1px solid var(--line); padding:6px 0}
+.mgcopies .mgcopy small{display:block; color:var(--dim)}
+@media (max-width:640px){ .mgw{grid-template-columns:1fr} .mgcopies .mgcopy{grid-template-columns:1fr} }
+/* narrow spots (detail side panel, roll popups): sub bars on their own lines */
+.dside .mg-sub,.rp .mg-sub,.cpop .mg-sub{padding-left:0; flex-direction:column; gap:3px}
+.dside .mg-sub span,.rp .mg-sub span,.cpop .mg-sub span{justify-content:space-between}
+.dside .mg-sub i,.rp .mg-sub i,.cpop .mg-sub i{width:110px}
+.dsplit{margin-bottom:12px}
+/* keep / trash tag in the Postmaster panel and other lists */
+.vlabel{display:inline-block; font-size:9.5px; font-weight:800; padding:0 5px; border-radius:3px; margin-left:6px; vertical-align:1px; color:#0b0d10; background:#3a4150}
+.vlabel.god,.vlabel.exo{background:#E2B74B} .vlabel.close{background:#d08a3a} .vlabel.trash{background:#e05252; color:#fff} .vlabel.keep{background:#3fb36b}
+.vlabel.old{background:#8b95a5} .vlabel.oldx{background:#b07ad9; color:#fff} .vlabel.review{background:#4a90d9; color:#fff} .vlabel.unr{background:#3a4150; color:#cfd5df}
+.pmname .mgshort{display:block; font-weight:600}
+.sb.sb-unrated{background:#3a4150; color:#cfd5df}
+/* gear tier diamonds (rating.js tierPips / tierIcon) */
+.ticon{position:relative; display:inline-block; flex:none; line-height:0; vertical-align:middle}
+.tpips{position:absolute; left:2px; top:3px; display:flex; flex-direction:column; gap:2px; pointer-events:none; z-index:1}
+.tpips i{display:block; width:5px; height:5px; background:#F5D76E; transform:rotate(45deg); box-shadow:0 0 0 1px rgba(0,0,0,.75)}
+.tpips.t5 i{background:#FFE48A} .tpips.t1 i,.tpips.t2 i{background:#cfd5df}
+.ctile .tpips{top:3px; left:3px; gap:1.5px} .ctile .tpips i{width:5px; height:5px}
+.ctile.big .tpips{gap:3px; top:6px; left:5px} .ctile.big .tpips i{width:6px; height:6px}
+.dpm .ctile .tpips i,.cpm-row .ctile .tpips i{width:4px; height:4px}

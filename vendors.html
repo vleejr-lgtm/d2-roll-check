@@ -204,6 +204,7 @@
 </style>
 <link rel="stylesheet" href="theme.css">
 <script src="config.js" onerror="this.remove()"></script>
+<script src="rating.js"></script>
 </head>
 <body>
 <header>
@@ -782,6 +783,7 @@ function rate(){
         else { r.full = sf; r.entry = sf[0]; }
       }
       it.match = r.entry || null;
+      it.split = typeof modeSplit === 'function' ? modeSplit(it.hash, it.have, nameOf, h => (state.defs[h] || {}).t, state.wl || { good: new Map(), trash: new Map() }) : null;
       const srcs = r.full ? [...new Set(r.full.map(e => (state.wl.sources || [])[e.s]).filter(Boolean))] : [];
       if (r.verdict === 'god'){
         it.v = own && own.best === 'god' ? 'have' : 'buy';
@@ -847,10 +849,10 @@ function card(it){
   const cost = it.costs.length ? '<div class="cost' + (it.cipher ? ' cipher' : '') + '">Cost: ' + it.costs.map(c => esc(c.n) + ' ' + c.q.toLocaleString()).join(' · ') + '</div>' : '';
   const nb = !it.canBuy ? '<div class="nobuy">Can\'t buy yet' + (it.fail.length ? ': ' + esc(it.fail.join(' ')) : '') + '</div>' : '';
   const cls = it.kind === 'armor' && CLASS[it.cls] ? CLASS[it.cls] + ' · ' : '';
-  return '<div class="card vcard ' + (it.v || '') + '"><img class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">' +
+  return '<div class="card vcard ' + (it.v || '') + '">' + tierIcon('<img class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) +
     '<div class="body"><div class="top"><span class="name">' + esc(it.name) + '</span>' + (it.kind !== 'other' ? vb : '') + '</div>' +
     '<div class="meta">' + esc(cls + it.type) + (it.cat ? ' · ' + esc(it.cat) : '') + '</div>' + rar + body +
-    (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + cost + nb +
+    (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + (it.split && (it.split.pve || it.split.pvp) ? modeGraph(it.split, { compact: true }) : '') + cost + nb +
     '<a class="cbtn" href="https://www.light.gg/db/items/' + it.hash + '/" target="_blank" rel="noopener">light.gg ↗</a></div></div>';
 }
 const passes = it => (it.kind === 'other' || state.show.has(it.v)) && state.kinds.has(it.kind) && !(it.cipher && $('hideCipher').checked) &&

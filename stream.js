@@ -55,6 +55,28 @@
   const ownInfo = i => (typeof streamInfo === 'function' && i) ? streamInfo(i) : null;
   const basicInfo = g => ({ v: 'new', label: 'New', extra: [g.type, g.gearTier ? 'Tier ' + g.gearTier : '', g.power ? 'Power ' + g.power : ''].filter(Boolean).join(' · ') });
   let openedFromHash = false;
+  const SBMAP = { god: 'god', close: 'close', trash: 'trash', exo: 'exotic', keep: 'keep', old: 'legacy', oldx: 'legacy', review: 'review', unr: 'unrated' };
+  // New drops of a kind this page can't rate: load that page in a hidden frame (it scans on load and saves
+  // verdicts:weapons / verdicts:armor), then the storage event redraws the stream with real labels.
+  // At most one frame per kind, at most every 3 minutes, never inside a frame, never near token expiry.
+  const labelingKind = {};
+  function bgLabel(kind){
+    if (window !== window.top || kind === PAGE || labelingKind[kind] || !PAGEOF[kind]) return;
+    if (typeof auth === 'undefined' || !auth.valid()) return;
+    try { const a = JSON.parse(localStorage.getItem('auth') || 'null'); if (a && a.exp && a.exp - Date.now() < 5 * 60e3) return; } catch {}
+    const k = kind === 'weapons' ? 'w' : 'a', key = 'relabelAt:' + k;
+    if (document.querySelector('iframe[data-lbl="' + k + '"]')) return;
+    if (Date.now() - +(sessionStorage.getItem(key) || 0) < 180e3) return;
+    sessionStorage.setItem(key, String(Date.now()));
+    const f = document.createElement('iframe');
+    f.src = PAGEOF[kind] + (kind === 'weapons' ? '#weapons' : ''); f.dataset.lbl = k; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+    f.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0';
+    labelingKind[kind] = f; document.body.appendChild(f);
+    const done = () => { if (labelingKind[kind] !== f) return; delete labelingKind[kind]; f.remove(); renderStream(); };
+    setTimeout(done, 150e3);
+    window.addEventListener('storage', function h(e){ if (e.key === 'verdicts:' + kind){ window.removeEventListener('storage', h); setTimeout(done, 500); } });
+    renderStream();
+  }
 
   window.trackDrops = function(p){
     try { pmCapture(p); } catch (e){ console.warn('postmaster', e); }
@@ -70,6 +92,7 @@
       const inf = ownInfo(own) || basicInfo(g);
       evs.push({ t: now, kind: 'drop', page: g.kind, id: g.id, hash: g.hash, name: g.name, icon: g.icon, v: inf.v, label: inf.label, extra: inf.extra, loc: g.loc, pm: g.postmaster });
     });
+    for (const kind of KINDS) if (kind !== PAGE && fresh.some(g => g.kind === kind && !(typeof savedLabel === 'function' && savedLabel(g.id)))) setTimeout(() => bgLabel(kind), 2000);
     if (fresh.length > 40) evs.push({ t: now, kind: 'info', page: PAGE, text: '+' + (fresh.length - 40) + ' more new items not listed' });
     // An item only counts as dismantled when it's missing on two refreshes at least 45 s apart: right after a move
     // (postmaster to vault, character to character) Bungie's profile can briefly leave it out.
@@ -147,12 +170,19 @@
       const own = e.page === PAGE ? byId(e.id) : null;
       const rec = own || (gear && gear.get(e.id)) || null;
       const kindTag = '<span class="skind">' + (e.page === 'armor' ? 'Armor' : 'Weapon') + '</span>';
+      // drops logged as New get the label from the last Weapons / Armor scan as soon as one exists
+      let ev_v = e.v, ev_l = e.label;
+      const L = (!ev_v || ev_v === 'new') && e.id && typeof savedLabel === 'function' ? savedLabel(e.id) : null;
+      if (L){ ev_v = SBMAP[L.cls] || 'new'; ev_l = L.label; }
+      else if ((!ev_v || ev_v === 'new') && labelingKind[e.page]) ev_l = 'Rating…';
       const locTxt = rec ? (rec.postmaster ? '📬 ' : '') + esc(rec.loc) : gear ? 'No longer in your inventory' : esc(e.loc || '');
       const details = own ? '<button data-sact="open" data-sid="' + esc(e.id) + '">Details</button>'
-        : PAGEOF[e.page] ? '<a href="' + PAGEOF[e.page] + '#open=' + esc(e.id) + '">' + (e.v === 'new' ? 'Rate it on the ' : 'Details on the ') + PTITLE[e.page] + ' page</a>' : '';
-      return '<div class="sev drop' + (e.t > seen ? ' unseen' : '') + '"><img src="' + (e.icon ? 'https://www.bungie.net' + esc(e.icon) : '') + '" alt="">' +
-        '<div class="sb-body"><div class="sb-top"><b>' + esc(e.name) + '</b><span>' + kindTag + '<span class="sb sb-' + esc(e.v) + '">' + esc(e.label) + '</span></span></div>' +
+        : PAGEOF[e.page] ? '<a href="' + PAGEOF[e.page] + '#open=' + esc(e.id) + '">' + (ev_v === 'new' ? 'Rate it on the ' : 'Details on the ') + PTITLE[e.page] + ' page</a>' : '';
+      const sImg = '<img src="' + (e.icon ? 'https://www.bungie.net' + esc(e.icon) : '') + '" alt="">';
+      return '<div class="sev drop' + (e.t > seen ? ' unseen' : '') + '">' + (rec && (rec.gearTier || rec.tier) && typeof tierIcon === 'function' ? tierIcon(sImg, rec.gearTier || rec.tier) : sImg) +
+        '<div class="sb-body"><div class="sb-top"><b>' + esc(e.name) + '</b><span>' + kindTag + '<span class="sb sb-' + esc(ev_v) + '">' + esc(ev_l) + '</span></span></div>' +
         '<div class="dim-lbl">' + esc(e.extra || '') + '</div>' +
+        (e.page === 'weapons' && typeof savedSplit === 'function' && savedSplit(e.id) ? '<div class="mgshort">' + esc(modeShort(savedSplit(e.id)) + ' · ' + modeDecide(savedSplit(e.id)).text) + '</div>' : '') +
         '<div class="sloc' + (rec && rec.postmaster ? ' pm' : '') + '">' + locTxt + when + '</div>' +
         '<div class="sbtn">' + (rec ? '<button class="needauth" data-sact="pull" data-sid="' + esc(e.id) + '">' + (rec.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' +
           '<button class="needauth" data-sact="lock" data-sid="' + esc(e.id) + '">' + (rec.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' : '') + (rec || !gear ? details : '') + '</div>' +
@@ -184,7 +214,7 @@
   $('streamMute').checked = ls.get('streamMute') === '1';
   $('streamMute').onchange = () => ls.set('streamMute', $('streamMute').checked ? '1' : '0');
   setInterval(renderStream, 30e3);
-  window.addEventListener('storage', e => { if (e.key === 'stream') renderStream(); });
+  window.addEventListener('storage', e => { if (e.key === 'stream' || e.key === 'verdicts:weapons' || e.key === 'verdicts:armor') renderStream(); });
   renderStream();
 
 
@@ -264,6 +294,8 @@
   $('pmRefresh').onclick = () => { if (typeof scan === 'function') scan({ silent: true }); };
   const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
   function pmRender(){
+    const pmLbl = it => { const L = it.id !== '0' && typeof savedLabel === 'function' ? savedLabel(it.id) : null;
+      return L ? '<span class="vlabel ' + L.cls + '" title="' + esc(L.label) + '">' + esc(L.tag) + '</span>' + (L.short ? '<span class="mgshort">' + esc(L.short + ' · ' + modeDecide(L.split).text) + '</span>' : '') : ''; };
     const list = $('pmList');
     if (!pm){ list.innerHTML = '<div class="sev info">Sign in and load the page to read your postmaster.</div>'; return; }
     list.innerHTML = pm.chars.map(c => {
@@ -271,7 +303,7 @@
       return '<div class="pmchar ' + lvl + '"><div class="pmhead"><b>' + esc(c.name) + '</b><span class="pmcount' + (lvl ? ' hot' : '') + '">' + pmLabel(n) + '</span><span style="flex:1"></span>' +
         (n ? '<button class="ghost pmall" data-pmall="' + esc(c.id) + '" title="Pull everything to your ' + esc(c.name) + '">Pull all</button><button class="ghost pmall" data-pmallv="' + esc(c.id) + '" title="Send everything that can go to the vault there (pulled through your ' + esc(c.name) + ')">All to vault</button>' : '') + '</div>' +
         (n ? c.items.map((it, ix) => { const d = pmDef(it.hash);
-          return '<div class="pmrow"' + (it.id !== '0' ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.hash + '"' : '') + '>' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + '</span>' +
+          return '<div class="pmrow"' + (it.id !== '0' ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.hash + '"' : '') + '>' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + pmLbl(it) + '</span>' +
             '<button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmi="' + ix + '" title="Pull to your ' + esc(c.name) + '">Pull</button><button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmv="' + ix + '" title="Send to the vault">Vault</button></div>'; }).join('')
           : '<div class="dim-lbl pmempty">Empty</div>') + '</div>';
     }).join('') + '<div class="dim-lbl" style="padding:6px 4px">Read ' + new Date(pm.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>';
@@ -443,7 +475,8 @@
   function rollHtml(x){
     const frame = x.rows.filter(r => r.kind === 'frame'), perks = x.rows.filter(r => r.kind === 'perk'), mods = x.rows.filter(r => r.kind === 'mod');
     const swap = (r, o) => esc(x.id + '|' + r.ix + '|' + o.h + '|' + x.hash);
-    return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? '<img src="' + img(x.icon) + '" alt="">' : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
+    return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? (typeof tierIcon === 'function' ? tierIcon('<img src="' + img(x.icon) + '" alt="">', x.tier) : '<img src="' + img(x.icon) + '" alt="">') : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
+      (typeof savedSplit === 'function' && savedSplit(x.id) ? modeGraph(savedSplit(x.id)) : '') +
       (x.stats.length ? '<div class="rp-stats">' + x.stats.map(s => '<div class="rp-stat"><span>' + esc(s.n) + '</span>' + (NOBAR.has(s.h) || s.v > 100 ? '<i class="nobar"></i>' : '<i><em style="width:' + Math.max(0, Math.min(100, s.v)) + '%"></em></i>') + '<b>' + s.v + '</b></div>').join('') + '</div>' : '') +
       frame.map(r => '<div class="rp-frame" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>').join('') +
       (perks.length ? '<div class="rp-cols">' + perks.map(r => '<div class="rp-col"><div class="rp-cur' + (r.act.enh ? ' enh' : '') + '" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>' +
