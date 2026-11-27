@@ -38,6 +38,9 @@ jobs:
           if [[ ! "$BUNGIE_CLIENT_ID" =~ ^[0-9]{2,12}$ ]]; then echo "BUNGIE_CLIENT_ID secret missing or malformed"; exit 1; fi
           mkdir -p _site
           cp *.html *.css stream.js rating.js .nojekyll _site/
+          # cache busting: every deploy gets its own ?v= so browsers and the Pages CDN never mix old and new files
+          BUILD="${GITHUB_SHA::8}"
+          sed -i "s/__BUILD__/${BUILD}/g" _site/*.html _site/stream.js _site/rating.js
           printf 'window.D2RC_CONFIG = { apiKey: "%s", clientId: "%s" };\n' "$BUNGIE_API_KEY" "$BUNGIE_CLIENT_ID" > _site/config.js
           ls -la _site
 

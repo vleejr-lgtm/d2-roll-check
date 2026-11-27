@@ -147,28 +147,30 @@
   .shsignin{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 16px; border:1px solid rgba(226,183,75,.3); background:var(--accent-soft); border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px}
   .shsignin b{color:var(--accent)}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav active" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav active" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -350,7 +352,7 @@ function isGoneError(e){ return /item requested was not found|DestinyItemNotFoun
 
 async function getAccount(){
   if (state.acct) return state.acct;
-  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
   const ms = me.destinyMemberships || [];
   const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
   if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -433,10 +435,11 @@ async function scan(opts = {}){
   state.scanning = true;
   const prev = $('status').textContent;
   try {
-    await loadDefs();
+    const defsP = loadDefs(); defsP.catch(() => {});   // manifest check runs alongside the account and profile requests
     const acct = await getAccount();
     if (!opts.silent) setStatus('Reading your characters...');
-    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=100,102,103,200,201,205,300');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=100,102,103,200,201,205,300,304,305,310');
+    await defsP;
     const chars = (p.characters && p.characters.data) || {};
     state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
       .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
@@ -491,7 +494,7 @@ function verdictOf(i){
 
 // When a page's labels are missing or old, load that page in a hidden frame. It scans on load (same sign-in, same
 // storage) and saves verdicts:weapons / verdicts:armor; the storage event below redraws this page with the labels.
-const LABEL_SRC = { w: ['verdicts:weapons', 'index.html#weapons', 'weapons'], a: ['verdicts:armor', 'armor.html', 'armor'] };
+const LABEL_SRC = { w: ['verdicts:weapons', 'index.html?b=__BUILD__#weapons', 'weapons'], a: ['verdicts:armor', 'armor.html?b=__BUILD__', 'armor'] };
 const labeling = {};
 function autoLabel(force){
   if (!auth.valid() || ls.get('charLabels') === '0') return;
@@ -549,7 +552,7 @@ function labelsBar(c){
 function tile(i, big){
   const v = verdictOf(i), drag = auth.valid() && i.id && !i.equipped && i.charId ? ' draggable="true"' : '';
   return '<button' + drag + ' class="ctile r' + i.rar + (big ? ' big' : '') + (v && v.cls === 'trash' ? ' vtrash' : '') + '" data-item="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.power ? ' · ' + i.power : '') + (i.gearTier ? ' · Tier ' + i.gearTier : '') + (v ? ' · ' + v.label : '')) + '">' +
-    (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') +
+    (i.icon ? '<img decoding="async" loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') +
     tierPips(i.gearTier) + (i.locked ? '<span class="lk">🔒</span>' : '') +
     (i.power ? '<span class="pw">' + i.power + '</span>' : '') + (v ? '<span class="vt ' + v.cls + '">' + v.tag + '</span>' : '') + '</button>';
 }
@@ -567,7 +570,7 @@ function pmHtml(c){
   const n = c.pm.length, lvl = typeof pmLevel === 'function' ? pmLevel(n) : (n >= 21 ? 'full' : n >= 15 ? 'almost' : '');
   const lbl = (lvl === 'full' ? 'FULL! ' : lvl === 'almost' ? 'ALMOST FULL! ' : '') + '(' + n + '/21)';
   return '<div class="cpm ' + lvl + '"><div class="cslot-lbl">Postmaster <span class="pmlvl">' + lbl + '</span>' + (n ? ' <button class="ghost cpm-all" id="cPmAll">Pull all</button>' : '') + '</div><div class="cpm-row">' +
-    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') +
+    c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(i.id || ('h' + i.hash)) + '" title="' + esc(i.name + (i.qty > 1 ? ' ×' + i.qty : '')) + '">' + (i.icon ? '<img decoding="async" loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : i.power ? '<span class="pw">' + i.power + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') +
     Array.from({ length: Math.max(0, 21 - n) }, () => '<span class="ctile empty none"></span>').join('') + '</div></div>';
 }
 function barChar(){ const fs = state.full || []; return fs.find(x => x.id === view) || fs[0]; }
@@ -580,7 +583,7 @@ function render(){
   document.body.classList.toggle('nolabels', ls.get('charLabels') === '0');
   $('cSignin').classList.toggle('hidden', auth.valid());
   if (!state.full || !state.full.length){ $('cTabs').innerHTML = ''; $('cView').innerHTML = ''; return; }
-  $('cTabs').innerHTML = state.full.map(c => '<button class="ctab' + (c.id === view ? ' on' : '') + '" data-c="' + esc(c.id) + '">' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>Power ' + (c.light || '—') + '</span></div></button>').join('');
+  $('cTabs').innerHTML = state.full.map(c => '<button class="ctab' + (c.id === view ? ' on' : '') + '" data-c="' + esc(c.id) + '">' + (c.emblem ? '<img decoding="async" src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>Power ' + (c.light || '—') + '</span></div></button>').join('');
   $('cTabs').insertAdjacentHTML('beforeend', '<button class="ctab cvtab" data-vtab="1" title="Drop an item here to send it to the vault. Click to see the vault next to your characters."><span class="cvicon">🏦</span><div><b>Vault</b><span>' + state.vault.length + ' items · drop here</span></div></button>');
   $('cTabs').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { view = b.dataset.c; ls.set('charView', view); closePop(); render(); });
   $('cTabs').querySelector('[data-vtab]').onclick = () => { mode = 'all'; ls.set('charMode', mode); closePop(); render(); };
@@ -591,7 +594,7 @@ function render(){
   $('cView').innerHTML =
     '<div class="chero" style="' + (c.banner ? 'background-image:url(\'' + img(c.banner) + '\')' : '') + '"><div><div class="cname">' + esc(state.bnetName || c.name) + '</div><div class="csub">' + esc([c.race, c.name].filter(Boolean).join(' ')) + '</div></div>' +
       '<div class="cpow"><span>POWER</span><b>' + (c.light || '—') + '</b></div></div>' +
-    '<div class="panel cinfo">' + (stats.length ? '<div class="cstats">' + stats.map(s => '<span class="cstat" title="' + esc(s.n) + '">' + (s.i ? '<img src="' + img(s.i) + '" alt="">' : '') + esc(s.n) + ' <b>' + s.v + '</b></span>').join('') + '</div>' : '') +
+    '<div class="panel cinfo">' + (stats.length ? '<div class="cstats">' + stats.map(s => '<span class="cstat" title="' + esc(s.n) + '">' + (s.i ? '<img decoding="async" src="' + img(s.i) + '" alt="">' : '') + esc(s.n) + ' <b>' + s.v + '</b></span>').join('') + '</div>' : '') +
       '</div>' + spaceHtml() +
     pmHtml(c) + labelsBar(c) +
     '<div class="cgrid"><div class="ccol">' + LEFT.map(s => slotHtml(s, c)).join('') + '</div><div class="ccol">' + RIGHT.map(s => slotHtml(s, c)).join('') + '</div></div>' +
@@ -626,7 +629,7 @@ function spaceHtml(){
     const lvl = pct >= 95 ? 'full' : pct >= 85 ? 'warn' : '';
     return '<div class="vcap ' + lvl + '" title="' + esc(b.name + ': ' + b.used + (b.cap ? ' of ' + b.cap + ' slots used, ' + free + ' free' : ' slots used')) + '"><div class="vcap-top"><span>' + esc(b.name) + '</span><b>' + b.used.toLocaleString() + (b.cap ? '<span class="dim-lbl">/' + b.cap.toLocaleString() + '</span>' : '') + '</b></div>' +
       (b.cap ? '<div class="vbar"><i style="width:' + pct + '%"></i></div><div class="vfree">' + (free > 0 ? free.toLocaleString() + ' free' : 'Full') + '</div>' : '') + '</div>'; };
-  return '<div class="panel vspace">' + (money.length ? '<div class="vmoney">' + money.map(c => '<span class="vcur" title="' + esc(c.n) + '">' + (c.i ? '<img src="' + img(c.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + c.q.toLocaleString() + '</b><span class="dim-lbl">' + esc(c.n) + '</span></span>').join('') + '</div>' : '') +
+  return '<div class="panel vspace">' + (money.length ? '<div class="vmoney">' + money.map(c => '<span class="vcur" title="' + esc(c.n) + '">' + (c.i ? '<img decoding="async" src="' + img(c.i) + '" alt="" onerror="this.remove()">' : '') + '<b>' + c.q.toLocaleString() + '</b><span class="dim-lbl">' + esc(c.n) + '</span></span>').join('') + '</div>' : '') +
     (sp.length ? '<div class="vcaps">' + sp.map(meter).join('') + '</div>' : '') + '</div>';
 }
 
@@ -653,10 +656,10 @@ function renderAll(){
       state.full.map((c, n) => '<button data-show="' + esc(c.id) + '"' + (allShow === c.id ? ' class="on"' : '') + ' title="' + (n === 0 ? 'Last played' : '') + '">' + esc(c.name) + (n === 0 ? ' (active)' : '') + ' + vault</button>').join('') + '</div>' +
     '<span class="dim-lbl">Drag an item onto a character, the vault, or an equipped slot. Click for rolls and actions.</span></div>' + spaceHtml() + labelsBar(allShow === 'all' ? barChar() : chars[0]) +
     '<div class="dwrap"><div class="dgrid" style="grid-template-columns:' + cols + '; min-width:' + minW + 'px">';
-  h += chars.map(c => '<div class="dhead"' + (c.banner ? ' style="background-image:linear-gradient(90deg,rgba(14,17,22,.55),rgba(14,17,22,.2)),url(\'' + img(c.banner) + '\')"' : '') + '>' + (c.emblem ? '<img src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>' + c.items.length + ' items</span></div><div class="dpow">' + (c.light || '') + '</div></div>').join('') +
+  h += chars.map(c => '<div class="dhead"' + (c.banner ? ' style="background-image:linear-gradient(90deg,rgba(14,17,22,.55),rgba(14,17,22,.2)),url(\'' + img(c.banner) + '\')"' : '') + '>' + (c.emblem ? '<img decoding="async" src="' + img(c.emblem) + '" alt="">' : '') + '<div><b>' + esc(c.name) + '</b><span>' + c.items.length + ' items</span></div><div class="dpow">' + (c.light || '') + '</div></div>').join('') +
     '<div class="dhead"><div><b>Vault</b><span>' + vCount + ' items</span></div></div>';
   // postmaster row
-  h += '<div class="dsec">Postmaster</div>' + chars.map(c => '<div class="dcell"><div class="dpm">' + (c.pm.length ? c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(keyOf(i)) + '" data-pc="' + esc(c.id) + '" title="' + esc(i.name) + '">' + (i.icon ? '<img loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') : '<span class="dim-lbl">Empty (0/21)</span>') + '</div></div>').join('') + '<div></div>';
+  h += '<div class="dsec">Postmaster</div>' + chars.map(c => '<div class="dcell"><div class="dpm">' + (c.pm.length ? c.pm.map(i => '<button class="ctile r' + i.rar + '" data-pm="' + esc(keyOf(i)) + '" data-pc="' + esc(c.id) + '" title="' + esc(i.name) + '">' + (i.icon ? '<img decoding="async" loading="lazy" onerror="this.remove()" src="' + img(i.icon) + '" alt="">' : '') + (i.qty > 1 ? '<span class="pw">' + i.qty + '</span>' : '') + tierPips(i.gearTier) + vtag(i) + '</button>').join('') : '<span class="dim-lbl">Empty (0/21)</span>') + '</div></div>').join('') + '<div></div>';
   for (const [sec, buckets] of ALL_SECS){
     h += '<div class="dsec">' + sec + '</div>';
     for (const [lbl, b] of buckets){
@@ -775,7 +778,7 @@ function wireDrag(root){
 /* ---- item card and vault picker ---- */
 function place(el, anchor){
   const r = anchor.getBoundingClientRect(), w = 300;
-  const right = window.innerWidth - (document.body.classList.contains('streampinned') ? 390 : 0);
+  const right = window.innerWidth - (parseInt(getComputedStyle(document.body).getPropertyValue('--pinw')) || 0);
   let x = Math.min(right - w - 10, Math.max(10, r.left)), y = r.bottom + 8;
   el.classList.remove('hidden');
   if (y + el.offsetHeight > window.innerHeight - 10) y = Math.max(10, r.top - el.offsetHeight - 8);
@@ -846,7 +849,7 @@ function openPicker(b, anchor, c){
   const list = state.vault.filter(fits).sort((x, y) => y.power - x.power || y.rar - x.rar || x.name.localeCompare(y.name));
   const pop = $('cPop');
   const draw = q => { const w = q.trim().toLowerCase().split(/\s+/).filter(Boolean), l = list.filter(i => !w.length || w.every(x => (i.name + ' ' + i.type + ' ' + (RAR[i.rar] || '') + (i.gearTier ? ' t' + i.gearTier : '')).toLowerCase().includes(x)));
-    $('cPickList').innerHTML = l.length ? l.slice(0, 80).map(i => '<button data-pick="' + esc(i.id) + '">' + (i.icon ? '<img src="' + img(i.icon) + '" alt="">' : '') + '<span>' + esc(i.name) + (verdictOf(i) && ls.get('charLabels') !== '0' ? ' <span class="vb ' + verdictOf(i).cls + '">' + esc(verdictOf(i).label) + '</span>' : '') + '<small>' + esc([i.type, i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</small></span></button>').join('') : '<div class="dim-lbl">Nothing in your vault for this slot.</div>';
+    $('cPickList').innerHTML = l.length ? l.slice(0, 80).map(i => '<button data-pick="' + esc(i.id) + '">' + (i.icon ? '<img decoding="async" src="' + img(i.icon) + '" alt="">' : '') + '<span>' + esc(i.name) + (verdictOf(i) && ls.get('charLabels') !== '0' ? ' <span class="vb ' + verdictOf(i).cls + '">' + esc(verdictOf(i).label) + '</span>' : '') + '<small>' + esc([i.type, i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : ''].filter(Boolean).join(' · ')) + '</small></span></button>').join('') : '<div class="dim-lbl">Nothing in your vault for this slot.</div>';
     $('cPickList').querySelectorAll('[data-pick]').forEach(x => x.onclick = () => pick(x.dataset.pick, x)); };
   pop.innerHTML = '<h4>Bring from the vault</h4><div class="cmeta">' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' fit this slot on your ' + esc(c.name) + '</div><input class="cpick-q" id="cPickQ" type="search" placeholder="Filter" autocomplete="off"><div class="cpick" id="cPickList"></div>';
   place(pop, anchor); draw(''); $('cPickQ').oninput = () => draw($('cPickQ').value); $('cPickQ').focus();
@@ -912,6 +915,6 @@ render();
 if (!ls.get('apiKey')) setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
 else scan();
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>

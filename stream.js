@@ -69,7 +69,7 @@
     if (Date.now() - +(sessionStorage.getItem(key) || 0) < 180e3) return;
     sessionStorage.setItem(key, String(Date.now()));
     const f = document.createElement('iframe');
-    f.src = PAGEOF[kind] + (kind === 'weapons' ? '#weapons' : ''); f.dataset.lbl = k; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+    f.src = PAGEOF[kind] + '?b=__BUILD__' + (kind === 'weapons' ? '#weapons' : ''); f.dataset.lbl = k; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
     f.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0';
     labelingKind[kind] = f; document.body.appendChild(f);
     const done = () => { if (labelingKind[kind] !== f) return; delete labelingKind[kind]; f.remove(); renderStream(); };
@@ -80,6 +80,7 @@
 
   window.trackDrops = function(p){
     try { pmCapture(p); } catch (e){ console.warn('postmaster', e); }
+    try { if (window.rollCapture) window.rollCapture(p); } catch {}
     if (!p || !p.profileInventory || !p.profileInventory.data) return;   // vault hidden: everything there would look dismantled
     const gear = gearFromProfile(p);
     state.gear = new Map(gear.map(g => [g.id, g]));
@@ -178,11 +179,11 @@
       const locTxt = rec ? (rec.postmaster ? '📬 ' : '') + esc(rec.loc) : gear ? 'No longer in your inventory' : esc(e.loc || '');
       const details = own ? '<button data-sact="open" data-sid="' + esc(e.id) + '">Details</button>'
         : PAGEOF[e.page] ? '<a href="' + PAGEOF[e.page] + '#open=' + esc(e.id) + '">' + (ev_v === 'new' ? 'Rate it on the ' : 'Details on the ') + PTITLE[e.page] + ' page</a>' : '';
-      const sImg = '<img src="' + (e.icon ? 'https://www.bungie.net' + esc(e.icon) : '') + '" alt="">';
-      return '<div class="sev drop' + (e.t > seen ? ' unseen' : '') + '">' + (rec && (rec.gearTier || rec.tier) && typeof tierIcon === 'function' ? tierIcon(sImg, rec.gearTier || rec.tier) : sImg) +
+      const sImg = '<img decoding="async" src="' + (e.icon ? 'https://www.bungie.net' + esc(e.icon) : '') + '" alt="">';
+      return '<div class="sev drop' + (e.t > seen ? ' unseen' : '') + '"' + (rec && e.id ? ' data-roll="' + esc(e.id) + '" data-rh="' + esc(e.hash || '') + '" title="Hover or click for the full roll"' : '') + '>' + (rec && (rec.gearTier || rec.tier) && typeof tierIcon === 'function' ? tierIcon(sImg, rec.gearTier || rec.tier) : sImg) +
         '<div class="sb-body"><div class="sb-top"><b>' + esc(e.name) + '</b><span>' + kindTag + '<span class="sb sb-' + esc(ev_v) + '">' + esc(ev_l) + '</span></span></div>' +
         '<div class="dim-lbl">' + esc(e.extra || '') + '</div>' +
-        (e.page === 'weapons' && typeof savedSplit === 'function' && savedSplit(e.id) ? '<div class="mgshort">' + esc(modeShort(savedSplit(e.id)) + ' · ' + modeDecide(savedSplit(e.id)).text) + '</div>' : '') +
+        (e.page === 'weapons' && typeof savedSplit === 'function' && savedSplit(e.id) ? modeGraph(savedSplit(e.id), { compact: true }) : '') +
         '<div class="sloc' + (rec && rec.postmaster ? ' pm' : '') + '">' + locTxt + when + '</div>' +
         '<div class="sbtn">' + (rec ? '<button class="needauth" data-sact="pull" data-sid="' + esc(e.id) + '">' + (rec.postmaster ? '📬 Pull from postmaster' : 'Pull') + '</button>' +
           '<button class="needauth" data-sact="lock" data-sid="' + esc(e.id) + '">' + (rec.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' : '') + (rec || !gear ? details : '') + '</div>' +
@@ -198,7 +199,7 @@
   }
   window.renderStream = renderStream;
 
-  $('btnStream').onclick = () => { const s = $('stream'); s.classList.toggle('hidden'); if (!s.classList.contains('hidden')) renderStream(); ls.set('streamSeen', String(Date.now())); setTimeout(renderStream, 50); };
+  $('btnStream').onclick = () => { const s = $('stream'); s.classList.toggle('hidden'); if (!s.classList.contains('hidden') && !document.body.classList.contains('streampinned')){ const pp = $('pmPanel'); if (pp) pp.classList.add('hidden'); } if (!s.classList.contains('hidden')) renderStream(); ls.set('streamSeen', String(Date.now())); setTimeout(renderStream, 50); };
   function setPinned(on){
     document.body.classList.toggle('streampinned', on);
     ls.set('streamPinned', on ? '1' : '0');
@@ -287,8 +288,19 @@
     '<div class="dim-lbl" style="padding:0 14px 8px">Lost items on each character. Each postmaster holds ' + PM_CAP + '; anything past that is gone.</div>' +
     '<label class="pmroom" title="When a slot is full, move the lowest rarity, lowest power unlocked item in that slot to the vault, then pull. Locked items are never moved."><input type="checkbox" id="pmMakeRoom"> Make room: when a slot is full, move an unlocked item to the vault first (postmaster pulls and moves to a character)</label><div id="pmList"></div>';
   document.body.appendChild(panel);
-  pmBtn.onclick = () => { panel.classList.toggle('hidden'); if (!panel.classList.contains('hidden')){ $('stream').classList.add('hidden'); pmRender(); } };
-  $('pmClose').onclick = () => panel.classList.add('hidden');
+  // A pinned Activity panel stays put (the Postmaster opens beside it). An unpinned one steps aside while the
+  // Postmaster is open and comes back when it closes, so you never have to click Activity again.
+  let streamWasOpen = false;
+  const pmClose = () => { panel.classList.add('hidden'); if (streamWasOpen){ streamWasOpen = false; $('stream').classList.remove('hidden'); renderStream(); } };
+  pmBtn.onclick = () => {
+    if (!panel.classList.contains('hidden')) return pmClose();
+    panel.classList.remove('hidden');
+    const s = $('stream');
+    if (!document.body.classList.contains('streampinned') && !s.classList.contains('hidden')){ streamWasOpen = true; s.classList.add('hidden'); }
+    pmRender();
+  };
+  $('pmClose').onclick = pmClose;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.classList.contains('hidden') && !document.querySelector('#rollPop:not(.hidden)')) pmClose(); });
   $('pmMakeRoom').checked = ls.get('pmMakeRoom') !== '0';
   $('pmMakeRoom').onchange = () => ls.set('pmMakeRoom', $('pmMakeRoom').checked ? '1' : '0');
   $('pmRefresh').onclick = () => { if (typeof scan === 'function') scan({ silent: true }); };
@@ -303,7 +315,7 @@
       return '<div class="pmchar ' + lvl + '"><div class="pmhead"><b>' + esc(c.name) + '</b><span class="pmcount' + (lvl ? ' hot' : '') + '">' + pmLabel(n) + '</span><span style="flex:1"></span>' +
         (n ? '<button class="ghost pmall" data-pmall="' + esc(c.id) + '" title="Pull everything to your ' + esc(c.name) + '">Pull all</button><button class="ghost pmall" data-pmallv="' + esc(c.id) + '" title="Send everything that can go to the vault there (pulled through your ' + esc(c.name) + ')">All to vault</button>' : '') + '</div>' +
         (n ? c.items.map((it, ix) => { const d = pmDef(it.hash);
-          return '<div class="pmrow"' + (it.id !== '0' ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.hash + '"' : '') + '>' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + pmLbl(it) + '</span>' +
+          return '<div class="pmrow"' + (it.id !== '0' ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.hash + '"' : '') + '>' + (d.i ? '<img decoding="async" src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + pmLbl(it) + '</span>' +
             '<button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmi="' + ix + '" title="Pull to your ' + esc(c.name) + '">Pull</button><button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmv="' + ix + '" title="Send to the vault">Vault</button></div>'; }).join('')
           : '<div class="dim-lbl pmempty">Empty</div>') + '</div>';
     }).join('') + '<div class="dim-lbl" style="padding:6px 4px">Read ' + new Date(pm.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>';
@@ -435,47 +447,93 @@
   const NOBAR = new Set([4284893193, 3871231066, 447667954, 2961396640, 1931675084, 2715839340, 925767036]);
   const POWER_STAT_H = 1935470627;
   const rpop = document.createElement('div'); rpop.className = 'rollpop hidden'; rpop.id = 'rollPop'; document.body.appendChild(rpop);
+  // ---- speed: DIM-style. Pages that load profile components 304/305/310 hand every roll to trackDrops, so most
+  // popups need no request at all. Plug names, icons and types come from the lite manifest each page already has
+  // (state.defs), so the card draws at once; full definitions (descriptions, editable mod sockets) fill in after
+  // from the IndexedDB cache or Bungie, and the card redraws in place.
+  let profIC = null;
+  const profChar = {}, statNames = {};
+  window.rollCapture = function(p){
+    const ic = (p && p.itemComponents) || {};
+    if (!ic.sockets || !ic.sockets.data) return;
+    profIC = { sockets: ic.sockets.data, reuse: (ic.reusablePlugs || {}).data || {}, stats: (ic.stats || {}).data || {}, inst: (ic.instances || {}).data || {} };
+    for (const k of ['characterInventories', 'characterEquipment']){ const d = (p[k] || {}).data || {}; for (const cid in d) for (const it of d[cid].items || []) if (it.itemInstanceId) profChar[it.itemInstanceId] = cid; }
+    rollCache.clear();
+    // stat names for every stat on every item, in the background, so the first card doesn't wait for them
+    const keys = new Set(); for (const id in profIC.stats) for (const k in (profIC.stats[id].stats || {})) keys.add(+k);
+    const go = () => ensureStatNames([...keys]);
+    (window.requestIdleCallback || setTimeout)(go, 300);
+  };
+  const LITE_CAT = t => /shader/i.test(t) ? 'shader' : /ornament/i.test(t) ? 'ornament' : /tracker/i.test(t) ? 'tracker' : /memento/i.test(t) ? 'memento' : /transmat/i.test(t) ? 'transmat'
+    : /intrinsic/i.test(t) ? 'intrinsics' : /masterwork/i.test(t) ? 'masterwork' : /origin/i.test(t) ? 'origin' : /catalyst/i.test(t) ? 'catalyst' : '';
+  const RAR_NAME = { 6: 'Exotic', 5: 'Legendary', 4: 'Rare', 3: 'Uncommon', 2: 'Common' };
+  async function ensureStatNames(keys){
+    const miss = keys.filter(h => !(h in statNames));
+    if (miss.length){ try { const d = await entMany('DestinyStatDefinition', miss); for (const h of miss) statNames[h] = ((d[h] || {}).displayProperties || {}).name || ''; } catch { for (const h of miss) statNames[h] = statNames[h] || ''; } }
+  }
+  function buildRoll(id, hash, src, P, entries, head){
+    const { sockets, reuse, stats, ins } = src, rows = [];
+    sockets.forEach((x, ix) => {
+      if (!x.plugHash || x.isVisible === false) return;
+      const act = P(x.plugHash); if (!act || SKIP_PLUG.test(act.cat)) return;
+      const opts = (reuse[ix] || []).map(o => Object.assign(P(o.plugItemHash) || {}, { can: o.canInsert !== false && o.enabled !== false })).filter(o => o.n && !SKIP_PLUG.test(o.cat || ''));
+      const kind = /intrinsic/i.test(act.cat) ? 'frame' : opts.length > 1 ? 'perk' : 'mod';
+      const set = (entries[ix] || {}).reusablePlugSetHash || 0;
+      const editable = kind === 'mod' && !!set && !/masterwork|intrinsic|origin|catalyst|tracker/i.test(act.cat);
+      if (/^(Empty|Default) /i.test(act.n) && !editable) return;
+      rows.push({ ix, act, opts: kind === 'perk' ? opts : [], kind, set: editable ? set : 0, empty: /^Empty /i.test(act.n) });
+    });
+    const st = Object.values(stats).filter(x => x.statHash !== POWER_STAT_H).map(x => ({ h: x.statHash, n: statNames[x.statHash] || '', v: x.value })).filter(x => x.n);
+    return { id, hash, charId: src.charId, name: head.name, icon: head.icon, type: head.type, power: ins.primaryStat ? ins.primaryStat.value : 0, tier: ins.gearTier || 0, rows, stats: st };
+  }
+  async function fullRoll(id, hash, src, hashes){
+    const [plugs, item] = await Promise.all([
+      hashes.size ? entMany('DestinyInventoryItemDefinition', [...hashes]) : {},
+      ent('DestinyInventoryItemDefinition', hash).catch(() => null)]);
+    const P = h => { const d = plugs[h]; if (!d || !(d.displayProperties || {}).name) return null; const cat = ((d.plug || {}).plugCategoryIdentifier) || '';
+      return { h, n: d.displayProperties.name, i: d.displayProperties.icon || '', t: d.itemTypeDisplayName || '', desc: d.displayProperties.description || '', enh: /enhanced/i.test(d.itemTypeDisplayName || ''), cat }; };
+    const dp = (item && item.displayProperties) || {};
+    return buildRoll(id, hash, src, P, ((item && item.sockets) || {}).socketEntries || [], { name: dp.name || pmDef(hash).n, icon: dp.icon || '', type: (item && item.itemTypeAndTierDisplayName) || '' });
+  }
   async function readRoll(id, hash){
     if (rollCache.has(id)) return rollCache.get(id);
     const job = (async () => {
       if (!state.acct || !auth.valid()) throw new Error('Sign in to see the roll.');
-      // 300 instance, 304 stats, 305 sockets, 310 reusable plugs (the other perks you can switch to, like DIM's columns)
-      const r = await bungie('/Destiny2/' + state.acct.membershipType + '/Profile/' + state.acct.membershipId + '/Item/' + id + '/?components=300,304,305,310');
-      const sockets = ((r.sockets || {}).data || {}).sockets || [], stats = ((r.stats || {}).data || {}).stats || {}, ins = (r.instance || {}).data || {};
-      const reuse = ((r.reusablePlugs || {}).data || {}).plugs || {};
+      let src;
+      const c = profIC && profIC.sockets[id];
+      if (c && profIC.stats[id]) src = { sockets: c.sockets || [], reuse: (profIC.reuse[id] || {}).plugs || {}, stats: (profIC.stats[id] || {}).stats || {}, ins: profIC.inst[id] || {}, charId: profChar[id] || null };
+      else {
+        // 300 instance, 304 stats, 305 sockets, 310 reusable plugs (the other perks you can switch to, like DIM's columns)
+        const r = await bungie('/Destiny2/' + state.acct.membershipType + '/Profile/' + state.acct.membershipId + '/Item/' + id + '/?components=300,304,305,310');
+        src = { sockets: ((r.sockets || {}).data || {}).sockets || [], reuse: ((r.reusablePlugs || {}).data || {}).plugs || {}, stats: ((r.stats || {}).data || {}).stats || {}, ins: (r.instance || {}).data || {}, charId: r.characterId || null };
+      }
       const hashes = new Set();
-      sockets.forEach((x, ix) => { if (x.plugHash) hashes.add(x.plugHash); (reuse[ix] || []).forEach(o => hashes.add(o.plugItemHash)); });
-      const [plugs, statDefs, item] = await Promise.all([
-        hashes.size ? entMany('DestinyInventoryItemDefinition', [...hashes]) : {},
-        Object.keys(stats).length ? entMany('DestinyStatDefinition', Object.keys(stats).map(Number)) : {},
-        ent('DestinyInventoryItemDefinition', hash).catch(() => null)]);
-      const P = h => { const d = plugs[h]; if (!d || !(d.displayProperties || {}).name) return null; const cat = ((d.plug || {}).plugCategoryIdentifier) || '';
-        return { h, n: d.displayProperties.name, i: d.displayProperties.icon || '', t: d.itemTypeDisplayName || '', desc: d.displayProperties.description || '', enh: /enhanced/i.test(d.itemTypeDisplayName || ''), cat }; };
-      const rows = [], entries = ((item && item.sockets) || {}).socketEntries || [];
-      sockets.forEach((x, ix) => {
-        if (!x.plugHash || x.isVisible === false) return;
-        const act = P(x.plugHash); if (!act || SKIP_PLUG.test(act.cat)) return;
-        const opts = (reuse[ix] || []).map(o => Object.assign(P(o.plugItemHash) || {}, { can: o.canInsert !== false && o.enabled !== false })).filter(o => o.n && !SKIP_PLUG.test(o.cat || ''));
-        const kind = /intrinsic/i.test(act.cat) ? 'frame' : opts.length > 1 ? 'perk' : 'mod';
-        // a mod socket you can change: its options come from an account plug set (mods you have unlocked)
-        const set = (entries[ix] || {}).reusablePlugSetHash || 0;
-        const editable = kind === 'mod' && !!set && !/masterwork|intrinsic|origin|catalyst|tracker/i.test(act.cat);
-        if (/^(Empty|Default) /i.test(act.n) && !editable) return;
-        rows.push({ ix, act, opts: kind === 'perk' ? opts : [], kind, set: editable ? set : 0, empty: /^Empty /i.test(act.n) });
-      });
-      const st = Object.values(stats).filter(x => x.statHash !== POWER_STAT_H).map(x => ({ h: x.statHash, n: ((statDefs[x.statHash] || {}).displayProperties || {}).name || '', v: x.value })).filter(x => x.n);
-      const dp = (item && item.displayProperties) || {};
-      return { id, hash, charId: r.characterId || null, name: dp.name || pmDef(hash).n, icon: dp.icon || '', type: (item && item.itemTypeAndTierDisplayName) || '', power: ins.primaryStat ? ins.primaryStat.value : 0, tier: ins.gearTier || 0, rows, stats: st };
+      src.sockets.forEach((x, ix) => { if (x.plugHash) hashes.add(x.plugHash); (src.reuse[ix] || []).forEach(o => hashes.add(o.plugItemHash)); });
+      await ensureStatNames(Object.keys(src.stats).map(Number));
+      const L = state.defs || {}, lite = h => L[h] && L[h].n;
+      if (lite(hash) && [...hashes].every(lite)){
+        const P = h => { const d = L[h]; return d && d.n ? { h, n: d.n, i: d.i || '', t: d.t || '', desc: '', enh: /enhanced/i.test(d.t || ''), cat: LITE_CAT(d.t || '') } : null; };
+        const d = L[hash];
+        const fast = buildRoll(id, hash, src, P, [], { name: d.n, icon: d.i || '', type: [RAR_NAME[d.tier], d.t].filter(Boolean).join(' ') });
+        // descriptions and editable mod sockets: fill in, then redraw the open card in place (unless a mod list is open)
+        fullRoll(id, hash, src, hashes).then(full => {
+          if (rollCache.get(id) !== job) return;
+          rollCache.set(id, Promise.resolve(full));
+          document.querySelectorAll('[data-rollbox="' + CSS.escape(id) + '"]').forEach(box => { if (!box.querySelector('.rp-modlist:not(.hidden)')) box.outerHTML = rollHtml(full); });
+        }).catch(() => {});
+        return fast;
+      }
+      return fullRoll(id, hash, src, hashes);
     })();
     rollCache.set(id, job);
     job.catch(() => rollCache.delete(id));
     return job;
   }
-  const pic = (o, cls) => o.i ? '<img class="' + (cls || '') + '" src="' + img(o.i) + '" alt="">' : '<span class="rp-noimg ' + (cls || '') + '"></span>';
+  const pic = (o, cls) => o.i ? '<img decoding="async" class="' + (cls || '') + '" src="' + img(o.i) + '" alt="">' : '<span class="rp-noimg ' + (cls || '') + '"></span>';
   function rollHtml(x){
     const frame = x.rows.filter(r => r.kind === 'frame'), perks = x.rows.filter(r => r.kind === 'perk'), mods = x.rows.filter(r => r.kind === 'mod');
     const swap = (r, o) => esc(x.id + '|' + r.ix + '|' + o.h + '|' + x.hash);
-    return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? (typeof tierIcon === 'function' ? tierIcon('<img src="' + img(x.icon) + '" alt="">', x.tier) : '<img src="' + img(x.icon) + '" alt="">') : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
+    return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? (typeof tierIcon === 'function' ? tierIcon('<img decoding="async" src="' + img(x.icon) + '" alt="">', x.tier) : '<img decoding="async" src="' + img(x.icon) + '" alt="">') : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
       (typeof savedSplit === 'function' && savedSplit(x.id) ? modeGraph(savedSplit(x.id)) : '') +
       (x.stats.length ? '<div class="rp-stats">' + x.stats.map(s => '<div class="rp-stat"><span>' + esc(s.n) + '</span>' + (NOBAR.has(s.h) || s.v > 100 ? '<i class="nobar"></i>' : '<i><em style="width:' + Math.max(0, Math.min(100, s.v)) + '%"></em></i>') + '<b>' + s.v + '</b></div>').join('') + '</div>' : '') +
       frame.map(r => '<div class="rp-frame" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>').join('') +
@@ -497,7 +555,7 @@
       const x = await readRoll(id, +hash);
       const cid = x.charId || (typeof selChar === 'function' && selChar()) || ((state.chars || [])[0] || {}).id;
       await bungieAction('/Destiny2/Actions/Items/InsertSocketPlugFree/', { plug: { socketIndex: +ix, socketArrayType: 0, plugItemHash: +plug }, itemId: id, characterId: cid, membershipType: state.acct.membershipType });
-      rollCache.delete(id);
+      rollCache.delete(id); if (profIC) delete profIC.sockets[id];
       const nx = await readRoll(id, +hash);
       if (box && box.isConnected) box.outerHTML = rollHtml(nx);
       if (rollFor && !rpop.classList.contains('hidden')) placeRoll(rollFor);
@@ -537,7 +595,7 @@
       if (!opts.length){ list.innerHTML = '<div class="dim-lbl">No unlocked mods fit this slot.</div>'; return; }
       const draw = q => { const w = q.trim().toLowerCase();
         list.querySelector('.rp-modopts').innerHTML = opts.filter(o => !w || (o.n + ' ' + o.desc + ' ' + o.t).toLowerCase().includes(w)).map(o =>
-          '<button class="rp-modopt' + (o.h === cur.h ? ' cur' : '') + '" data-modset="' + esc(id + '|' + ix + '|' + o.h + '|' + hash) + '" title="' + esc(o.desc) + '">' + (o.i ? '<img src="' + img(o.i) + '" alt="">' : '<span class="rp-noimg"></span>') +
+          '<button class="rp-modopt' + (o.h === cur.h ? ' cur' : '') + '" data-modset="' + esc(id + '|' + ix + '|' + o.h + '|' + hash) + '" title="' + esc(o.desc) + '">' + (o.i ? '<img decoding="async" src="' + img(o.i) + '" alt="">' : '<span class="rp-noimg"></span>') +
           '<span><b>' + esc(o.n) + '</b><small>' + esc([o.t, o.cost != null ? o.cost + ' energy' : ''].filter(Boolean).join(' · ')) + '</small></span></button>').join('') || '<div class="dim-lbl">No match.</div>'; };
       list.innerHTML = '<input type="search" class="rp-modq" placeholder="Filter mods" autocomplete="off"><div class="rp-modopts"></div>';
       draw(''); list.querySelector('.rp-modq').oninput = ev => draw(ev.target.value);
@@ -553,7 +611,7 @@
       const x = await readRoll(id, +hash);
       const cid = x.charId || (typeof selChar === 'function' && selChar()) || ((state.chars || [])[0] || {}).id;
       await bungieAction('/Destiny2/Actions/Items/InsertSocketPlugFree/', { plug: { socketIndex: +ix, socketArrayType: 0, plugItemHash: +plug }, itemId: id, characterId: cid, membershipType: state.acct.membershipType });
-      rollCache.delete(id);
+      rollCache.delete(id); if (profIC) delete profIC.sockets[id];
       const nx = await readRoll(id, +hash);
       if (box && box.isConnected) box.outerHTML = rollHtml(nx);
       if (rollFor && !rpop.classList.contains('hidden')) placeRoll(rollFor);
@@ -565,7 +623,7 @@
   let rollFor = null, hoverT = null;
   function placeRoll(anchor){
     const r = anchor.getBoundingClientRect(), w = rpop.offsetWidth || 320, h = rpop.offsetHeight || 200;
-    const right = window.innerWidth - (document.body.classList.contains('streampinned') ? 390 : 0);   // keep clear of the pinned Activity panel
+    const right = window.innerWidth - (parseInt(getComputedStyle(document.body).getPropertyValue('--pinw')) || 0);   // keep clear of the pinned Activity panel
     let x = r.right + 10; if (x + w > right - 8) x = Math.max(8, r.left - w - 10);
     let y = Math.min(window.innerHeight - h - 8, Math.max(8, r.top));
     if (window.innerWidth < 640){ x = 8; y = Math.max(8, window.innerHeight - h - 8); }
@@ -582,7 +640,7 @@
   window.rollHtmlFor = async (id, hash) => rollHtml(await readRoll(id, hash));
   const fineHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   if (fineHover){
-    document.addEventListener('mouseover', e => { const el = e.target.closest('[data-roll]'); if (!el || el === rollFor || e.target.closest('button')) return; clearTimeout(hoverT); hoverT = setTimeout(() => showRoll(el), 300); });
+    document.addEventListener('mouseover', e => { const el = e.target.closest('[data-roll]'); if (!el || el === rollFor || e.target.closest('button, a')) return; clearTimeout(hoverT); if (el.dataset.roll) readRoll(el.dataset.roll, +el.dataset.rh).catch(() => {}); hoverT = setTimeout(() => showRoll(el), 140); });
     // a short grace period so the pointer can travel from the item into the card (to click a perk)
     let hideT = null;
     document.addEventListener('mouseout', e => { const el = e.target.closest('[data-roll]'); if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return; clearTimeout(hoverT);
@@ -594,7 +652,7 @@
   document.addEventListener('click', e => {
     if (e.target.closest('#rollPop')) return;
     const el = e.target.closest('[data-roll]');
-    if (el && !e.target.closest('button')){ if (rollFor === el && !fineHover) hideRoll(); else showRoll(el); return; }
+    if (el && !e.target.closest('button, a')){ if (rollFor === el && !fineHover) hideRoll(); else showRoll(el); return; }
     if (rollFor) hideRoll();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && rollFor) hideRoll(); });

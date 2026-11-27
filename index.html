@@ -182,21 +182,23 @@
   .sharedapp{padding:12px 14px;border:1px solid rgba(226,183,75,.3);background:rgba(226,183,75,.08);border-radius:8px;font-size:13.5px;margin-bottom:6px}
   .sharedapp b{color:#E2B74B}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav active" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav active" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
@@ -271,7 +273,7 @@
       </div>
       <div class="quick">
         <a class="qbtn primary" href="#weapons">Scan my weapons</a>
-        <a class="qbtn ghost" href="armor.html">Triage armor</a>
+        <a class="qbtn ghost" href="armor.html?v=__BUILD__">Triage armor</a>
       </div>
     </div>
     <div>
@@ -283,12 +285,12 @@
       <div class="navcards">
         <a class="navcard" href="#weapons"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M9 1.5v3.5M9 13v3.5M1.5 9H5M13 9h3.5"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/></svg>My weapons</b><span>Every weapon graded god roll, close or trash, with pull, lock and perk swaps.</span></a>
         <a class="navcard" href="#lookup"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7.5" r="5"/><path d="m11.2 11.2 5 5"/></svg>Look up a weapon</b><span>See the recommended rolls for any weapon before you farm it.</span></a>
-        <a class="navcard" href="armor.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.8 15 4v5c0 3.6-2.6 6.2-6 7.2C5.6 15.2 3 12.6 3 9V4Z"/><path d="m6.3 9 1.9 1.9 3.6-3.8"/></svg>Armor triage</b><span>Keep or trash every armor piece, and what to farm next.</span></a>
-        <a class="navcard" href="vault.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="14" height="12" rx="2"/><circle cx="9" cy="9" r="2.6"/><path d="M9 6.4V5M9 13v-1.4M11.6 9H13M5 9h1.4"/></svg>Vault</b><span>Everything you own in one place: vault, characters and postmaster, with search and quick moves.</span></a>
-        <a class="navcard" href="character.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5.2" r="2.7"/><path d="M3.5 16c.4-3.3 2.6-5.3 5.5-5.3s5.1 2 5.5 5.3"/></svg>Character</b><span>Each character like the in-game screen, with every slot expanded. Equip, move, or fill a slot from the vault.</span></a>
-        <a class="navcard" href="vendors.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h12l-1 9H4Z"/><path d="M6.2 6.5V5a2.8 2.8 0 0 1 5.6 0v1.5"/></svg>Vendors &amp; Xûr</b><span>What's worth buying this week, Zavala, Shaxx and Xûr.</span></a>
-        <a class="navcard" href="today.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="13" height="12" rx="2"/><path d="M2.5 7.5h13M6 1.8v3.2M12 1.8v3.2"/><path d="M9 10v2.3l1.5 1"/></svg>Today</b><span>Lost sector, weekly rotations, featured activities and challenges.</span></a>
-        <a class="navcard" href="shaders.html"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2c3.9 0 7 2.8 7 6.3 0 2-1.6 3.2-3.3 3.2h-1.4c-.9 0-1.5.8-1.2 1.6l.3.8c.4 1.1-.4 2.1-1.5 2.1C5 16 2 12.9 2 9c0-3.9 3.1-7 7-7Z"/><circle cx="5.8" cy="8.2" r=".9" fill="currentColor" stroke="none"/><circle cx="8.6" cy="5.4" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="6.4" r=".9" fill="currentColor" stroke="none"/></svg>Shaders</b><span>Every shader in the game, which ones you own and where to get the rest.</span></a>
+        <a class="navcard" href="armor.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.8 15 4v5c0 3.6-2.6 6.2-6 7.2C5.6 15.2 3 12.6 3 9V4Z"/><path d="m6.3 9 1.9 1.9 3.6-3.8"/></svg>Armor triage</b><span>Keep or trash every armor piece, and what to farm next.</span></a>
+        <a class="navcard" href="vault.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="14" height="12" rx="2"/><circle cx="9" cy="9" r="2.6"/><path d="M9 6.4V5M9 13v-1.4M11.6 9H13M5 9h1.4"/></svg>Vault</b><span>Everything you own in one place: vault, characters and postmaster, with search and quick moves.</span></a>
+        <a class="navcard" href="character.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5.2" r="2.7"/><path d="M3.5 16c.4-3.3 2.6-5.3 5.5-5.3s5.1 2 5.5 5.3"/></svg>Character</b><span>Each character like the in-game screen, with every slot expanded. Equip, move, or fill a slot from the vault.</span></a>
+        <a class="navcard" href="vendors.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h12l-1 9H4Z"/><path d="M6.2 6.5V5a2.8 2.8 0 0 1 5.6 0v1.5"/></svg>Vendors &amp; Xûr</b><span>What's worth buying this week, Zavala, Shaxx and Xûr.</span></a>
+        <a class="navcard" href="today.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="13" height="12" rx="2"/><path d="M2.5 7.5h13M6 1.8v3.2M12 1.8v3.2"/><path d="M9 10v2.3l1.5 1"/></svg>Today</b><span>Lost sector, weekly rotations, featured activities and challenges.</span></a>
+        <a class="navcard" href="shaders.html?v=__BUILD__"><b><svg class="nicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2c3.9 0 7 2.8 7 6.3 0 2-1.6 3.2-3.3 3.2h-1.4c-.9 0-1.5.8-1.2 1.6l.3.8c.4 1.1-.4 2.1-1.5 2.1C5 16 2 12.9 2 9c0-3.9 3.1-7 7-7Z"/><circle cx="5.8" cy="8.2" r=".9" fill="currentColor" stroke="none"/><circle cx="8.6" cy="5.4" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="6.4" r=".9" fill="currentColor" stroke="none"/></svg>Shaders</b><span>Every shader in the game, which ones you own and where to get the rest.</span></a>
       </div>
     </div>
     <div class="two">
@@ -769,12 +771,13 @@ async function scan(opts = {}){
   if (full) ls.set('bungieName', full);
   $('btnScan').disabled = true; state.scanning = true;
   try {
-    await loadDefs();
-    await loadWishlist();
+    // manifest, wishlists and the Bungie account lookups run side by side; items wait for all of them
+    const defsP = loadDefs(), wlP = loadWishlist();
+    defsP.catch(() => {}); wlP.catch(() => {});
     let acct = null;
     if (auth.valid()){
       setStatus('Loading your signed-in account...');
-      const me = await bungie('/User/GetMembershipsForCurrentUser/');
+      const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
       const ms = me.destinyMemberships || [];
       acct = ms.find(m => m.membershipId === me.primaryMembershipId) || ms.find(m => m.crossSaveOverride && m.membershipType === m.crossSaveOverride) || ms[0];
       if (!acct) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -792,8 +795,9 @@ async function scan(opts = {}){
     }
     setStatus('Loading inventory...');
     state.acct = { membershipType: acct.membershipType, membershipId: acct.membershipId };
-    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,305,310');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300,304,305,310');
     state.bungieTime = p.responseMintedTimestamp ? new Date(p.responseMintedTimestamp).getTime() : 0;
+    await defsP; await wlP;
     buildItems(p);
     rerate();
     trackDrops(p);
@@ -1008,7 +1012,7 @@ function render(){
     return '<div class="card wcard ' + r.verdict + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for perks and stats">' +
       '<label class="pickbox" title="Select for bulk actions"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
       // header: icon, name + subtitle, then score / tier / verdict on one row
-      '<div class="chead">' + tierIcon('<img loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.gearTier) +
+      '<div class="chead">' + tierIcon('<img decoding="async" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.gearTier) +
         '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
         '<div class="meta">' + esc(i.type) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
         '<div class="cstats">' + (i.score != null ? '<span class="score" title="Roll score">' + i.score + '</span>' : '') +
@@ -1334,7 +1338,7 @@ function renderDetail(){
       const isPick = pc && maxPick && pc >= maxPick * 0.25;
       const enh = /enhanced/i.test(p.itemTypeDisplayName || '');
       return '<button class="perk-o' + (selected ? ' sel' : '') + (owned ? ' own' : '') + (item && !owned ? ' notown' : '') + (enh ? ' enh' : '') + '" data-col="' + c.socketIndex + '" data-plug="' + h + '">' +
-        '<img src="https://www.bungie.net' + esc(p.displayProperties.icon) + '" alt="">' +
+        '<img decoding="async" src="https://www.bungie.net' + esc(p.displayProperties.icon) + '" alt="">' +
         (selected ? '<b class="chk">✓</b>' : '') + (mineNames.has(k) ? '<b class="star" title="In MY god roll">★</b>' : isPick ? '<b class="thumb" title="Recommended in the god roll lists">👍</b>' : '') +
         '</button>';
     }).join('') + '</div>';
@@ -1377,7 +1381,7 @@ function renderDetail(){
   const where = item ? [item.loc, item.power ? 'Power ' + item.power : '', item.gearTier ? 'Tier ' + item.gearTier : '', item.locked ? '🔒 Locked' : ''].filter(Boolean).join(' · ') : 'Not in inventory';
   $('dbody').innerHTML =
     '<div class="dhead" style="--shot:url(' + (def.screenshot ? 'https://www.bungie.net' + esc(def.screenshot) : '') + ')">' +
-      '<img class="dicon" src="https://www.bungie.net' + esc(def.displayProperties.icon) + '" alt="">' +
+      '<img decoding="async" class="dicon" src="https://www.bungie.net' + esc(def.displayProperties.icon) + '" alt="">' +
       '<div><div class="dname">' + esc(def.displayProperties.name) + (r ? ' <span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + (r.mlabel ? '<span class="bmode"> · ' + r.mlabel + '</span>' : '') + '</span>' : '') + '</div>' +
       '<div class="meta">' + metaBits.map(esc).join(' · ') + '</div>' +
       '<div class="dstatus"><span class="where' + (item ? '' : ' none') + '">' + esc(where) + '</span>' +
@@ -1988,6 +1992,6 @@ updateAuthUi();
 $('btnLockGod').onclick = () => bulkLock(i => i.r.verdict === 'god', 'god rolls');
 $('btnLockFav').onclick = () => bulkLock(i => tagFor(i).includes('favorite'), 'favorites');
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>

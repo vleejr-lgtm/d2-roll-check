@@ -202,28 +202,30 @@
   details.skipped ul{columns:3 260px;font-size:13px;color:#c9d1db}
   .cbtn{display:inline-block;margin-top:6px;margin-right:6px;font-size:12px;color:#9fc6ef;text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:2px 8px}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav active" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav active" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
   </nav>
   <div class="spacer"></div>
   <span id="authStatus" class="dim-lbl"></span>
   <select id="charSel" class="hidden" title="Character to pull drops to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -622,7 +624,7 @@ function isGoneError(e){ return /item requested was not found|DestinyItemNotFoun
 
 async function getAccount(){
   if (state.acct) return state.acct;
-  const me = await bungie('/User/GetMembershipsForCurrentUser/');
+  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
   const ms = me.destinyMemberships || [];
   const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
   if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
@@ -638,10 +640,11 @@ async function scan(opts = {}){
   state.scanning = true; $('btnScan').disabled = true;
   const prevStatus = $('status').textContent;
   try {
-    await loadDefs();
+    const defsP = loadDefs(); defsP.catch(() => {});   // manifest check runs alongside the account and profile requests
     const acct = await getAccount();
     if (!opts.silent) setStatus('Loading characters and inventory...');
     const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,200,201,204,205,300');
+    await defsP;
     state.bungieTime = p.responseMintedTimestamp ? new Date(p.responseMintedTimestamp).getTime() : 0;
     const chars = (p.characters && p.characters.data) || {};
     state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
@@ -849,7 +852,7 @@ function card(it){
   const cost = it.costs.length ? '<div class="cost' + (it.cipher ? ' cipher' : '') + '">Cost: ' + it.costs.map(c => esc(c.n) + ' ' + c.q.toLocaleString()).join(' · ') + '</div>' : '';
   const nb = !it.canBuy ? '<div class="nobuy">Can\'t buy yet' + (it.fail.length ? ': ' + esc(it.fail.join(' ')) : '') + '</div>' : '';
   const cls = it.kind === 'armor' && CLASS[it.cls] ? CLASS[it.cls] + ' · ' : '';
-  return '<div class="card vcard ' + (it.v || '') + '">' + tierIcon('<img class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) +
+  return '<div class="card vcard ' + (it.v || '') + '">' + tierIcon('<img decoding="async" class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) +
     '<div class="body"><div class="top"><span class="name">' + esc(it.name) + '</span>' + (it.kind !== 'other' ? vb : '') + '</div>' +
     '<div class="meta">' + esc(cls + it.type) + (it.cat ? ' · ' + esc(it.cat) : '') + '</div>' + rar + body +
     (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + (it.split && (it.split.pve || it.split.pvp) ? modeGraph(it.split, { compact: true }) : '') + cost + nb +
@@ -882,7 +885,7 @@ function render(){
     .filter(g => g.items.length).sort((a, b) => a.x.name.localeCompare(b.x.name));
   const hiddenCipher = gear.filter(i => i.cipher).length;
   $('groups').innerHTML = (groups.length ? groups.map(({ x, items }) =>
-    '<div class="vgroup"><div class="vhead">' + (x.icon ? '<img src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+    '<div class="vgroup"><div class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
     '<div><h2>' + esc(x.name) + '</h2><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span></div>' +
     '<div class="grid">' + items.map(card).join('') + '</div></div>').join('')
     : '<div class="panel dim-lbl">Nothing matches. Turn on more chips under Show (Have it, Skip), or another character.</div>') +
@@ -909,7 +912,7 @@ function renderXur(x, v){
       (items.length ? fold('His Strange Coin shop' + (where ? ' at ' + esc(where) : '') + ' is open all week: ' + items.length + ' items', main.concat(rest)) : '');
     return;
   }
-  el.innerHTML = '<div class="vhead">' + (x && x.icon ? '<img src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+  el.innerHTML = '<div class="vhead">' + (x && x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
     '<div><h3>Xûr is here</h3><div class="vloc">📍 ' + esc(where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span>' +
     '<div style="text-align:right"><div class="xurtime">Leaves in ' + cd(xw.leaves) + '</div><div class="dim-lbl">' + fmtWhen(xw.leaves) + ' your time</div></div></div>' +
     (!items.length ? '<div>It\'s his weekend, but Bungie isn\'t returning his stock for this character yet. Try ↻ Refresh in a few minutes.</div>' : '') +
@@ -934,7 +937,7 @@ function renderCore(v){
     else if (!rated.length && rolls.length) say = '<div class="coresay no">' + c.label + ' only has random rolls this week. Nothing to judge before you buy, so skip him unless you\'re farming a specific weapon or armor roll.</div>';
     else say = '<div class="coresay no">Nothing worth buying from ' + c.label + ' this week.</div>';
     const show = grab.concat(maybe);
-    return '<div class="corebox"><div class="vhead">' + (x.icon ? '<img src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+    return '<div class="corebox"><div class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
       '<div><h3 style="margin:0">' + esc(x.name) + '</h3><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span></div>' +
       say + (show.length ? '<div class="grid">' + show.map(card).join('') + '</div>' : '') +
       (rated.length - show.length ? '<div class="dim-lbl" style="margin-top:6px">' + (rated.length - show.length) + ' more with a visible roll rated Skip or Have it.</div>' : '') +
@@ -1015,6 +1018,6 @@ updateAuthUi();
 render();
 if (auth.valid()) scan(); else setStatus('Sign in with Bungie (top right) to load vendors. Vendor stock is per character, so Bungie only shares it with you signed in.');
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>

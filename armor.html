@@ -219,21 +219,23 @@
   .mpill.mt-none{background:transparent; color:#64748B; border:1px dashed rgba(255,255,255,.14)}
   .dupn{display:inline-block; font-size:11px; font-weight:700; padding:0 6px; border-radius:999px; background:rgba(226,183,75,.14); color:#E2B74B; margin-left:2px}
 </style>
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
-<script src="rating.js"></script>
+<script src="rating.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
-  <h1><a class="brand" href="index.html#home" title="Home overview">D2 Roll Check</a></h1>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
   <nav class="tabs">
-    <a class="nav" href="today.html">Today</a>
-    <a class="nav" href="index.html#weapons">Weapons</a>
-    <a class="nav active" href="armor.html">Armor triage</a>
-    <a class="nav" href="vault.html">Vault</a>
-    <a class="nav" href="character.html">Character</a>
-    <a class="nav" href="vendors.html">Vendors &amp; Xûr</a>
-    <a class="nav" href="shaders.html">Shaders</a>
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav active" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
     <a class="nav ext" href="https://d2armorpicker.com/" target="_blank" rel="noopener" title="Build loadouts from the armor you keep">D2ArmorPicker ↗</a>
   </nav>
   <div class="spacer"></div>
@@ -241,7 +243,7 @@
   <select id="charSel" class="hidden" title="Character to pull armor to"></select>
   <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
   <button class="ghost" id="btnAuth">Sign in with Bungie</button>
-  <a class="navbtn" href="index.html#settings" title="API key and lists are set on the Weapons page">Settings</a>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
 </header>
 <div id="stream" class="stream hidden">
   <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
@@ -629,7 +631,7 @@ async function scan(opts = {}){
     let acct;
     if (auth.valid()){
       setStatus('Loading your signed-in account...');
-      const me = await bungie('/User/GetMembershipsForCurrentUser/');
+      const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
       const ms = me.destinyMemberships || [];
       acct = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
     } else {
@@ -899,7 +901,7 @@ function render(){
     return '<div class="card wcard acard ' + i.v + (state.picked.has(i.id) ? ' picked' : '') + '" data-open="' + esc(i.id) + '" title="Click for details and comparison">' +
       '<label class="pickbox"><input type="checkbox" data-pick="' + esc(i.id) + '"' + (state.picked.has(i.id) ? ' checked' : '') + '></label>' +
       // header: icon, name + subtitle, tier and verdict on one row
-      '<div class="chead">' + tierIcon('<img class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.tier) +
+      '<div class="chead">' + tierIcon('<img decoding="async" class="icon" loading="lazy" src="' + (i.icon ? 'https://www.bungie.net' + esc(i.icon) : '') + '" alt="">', i.tier) +
         '<div class="ctitle"><div class="top"><span class="name">' + esc(i.name) + '</span></div>' +
         '<div class="meta">' + esc(i.clsName) + ' · ' + esc(i.slot) + ' · ' + esc(i.loc.replace(' (equipped)', '')) + (i.power ? ' · ' + i.power : '') + '</div></div>' +
         '<div class="cstats">' + (i.tier ? '<span class="ctier' + (i.tier >= 5 ? ' t5' : '') + '" title="Tier ' + i.tier + '">T' + i.tier + '</span>' : '') +
@@ -1351,7 +1353,7 @@ async function renderMods(i, shot){
     '<div class="modslots">' + M.slots.map(sl => {
       const d = M.defs[plugOf(sl)] || {}, dp = d.displayProperties || {}, isNew = M.pend[sl.k] && M.pend[sl.k] !== sl.cur;
       return '<button class="modslot' + (M.open === sl.k ? ' open' : '') + (isNew ? ' new' : '') + '" data-slot="' + sl.k + '" title="' + esc(sl.label) + '">' +
-        (dp.icon ? '<img src="https://www.bungie.net' + esc(dp.icon) + '" alt="">' : '') + '<span>' + esc(dp.name || 'Empty') + '<small>' + (modCost(d) ? modCost(d) + ' energy' : esc(sl.label)) + '</small></span></button>';
+        (dp.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(dp.icon) + '" alt="">' : '') + '<span>' + esc(dp.name || 'Empty') + '<small>' + (modCost(d) ? modCost(d) + ' energy' : esc(sl.label)) + '</small></span></button>';
     }).join('') + '</div>';
   if (changed.length) html += '<div class="modchanges">' + changed.length + ' change' + (changed.length > 1 ? 's' : '') + ' staged' + (deltaTxt ? ' · ' + esc(deltaTxt) : '') +
     (used > cap ? ' · <b style="color:var(--trash)">over energy by ' + (used - cap) + '</b>' : '') + '</div>' +
@@ -1366,7 +1368,7 @@ async function renderMods(i, shot){
     const q = M.query.toLowerCase();
     listEl.innerHTML = opts.filter(h => !q || M.defs[h].displayProperties.name.toLowerCase().includes(q)).map(h => {
       const d = M.defs[h], st = statText(d);
-      return '<button class="mopt' + (h === plugOf(sl) ? ' on' : '') + '" data-mod="' + h + '">' + (d.displayProperties.icon ? '<img src="https://www.bungie.net' + esc(d.displayProperties.icon) + '" alt="">' : '') +
+      return '<button class="mopt' + (h === plugOf(sl) ? ' on' : '') + '" data-mod="' + h + '">' + (d.displayProperties.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(d.displayProperties.icon) + '" alt="">' : '') +
         '<span><b>' + esc(h === sl.empty ? 'Remove mod (empty)' : d.displayProperties.name) + '</b><small>' + modCost(d) + ' energy' + (st ? ' · ' + esc(st) : '') + '</small>' +
         (d.displayProperties.description ? '<em>' + esc(d.displayProperties.description) + '</em>' : '') + '</span></button>';
     }).join('') || '<div class="dim-lbl">No unlocked mods match.</div>';
@@ -1476,6 +1478,6 @@ updateFooter();
 updateAuthUi();
 if (auth.valid()) scan();
 </script>
-<script src="stream.js"></script>
+<script src="stream.js?v=__BUILD__"></script>
 </body>
 </html>
