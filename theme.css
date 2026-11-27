@@ -484,3 +484,12 @@ body.streampinned .pmpanel{right:390px}
 @keyframes pmpulse{50%{box-shadow:0 0 0 4px rgba(229,83,75,.25)}}
 .pmchar.almost{border-color:rgba(226,183,75,.55)} .pmchar.almost .pmcount{color:#E2B74B}
 .pmchar.full{border-color:#E5534B; background:linear-gradient(180deg, rgba(229,83,75,.22), rgba(229,83,75,.06))} .pmchar.full .pmcount{color:#FFB4B0}
+
+/* ---- pinned Activity panel (390px on the right): the page gets that much narrower, so the header has to wrap
+   sooner, and floating cards must stay left of the panel ---- */
+@media (max-width:1710px){
+  body.streampinned header{flex-wrap:wrap; row-gap:6px}
+  body.streampinned header .tabs{order:3; flex-basis:100%; margin-left:-12px; overflow-x:auto}
+}
+body.streampinned header{max-width:100%; box-sizing:border-box}
+body.streampinned .pmpanel{z-index:51}

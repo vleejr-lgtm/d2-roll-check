@@ -71,16 +71,26 @@
       evs.push({ t: now, kind: 'drop', page: g.kind, id: g.id, hash: g.hash, name: g.name, icon: g.icon, v: inf.v, label: inf.label, extra: inf.extra, loc: g.loc, pm: g.postmaster });
     });
     if (fresh.length > 40) evs.push({ t: now, kind: 'info', page: PAGE, text: '+' + (fresh.length - 40) + ' more new items not listed' });
+    // An item only counts as dismantled when it's missing on two refreshes at least 45 s apart: right after a move
+    // (postmaster to vault, character to character) Bungie's profile can briefly leave it out.
+    let miss = {}; try { miss = JSON.parse(ls.get('known:miss') || '{}'); } catch {}
+    const nextMiss = {}, keep = {};
     for (const kind of KINDS){
       if (!known.kinds[kind]) continue;
-      const gone = Object.keys(known.ids).filter(id => known.ids[id][1] === kind && !state.gear.has(id)).map(id => known.ids[id][0]);
+      const gone = [];
+      for (const id of Object.keys(known.ids)){
+        if (known.ids[id][1] !== kind || state.gear.has(id)) continue;
+        if (miss[id] && now - miss[id] > 45e3) gone.push(known.ids[id][0]);
+        else { nextMiss[id] = miss[id] || now; keep[id] = known.ids[id]; }
+      }
       if (gone.length) evs.push({ t: now, kind: 'gone', page: kind, names: gone.slice(0, 30), count: gone.length });
     }
+    ls.set('known:miss', JSON.stringify(nextMiss));
     if (fresh.length && !$('streamMute').checked){
       const f = fresh[0], inf = ownInfo(f.kind === PAGE ? byId(f.id) : null);
       toast(fresh.length === 1 ? 'New drop: ' + f.name + (inf ? ' (' + inf.label + ')' : '') + (f.postmaster ? ' in your postmaster' : '') : fresh.length + ' new drops. Open 📡 Activity to see them.');
     }
-    ls.set('known:all', JSON.stringify({ kinds: { weapons: true, armor: true }, ids: Object.fromEntries(gear.map(g => [g.id, [g.name, g.kind]])) }));
+    ls.set('known:all', JSON.stringify({ kinds: { weapons: true, armor: true }, ids: Object.assign(keep, Object.fromEntries(gear.map(g => [g.id, [g.name, g.kind]]))) }));
     // drops logged on another page get their verdict once this page has rated them
     const all = evs.reverse().concat(load());
     for (const e of all){
@@ -259,14 +269,16 @@
     list.innerHTML = pm.chars.map(c => {
       const n = c.items.length, lvl = pmLevel(n);
       return '<div class="pmchar ' + lvl + '"><div class="pmhead"><b>' + esc(c.name) + '</b><span class="pmcount' + (lvl ? ' hot' : '') + '">' + pmLabel(n) + '</span><span style="flex:1"></span>' +
-        (n ? '<button class="ghost pmall" data-pmall="' + esc(c.id) + '">Pull all</button>' : '') + '</div>' +
+        (n ? '<button class="ghost pmall" data-pmall="' + esc(c.id) + '" title="Pull everything to your ' + esc(c.name) + '">Pull all</button><button class="ghost pmall" data-pmallv="' + esc(c.id) + '" title="Send everything that can go to the vault there (pulled through your ' + esc(c.name) + ')">All to vault</button>' : '') + '</div>' +
         (n ? c.items.map((it, ix) => { const d = pmDef(it.hash);
           return '<div class="pmrow"' + (it.id !== '0' ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.hash + '"' : '') + '>' + (d.i ? '<img src="' + img(d.i) + '" alt="">' : '<span class="pmnoimg"></span>') + '<span class="pmname">' + esc(d.n) + (it.qty > 1 ? ' <span class="dim-lbl">×' + it.qty + '</span>' : '') + '</span>' +
-            '<button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmi="' + ix + '">Pull</button></div>'; }).join('')
+            '<button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmi="' + ix + '" title="Pull to your ' + esc(c.name) + '">Pull</button><button class="ghost pmone" data-pmc="' + esc(c.id) + '" data-pmv="' + ix + '" title="Send to the vault">Vault</button></div>'; }).join('')
           : '<div class="dim-lbl pmempty">Empty</div>') + '</div>';
     }).join('') + '<div class="dim-lbl" style="padding:6px 4px">Read ' + new Date(pm.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>';
     list.querySelectorAll('[data-pmi]').forEach(b => b.onclick = () => pmPull(b.dataset.pmc, [c => c.items[+b.dataset.pmi]], b));
     list.querySelectorAll('[data-pmall]').forEach(b => b.onclick = () => pmPull(b.dataset.pmall, null, b));
+    list.querySelectorAll('[data-pmv]').forEach(b => b.onclick = () => pmPull(b.dataset.pmc, [c => c.items[+b.dataset.pmv]], b, true));
+    list.querySelectorAll('[data-pmallv]').forEach(b => b.onclick = () => pmPull(b.dataset.pmallv, null, b, true));
   }
   let pmBusy = false;
   const NO_ROOM = /no item slots|NoRoomInDestination|no room/i;
@@ -321,20 +333,27 @@
   // the item cards on Weapons, Armor and Vault pull from the postmaster through this too
   window.pmEnsureRoom = (cid, hash, instanced, force) => ensureRoom(cid, hash, instanced, force);
   window.pmIsNoRoom = e => NO_ROOM.test((e && e.message) || '');
+  // Character page postmaster card: send one item to the vault through the same path
+  window.pmToVault = (cid, id, hash, btn) => { const ch = pm && pm.chars.find(c => c.id === cid); if (!ch) return Promise.resolve();
+    const ix = ch.items.findIndex(x => x.hash === hash && (!id || x.id === id)); if (ix < 0) return Promise.resolve();
+    return pmPull(cid, [c => c.items[ix]], btn || document.createElement('button'), true); };
   window.pmLanded = async (cid, it) => landed(cid, it, await destBucket(it.hash));
   // an item left a character (sent to the vault): free its slot in the model
   window.pmLeft = (cid, id) => { const ch = pm && pm.chars.find(c => c.id === cid); if (ch && id) ch.inv = ch.inv.filter(x => x.id !== id); };
-  async function pmPull(cid, pick, btn){
+  // Bungie has no direct postmaster-to-vault move: "Vault" pulls the item to that character first, then sends it on
+  // to the vault (the same two steps the game does). Engrams and quest items can't go to the vault, so they stay put.
+  async function pmPull(cid, pick, btn, toVault){
     if (pmBusy) return;
     if (!state.acct || !auth.valid()){ setStatus('Sign in with Bungie (top right) to pull from the postmaster.', true); return; }
     const ch = pm.chars.find(c => c.id === cid); if (!ch) return;
     const items = pick ? pick.map(f => f(ch)).filter(Boolean) : ch.items.slice();
     pmBusy = true; btn.disabled = true; btn.textContent = '…';
-    let ok = 0; const fails = [], moved = [];
+    let ok = 0, vaulted = 0; const fails = [], moved = [];
     const pull = it => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: it.hash, stackSize: it.qty, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
     for (const it of items){
       try {
         const bucket = await destBucket(it.hash);
+        if (toVault && NO_VAULT.has(bucket)) throw new Error('NoRoom: ' + (bucket === 375726501 ? 'engrams' : 'this') + ' can\'t go to the vault (use Pull instead)');
         // empty a slot first when we can already see the bucket is full
         const pre = await ensureRoom(cid, it.hash, it.id !== '0', false);
         if (pre.err) throw new Error('NoRoom: ' + pre.err);
@@ -349,6 +368,16 @@
           await pull(it);
         }
         landed(cid, it, bucket); ok++;
+        if (toVault){
+          await new Promise(res => setTimeout(res, 300));
+          try {
+            await bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: it.hash, stackSize: it.qty, transferToVault: true, itemId: it.id, characterId: cid, membershipType: state.acct.membershipType });
+            ch.inv = ch.inv.filter(x => !(x.id === it.id && x.hash === it.hash)); vaulted++;
+            const gv = it.id !== '0' && state.gear && state.gear.get(it.id); if (gv){ gv.charId = null; gv.loc = 'Vault'; }
+            const ov = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (ov){ ov.charId = null; ov.postmaster = false; ov.loc = 'Vault'; if ('where' in ov) ov.where = 'vault'; }
+          } catch (e){ fails.push(pmDef(it.hash).n + ': pulled to your ' + ch.name + ' but couldn\'t go on to the vault (' + (NO_ROOM.test(e.message || '') ? 'vault full' : e.message) + ')'); }
+          continue;
+        }
         const g = it.id !== '0' && state.gear && state.gear.get(it.id); if (g){ g.postmaster = false; g.loc = ch.name; }
         const own = it.id !== '0' && typeof byId === 'function' ? byId(it.id) : null; if (own){ own.postmaster = false; own.loc = ch.name; if ('where' in own) own.where = cid; }
       } catch (e){
@@ -359,7 +388,8 @@
       await new Promise(r => setTimeout(r, 250));
     }
     pmBusy = false; pmButton(); pmRender();
-    if (ok) toast('Pulled ' + ok + ' item' + (ok > 1 ? 's' : '') + ' to your ' + ch.name + (moved.length ? ', moved ' + moved.length + ' to the vault to make room' : ''));
+    if (toVault && vaulted) toast('Sent ' + vaulted + ' item' + (vaulted > 1 ? 's' : '') + ' from the postmaster to the vault');
+    else if (ok && !toVault) toast('Pulled ' + ok + ' item' + (ok > 1 ? 's' : '') + ' to your ' + ch.name + (moved.length ? ', moved ' + moved.length + ' to the vault to make room' : ''));
     if (fails.length) setStatus((moved.length ? 'Moved to the vault to make room: ' + moved.join(', ') + '\n' : '') + 'Some items stayed in the postmaster:\n' + fails.slice(0, 6).join('\n') + (fails.length > 6 ? '\n+' + (fails.length - 6) + ' more' : ''), true);
     else if (moved.length) setStatus('Moved to the vault to make room: ' + moved.join(', '));
     if ((ok || moved.length) && typeof render === 'function') try { render(); } catch {}
@@ -502,7 +532,8 @@
   let rollFor = null, hoverT = null;
   function placeRoll(anchor){
     const r = anchor.getBoundingClientRect(), w = rpop.offsetWidth || 320, h = rpop.offsetHeight || 200;
-    let x = r.right + 10; if (x + w > window.innerWidth - 8) x = Math.max(8, r.left - w - 10);
+    const right = window.innerWidth - (document.body.classList.contains('streampinned') ? 390 : 0);   // keep clear of the pinned Activity panel
+    let x = r.right + 10; if (x + w > right - 8) x = Math.max(8, r.left - w - 10);
     let y = Math.min(window.innerHeight - h - 8, Math.max(8, r.top));
     if (window.innerWidth < 640){ x = 8; y = Math.max(8, window.innerHeight - h - 8); }
     rpop.style.left = x + 'px'; rpop.style.top = y + 'px';

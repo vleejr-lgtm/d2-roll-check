@@ -452,7 +452,8 @@ function render(){
 /* ---- item card and vault picker ---- */
 function place(el, anchor){
   const r = anchor.getBoundingClientRect(), w = 300;
-  let x = Math.min(window.innerWidth - w - 10, Math.max(10, r.left)), y = r.bottom + 8;
+  const right = window.innerWidth - (document.body.classList.contains('streampinned') ? 390 : 0);
+  let x = Math.min(right - w - 10, Math.max(10, r.left)), y = r.bottom + 8;
   el.classList.remove('hidden');
   if (y + el.offsetHeight > window.innerHeight - 10) y = Math.max(10, r.top - el.offsetHeight - 8);
   el.style.left = x + 'px'; el.style.top = y + 'px';
@@ -500,7 +501,7 @@ function openPm(key, anchor, c){
   const i = c.pm.find(x => (x.id || ('h' + x.hash)) === key); if (!i) return;
   const can = auth.valid() && state.acct;
   $('cPop').innerHTML = '<h4>' + esc(i.name) + (i.qty > 1 ? ' ×' + i.qty : '') + '</h4><div class="cmeta">' + esc([i.type, RAR[i.rar], i.gearTier ? 'Tier ' + i.gearTier : '', i.power ? 'Power ' + i.power : '', 'In the postmaster'].filter(Boolean).join(' · ')) + '</div>' +
-    (can ? '<div class="cacts"><button class="primary" id="cPmPull">📬 Pull to ' + esc(c.name) + '</button></div>' : '<div class="dim-lbl">Sign in to pull it.</div>') +
+    (can ? '<div class="cacts"><button class="primary" id="cPmPull">📬 Pull to ' + esc(c.name) + '</button><button class="ghost" id="cPmVault">Send to vault</button></div>' : '<div class="dim-lbl">Sign in to pull it.</div>') +
     (i.id && typeof rollHtmlFor === 'function' ? '<div class="croll" id="cRoll"><div class="dim-lbl">Reading roll…</div></div>' : '');
   place($('cPop'), anchor);
   if (i.id && typeof rollHtmlFor === 'function') rollHtmlFor(i.id, i.hash).then(h => { const el = $('cRoll'); if (el){ el.innerHTML = h; place($('cPop'), anchor); } }).catch(e => { const el = $('cRoll'); if (el) el.innerHTML = '<div class="dim-lbl">' + esc(e.message) + '</div>'; });
@@ -508,6 +509,12 @@ function openPm(key, anchor, c){
     const b = $('cPmPull'); b.disabled = true;
     try { await pullFromPostmaster(i); c.pm = c.pm.filter(x => x !== i); i.postmaster = false; i.loc = c.name; i.b = i.defB; c.items.push(i); toast('Pulled ' + i.name + ' to your ' + c.name); closePop(); render(); }
     catch (e){ b.disabled = false; setStatus(e.message, true); }
+  };
+  if ($('cPmVault')) $('cPmVault').onclick = async () => {
+    const b = $('cPmVault'); b.disabled = true;
+    if (typeof pmToVault !== 'function'){ setStatus('Postmaster tools are still loading. Try again in a moment.', true); b.disabled = false; return; }
+    await pmToVault(c.id, i.id || '0', i.hash, b);
+    closePop(); scan({ silent: true });
   };
 }
 function openPicker(b, anchor, c){

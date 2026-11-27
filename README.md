@@ -143,7 +143,7 @@ Moving an item from the vault to a character works like the postmaster now: if t
 ## Postmaster (every page)
 
 * The 📬 button in the header shows how many lost items are waiting across your characters. Like DIM, it turns amber at ALMOST FULL! (15 of 21) and red at FULL! (21 of 21), and the site tells you once when a character gets there. Past 21, new drops are lost.
-* Open it to pull one item or everything for a character. Hover a weapon or armor piece (or tap it on a phone) to see its roll: perks and stats.
+* Open it to pull one item or everything for a character, or send them straight to the vault (Vault / All to vault). The game has no direct postmaster to vault move, so the site pulls the item to that character and then vaults it for you. Engrams and quest items can't go to the vault. Hover a weapon or armor piece (or tap it on a phone) to see its roll: perks and stats.
 * **Make room** (on by default): if that slot on the character is full, it first moves your lowest rarity, lowest power **unlocked** item in that slot to the vault, then pulls. Locked and equipped items are never moved, so lock anything you want to keep on the character. Engrams and quests can't go to the vault, so for those it tells you to clear space in game. The same applies to the 📬 Pull button on weapon, armor and vault cards.
 
 ## Shaders (shaders.html)
