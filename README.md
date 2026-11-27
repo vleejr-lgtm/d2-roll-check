@@ -116,6 +116,7 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 ## Vault (vault.html)
 
 * Everything you own in one list: vault, each character, what's equipped and the postmaster, with totals at the top.
+* Vault space at a glance: used and free slots for the vault, consumables and modifications, with bars that turn gold when it's getting full and red when it's nearly full, plus your Glimmer, Bright Dust and other currencies.
 * Search with plain words, and every word has to match: `hand cannon`, `exotic rocket`, `t5 titan`, `vault locked`. Press `/` to jump to the search box.
 * Filter by where it is and what it is (weapons, armor, mods and shaders, materials, cosmetics, quests), and sort by type, name, power, rarity or location.
 * Signed in, each weapon and armor piece has Pull (to the character in the Pull to menu), Vault and Lock buttons.
@@ -123,7 +124,8 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 ## Postmaster (every page)
 
 * The 📬 button in the header shows how many lost items are waiting across your characters, and turns red when one of them is close to the 21 item limit.
-* Open it to pull one item or everything for a character. If a character's inventory is full, it stops and tells you.
+* Open it to pull one item or everything for a character.
+* **Make room** (on by default): if that slot on the character is full, it first moves your lowest rarity, lowest power **unlocked** item in that slot to the vault, then pulls. Locked and equipped items are never moved, so lock anything you want to keep on the character. Engrams and quests can't go to the vault, so for those it tells you to clear space in game.
 
 ## Shaders (shaders.html)
 
