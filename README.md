@@ -116,6 +116,7 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 ## Vault (vault.html)
 
 * Everything you own in one list: vault, each character, what's equipped and the postmaster, with totals at the top.
+* Vault space at a glance: used and free slots for the vault, consumables and modifications, with bars that turn gold when it's getting full and red when it's nearly full, plus your Glimmer, Bright Dust and other currencies.
 * Search with plain words, and every word has to match: `hand cannon`, `exotic rocket`, `t5 titan`, `vault locked`. Press `/` to jump to the search box.
 * Filter by where it is and what it is (weapons, armor, mods and shaders, materials, cosmetics, quests), and sort by type, name, power, rarity or location.
 * Signed in, each weapon and armor piece has Pull (to the character in the Pull to menu), Vault and Lock buttons.
