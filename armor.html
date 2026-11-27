@@ -407,7 +407,16 @@ async function bungie(path, body, plainBody){
 }
 async function bungieAction(path, body){
   if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
-  try { return await bungie(path, body); } catch (e){ if (/Could not download/.test(e.message)) return await bungie(path, body, true); throw e; }
+  // Bungie throttles item moves when they come too fast: wait a moment and try again instead of failing
+  // (lets multi-step moves run back to back with no fixed pauses)
+  for (let n = 0; ; n++){
+    try { return await bungie(path, body); }
+    catch (e){
+      if (/Could not download/.test(e.message)){ try { return await bungie(path, body, true); } catch (e2){ e = e2; } }
+      if (n < 3 && /thrott|too many|too quickly|try again/i.test(e.message || '')){ await sleep(350 * (n + 1)); continue; }
+      throw e;
+    }
+  }
 }
 const entMem = new Map();
 async function ent(type, hash){
@@ -1020,10 +1029,15 @@ async function pullFromPostmaster(i){
   i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
 }
 async function pullTo(i, target){
-  if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); }   // postmaster items go to their own character first
+  if (i.postmaster){ await pullFromPostmaster(i); }   // postmaster items go to their own character first
   if (i.charId === target) return;
   if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
-  if (i.charId){ await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }
+  if (i.charId){
+    // free a slot on the target (if it's full) while the item travels to the vault: two Bungie calls at once, not one after the other
+    const pre = typeof pmEnsureRoom === 'function' && ls.get('pmMakeRoom') !== '0' ? pmEnsureRoom(target, i.hash, true, false).then(r => { if (r && r.moved) toast('Moved ' + r.moved + ' to the vault to make room'); }).catch(() => {}) : null;
+    await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault';
+    if (pre) await pre;
+  }
   await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
 }
 async function runAction(act, id, btn){
@@ -1032,7 +1046,7 @@ async function runAction(act, id, btn){
     if (act === 'lock'){ await setLock(i, !i.locked); toast((i.locked ? 'Locked ' : 'Unlocked ') + i.name); }
     else if (act === 'pull'){ await pullTo(i, selChar()); toast('Pulled ' + i.name + ' to ' + i.loc); }
     else if (act === 'unequip'){ const sub = await unequip(i); toast('Equipped ' + sub.name + ' instead. ' + i.name + ' is free to move.'); }
-    else if (act === 'vault'){ if (i.postmaster){ await pullFromPostmaster(i); await sleep(300); } await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; toast('Sent ' + i.name + ' to the vault'); }
+    else if (act === 'vault'){ if (i.postmaster){ await pullFromPostmaster(i); } await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; toast('Sent ' + i.name + ' to the vault'); }
   } catch (e){ if (isGoneError(e)) dropGone(i); else setStatus(i.name + ': ' + e.message, true); }
   render();
 }
@@ -1084,7 +1098,7 @@ $('bulkTagApply').onclick = () => { const arr = [...$('bulkTags').querySelectorA
 $('bulkLock').onclick = needAuth(() => bulkRun('Locking', picked(), async i => { if (i.locked) return 'skip'; await setLock(i, true); await sleep(250); }));
 $('bulkUnlock').onclick = needAuth(() => bulkRun('Unlocking', picked(), async i => { if (!i.locked) return 'skip'; await setLock(i, false); await sleep(250); }));
 $('bulkPull').onclick = needAuth(() => bulkRun('Pulling', picked(), async i => { const t = selChar(); if (i.charId === t) return 'skip'; await pullTo(i, t); await sleep(300); }));
-$('bulkVault').onclick = needAuth(() => bulkRun('Sending to vault', picked(), async i => { if (!i.charId) return 'skip'; if (i.equipped) throw new Error('equipped'); await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; await sleep(300); }));
+$('bulkVault').onclick = needAuth(() => bulkRun('Sending to vault', picked(), async i => { if (!i.charId) return 'skip'; if (i.equipped) throw new Error('equipped'); await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault'; }));
 $('bulkAll').onclick = () => { (state.shown || []).forEach(i => state.picked.add(i.id)); render(); };
 $('bulkNone').onclick = () => { state.picked.clear(); render(); };
 $('btnLockKeep').onclick = needAuth(() => bulkRun('Locking keepers', state.items.filter(i => i.v === 'keep'), async i => { if (i.locked) return 'skip'; await setLock(i, true); await sleep(250); }));

@@ -135,13 +135,16 @@
   async function actOther(act, g, btn){
     if (!state.acct){ setStatus('Scan first.', true); return; }
     btn.disabled = true;
+    const label = btn.textContent; btn.textContent = act === 'lock' ? '…' : (g.postmaster ? 'Pulling from postmaster…' : 'Pulling…');
     try {
       if (act === 'lock'){ await setLock(g, !g.locked); toast((g.locked ? 'Locked ' : 'Unlocked ') + g.name); }
       else {
         let target = selChar();
         if (g.kind === 'armor'){   // class armor can only go to a character of that class
-          const d = await ent('DestinyInventoryItemDefinition', g.hash);
-          const want = d && d.classType < 3 ? CLS[d.classType] : '';
+          // class from the manifest this page already holds; the full definition only when it isn't there
+          const lc = state.defs && state.defs[g.hash] && state.defs[g.hash].c;
+          const ct = lc !== undefined && lc !== null ? lc : ((await ent('DestinyInventoryItemDefinition', g.hash)) || {}).classType;
+          const want = ct < 3 ? CLS[ct] : '';
           const cur = state.chars.find(c => c.id === target);
           if (want && (!cur || cur.name !== want)){ const m = state.chars.find(c => c.name === want); if (!m) throw new Error('You have no ' + want + ' to pull it to.'); target = m.id; }
         }
@@ -155,7 +158,7 @@
     } catch (e){
       if (isGoneError(e)){ state.gear.delete(g.id); toast(g.name + ' is already gone.'); }
       else setStatus(g.name + ': ' + e.message, true);
-    } finally { btn.disabled = false; renderStream(); }
+    } finally { btn.disabled = false; btn.textContent = label; renderStream(); }
   }
 
   function renderStream(){

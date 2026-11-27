@@ -28,7 +28,7 @@ Each page is self-contained (its own inline `<script>` with helpers like `bungie
   - IndexedDB cache: `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `manifestShaders` (shader list), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
-- **Bungie action limits:** item actions (lock, transfer, equip, socket changes) are throttled (~2 socket changes/sec, sleep 300–600 ms between calls). Perk/mod changes and equips only work in orbit, a social space, or offline.
+- **Bungie action limits:** item actions (lock, transfer, equip, socket changes) are throttled (~2 socket changes/sec). `bungieAction()` on every page retries a throttled call up to 3 times (350 / 700 / 1050 ms) when the message matches `thrott|too many|too quickly|try again`, so multi-step moves (`pullTo`) run back to back with no fixed sleeps. Bulk loops keep their own pauses. Perk/mod changes and equips only work in orbit, a social space, or offline.
 - **DIM tags can't be written by outside apps.** Tags go to DIM only through the CSV export (`Id, Hash, Tag, Notes`), imported in DIM: Settings → Spreadsheets → Import tags/notes from CSV. One DIM tag per item; extra ticks go into the note.
 
 ## UI conventions (theme.css)
@@ -241,3 +241,10 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - One CSS variable `--pinw` on `body` drives the pinned layout: 390 px at 1500 px+ screens, 330 px from 1100 to 1499, and 0 under 1100 (the panel then floats over the page). Page padding, `.modal`, `.pmpanel`, `#noticeStack`, toasts and the bulk bar use it; `placeRoll` and the Character page `place()` read it with `getComputedStyle`.
 - Buttons, chips, selects and badges never wrap inside themselves; Weapons toolbar rows and the panel header wrap instead. tests/e2e_pin_layout.py checks every page at 1920 to 390 px.
 - Postmaster panel: a pinned Activity panel stays open beside it; an unpinned one steps aside while the Postmaster is open and comes back when it closes (`streamWasOpen`).
+
+## Moves (pullTo, every page)
+
+- No fixed pauses between steps; throttling is handled by the retry in `bungieAction()`.
+- Character to character: while the item goes to the vault, `pmEnsureRoom(target, hash, true, false)` frees a slot on the target at the same time (two Bungie calls in parallel), then the item goes to the target. `transfer()`'s own room check then finds the slot free.
+- Activity stream Pull: the button reads "Pulling…" / "Pulling from postmaster…" right away; armor class comes from the page's lite manifest (`state.defs[h].c`) before falling back to the full definition.
+- Measured with 250 ms per request (tests/perf_move.py): character to character into a full slot 1374 → 514 ms; first pull of a page 1634 → 779 ms.
