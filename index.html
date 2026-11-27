@@ -179,8 +179,11 @@
   .toast.show{opacity:1}
   .skind{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:4px;text-transform:uppercase;letter-spacing:.04em}
   .sb-new{background:#2fd3c8;color:#04201e}
+  .sharedapp{padding:12px 14px;border:1px solid rgba(226,183,75,.3);background:rgba(226,183,75,.08);border-radius:8px;font-size:13.5px;margin-bottom:6px}
+  .sharedapp b{color:#E2B74B}
 </style>
 <link rel="stylesheet" href="theme.css">
+<script src="config.js" onerror="this.remove()"></script>
 </head>
 <body>
 <header>
@@ -228,15 +231,18 @@
     <button class="tab" data-view="lookup">Look up a weapon</button>
   </div>
   <section class="settings" id="settings">
+    <div class="sharedapp hidden" id="sharedApp"><b>Bungie sign-in is set up for this site.</b> Just click <b>Sign in with Bungie</b> (top right) with your own Bungie account. Only the god roll lists below can be changed here.</div>
+    <div id="keyFields">
     <label for="apiKey">Bungie API key</label>
     <input id="apiKey" type="password" placeholder="Paste key from bungie.net/en/Application" autocomplete="off">
     <label for="clientId">OAuth client_id (for Sign in with Bungie: lock, pull, apply perks)</label>
     <input id="clientId" type="text" placeholder="Number shown as OAuth client_id on your Bungie app page" autocomplete="off">
+    </div>
     <label>God roll lists (combined)</label>
     <div id="presetList" class="presets"></div>
     <label for="wlCustom">Extra wishlist URLs, one per line (DIM format, optional)</label>
     <textarea id="wlCustom" rows="2" placeholder="https://raw.githubusercontent.com/..."></textarea>
-    <small>The key, client_id and sign-in token are stored only in this browser. Your Bungie app's Origin Header must match this page's address (https://localhost:8443 when using start-server-https.ps1), and its Redirect URL must be https://localhost:8443/</small>
+    <small id="keyHelp">The key, client_id and sign-in token are stored only in this browser. Your Bungie app's Origin Header must be <code id="setOrigin">this site's origin</code> and its Redirect URL must be <code id="setRedirect">this site's address</code>. Use a separate Bungie app for each address you run from (for example localhost and the hosted site).</small>
     <div class="bar" style="margin-top:12px">
       <button class="primary" id="btnSave">Save</button>
       <button class="ghost" id="btnRefresh">Re-download wishlist and manifest</button>
@@ -519,7 +525,11 @@ async function cacheGet(k){ try { const db = await idb(); return await new Promi
 async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
 
 // ---- settings ----
-const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+// Hosted site: config.js (written by the deploy workflow from repo secrets) supplies the shared Bungie app's key and client_id.
+// When it's there it wins over anything saved in this browser; without it (localhost) Settings works as before.
+const SITE_CFG = window.D2RC_CONFIG || {};
+const SHARED_APP = !!(SITE_CFG.apiKey && SITE_CFG.clientId);
+const ls = { get: k => { if (SHARED_APP && (k === 'apiKey' || k === 'clientId')) return SITE_CFG[k]; try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 $('apiKey').value = ls.get('apiKey') || '';
 (function renderPresets(){
   const on = getPresetState();
@@ -531,9 +541,9 @@ $('apiKey').value = ls.get('apiKey') || '';
 $('bungieName').value = ls.get('bungieName') || '';
 $('btnSettings').onclick = () => $('settings').classList.toggle('open');
 $('clientId').value = ls.get('clientId') || '';
+if (SHARED_APP){ $('keyFields').classList.add('hidden'); $('keyHelp').classList.add('hidden'); $('sharedApp').classList.remove('hidden'); }
 $('btnSave').onclick = () => {
-  ls.set('apiKey', $('apiKey').value.trim());
-  ls.set('clientId', $('clientId').value.trim());
+  if (!SHARED_APP){ ls.set('apiKey', $('apiKey').value.trim()); ls.set('clientId', $('clientId').value.trim()); }
   updateAuthUi();
   const before = JSON.stringify(activeLists());
   const s = {}; document.querySelectorAll('[data-preset]').forEach(c => s[c.dataset.preset] = c.checked);
@@ -588,12 +598,15 @@ $('btnAuth').onclick = () => {
   if (auth.valid()){ auth.set(null); updateAuthUi(); render && state.items.length && render(); setStatus('Signed out.'); return; }
   const cid = ls.get('clientId');
   if (!cid){ $('settings').classList.add('open'); setStatus('Add your OAuth client_id in Settings first (from your Bungie app page).', true); return; }
-  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Open the hosted site, or run start-server-https.ps1 and use https://localhost:8443 on this PC.', true); return; }
   const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
   try { sessionStorage.setItem('oauthState', st); } catch {}
   location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
 };
-// Bungie sends the user back to https://localhost:8443/?code=...&state=...
+// Bungie sends the user back to the app's Redirect URL (this folder's index) with ?code=...&state=...
+(() => { const o = $('setOrigin'), r = $('setRedirect'); if (!o || !r) return;
+  const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  o.textContent = location.protocol === 'https:' ? location.origin : 'https://localhost:8443'; r.textContent = location.protocol === 'https:' ? base : 'https://localhost:8443/'; })();
 async function handleOAuthRedirect(){
   const q = new URLSearchParams(location.search);
   const code = q.get('code');

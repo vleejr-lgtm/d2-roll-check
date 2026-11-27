@@ -90,6 +90,7 @@
   @media (max-width:640px){ .shpanel{grid-template-columns:1fr} .shbig{width:100%; height:auto; aspect-ratio:1/1} }
 </style>
 <link rel="stylesheet" href="theme.css">
+<script src="config.js" onerror="this.remove()"></script>
 </head>
 <body>
 <header>
@@ -149,7 +150,11 @@
 /* ===================== shared helpers (same storage as the Weapons page) ===================== */
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+// Hosted site: config.js (written by the deploy workflow from repo secrets) supplies the shared Bungie app's key and client_id.
+// When it's there it wins over anything saved in this browser; without it (localhost) Settings works as before.
+const SITE_CFG = window.D2RC_CONFIG || {};
+const SHARED_APP = !!(SITE_CFG.apiKey && SITE_CFG.clientId);
+const ls = { get: k => { if (SHARED_APP && (k === 'apiKey' || k === 'clientId')) return SITE_CFG[k]; try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
 function toast(msg){
@@ -197,7 +202,7 @@ $('btnAuth').onclick = () => {
   if (auth.valid()){ auth.set(null); updateAuthUi(); setStatus('Signed out.'); return; }
   const cid = ls.get('clientId');
   if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
-  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Start the app with start-server-https.ps1 and open https://localhost:8443/shaders.html', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Open the hosted site, or run start-server-https.ps1 and use https://localhost:8443 on this PC.', true); return; }
   const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
   try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'shaders.html'); } catch {}
   location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
