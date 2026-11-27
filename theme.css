@@ -53,7 +53,12 @@ header .spacer{flex:1}
 header #authStatus{font-size:12px; color:var(--faint); white-space:nowrap}
 header select#charSel{max-width:230px; height:34px; padding:0 10px; font-size:13px}
 header button,header a.navbtn{height:34px; white-space:nowrap}
-@media (max-width:1180px){
+/* 6 tabs plus Pull-to, Postmaster, Activity, Sign out, Settings in a 1440px row: keep it on one line.
+   "Signed in until" moves into the Sign out button's tooltip (stream.js). */
+header #authStatus{display:none}
+header select#charSel{max-width:170px}
+header .tabs a.nav{padding:8px 10px}
+@media (max-width:1320px){
   header{flex-wrap:wrap; row-gap:6px}
   header .tabs{order:3; flex-basis:100%; margin-left:-12px; overflow-x:auto}
 }
@@ -421,3 +426,19 @@ body.streampinned #noticeStack{right:410px}
 .dside .rollbtn:disabled{color:var(--faint); border-style:dashed; font-weight:500; opacity:1}
 .dside .rollbtn.mine{width:100%}
 .rollstat{font-size:12px; color:var(--accent); line-height:1.4}
+
+/* ---- Postmaster panel (stream.js) ---- */
+#btnPM.pmwarn{border-color:rgba(229,83,75,.55); color:#FFB4B0}
+.scount.pmhot{background:var(--trash); color:#fff}
+.pmpanel{z-index:49}
+#pmList{overflow:auto; flex:1; padding:8px 10px 20px}
+.pmchar{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--panel2); padding:10px 12px; margin-bottom:10px}
+.pmhead{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+.pmcount{font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums} .pmcount.hot{color:#FFB4B0; font-weight:700}
+.pmrow{display:flex; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:13px}
+.pmrow:first-of-type{border-top:0}
+.pmrow img,.pmnoimg{width:32px; height:32px; border-radius:4px; flex:none; background:#0A0C0F}
+.pmname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pmone,.pmall{font-size:12px; padding:3px 10px}
+.pmempty{font-size:12px; padding:2px 0}
+body.streampinned .pmpanel{right:390px}

@@ -11,6 +11,7 @@ A local page that grades your Destiny 2 weapons against several community god ro
 | armor.html | Armor triage: ranks every armor piece keep or trash (open from the header) |
 | today.html | Today: this week's rotations, featured activities, weekly challenges and everything your character can play |
 | vendors.html | Vendors and Xûr: what's worth buying this week, where each vendor is, and when stock rotates |
+| vault.html | Vault: everything you own across the vault, characters and postmaster, with search and quick moves |
 | shaders.html | Shaders: every shader in the game, which ones you own, and where to get the rest |
 | theme.css | Shared look for every page: colors, header, spacing, cards. Keep it next to the .html files |
 | stream.js | The Activity stream, shared by all three pages. Keep it next to the .html files |
@@ -36,6 +37,8 @@ One time setup (repo owner):
 The key can still be read from the live site in a browser, which is how every Bungie web app works. It only works from the app's Origin, and nobody can touch an account without signing in with it.
 
 Tags, notes and sign-in are saved per browser, so each friend's tags stay their own.
+
+Bungie sign-ins last about an hour. After you've signed in once, the site renews it for you: when it runs out it takes a quick trip through bungie.net and comes straight back (no Approve screen, as long as you're still logged in to bungie.net). It never does this in the middle of a scan or in a background tab. Sign out turns it off.
 
 ## One time setup (run it on your PC)
 
@@ -109,6 +112,18 @@ Needs Sign in with Bungie (Bungie only shares vendor stock with you signed in), 
 * **Exotic Cipher** items are hidden by default. Untick the box to see them.
 * **Zavala and Shaxx** have their own panel. It tells you straight out what gear to grab from each one. If one of them only has random rolls that week (Shaxx often does), it says so and tells you to skip him unless you're farming a specific roll.
 * **Xûr** has his own panel at the top: arrives every Friday at reset (17:00 UTC), leaves at the Tuesday reset. His arrival follows that schedule, because his Strange Coin shop at Eternity shows up in Bungie's data all week. While he's here it lists his gear, exotics and engrams first (bounties and materials go in a fold). When he's gone it counts down to his next visit, and his all-week coin shop sits in a fold. The page reloads vendors by itself when stock rotates or Xûr arrives.
+
+## Vault (vault.html)
+
+* Everything you own in one list: vault, each character, what's equipped and the postmaster, with totals at the top.
+* Search with plain words, and every word has to match: `hand cannon`, `exotic rocket`, `t5 titan`, `vault locked`. Press `/` to jump to the search box.
+* Filter by where it is and what it is (weapons, armor, mods and shaders, materials, cosmetics, quests), and sort by type, name, power, rarity or location.
+* Signed in, each weapon and armor piece has Pull (to the character in the Pull to menu), Vault and Lock buttons.
+
+## Postmaster (every page)
+
+* The 📬 button in the header shows how many lost items are waiting across your characters, and turns red when one of them is close to the 21 item limit.
+* Open it to pull one item or everything for a character. If a character's inventory is full, it stops and tells you.
 
 ## Shaders (shaders.html)
 
