@@ -1044,47 +1044,107 @@ async function entMany(type, hashes){
 
 // ---- weapon detail view ----
 const CAT_PERKS = 4241085061, CAT_INTRINSIC = 3956125808;
-const D = { item: null, data: null, preview: {}, base: {} };
+const D = { item: null, data: null, preview: {}, base: {}, extra: {}, enh: ls.get('enhPerks') === '1' };   // extra: mod/masterwork picks, stats preview only (never applied in game)
 const plugName = h => (D.data && D.data.plugs[h] && D.data.plugs[h].displayProperties.name) || nameOf(h);
+
+// Which sockets are what: the "weapon perks" category can also hold empty, enhancement and masterwork
+// sockets, so each socket is classified by what its socket type accepts and what its plugs are.
+const NOT_PERK_CAT = /masterwork|shader|ornament|tracker|memento|weapon\.mod|v400\.weapon\.mod|enhancement|crafting|deepsight|catalyst|empty|transmog|weapon_level|level_tier/i;
+const NOT_PERK_TYPE = /masterwork|tracker|memento|ornament|shader|catalyst|weapon mod|^mod$/i;
+const isPerkPlug = p => {
+  if (!p || !p.displayProperties || !p.displayProperties.icon) return false;
+  const n = p.displayProperties.name || '', t = p.itemTypeDisplayName || '', pc = (p.plug && p.plug.plugCategoryIdentifier) || '';
+  return !!n && !/^(empty|default|no )/i.test(n) && !NOT_PERK_CAT.test(pc) && !NOT_PERK_TYPE.test(t);
+};
+const plugCat = p => (p && p.plug && p.plug.plugCategoryIdentifier) || '';
+const isModPlug = p => /weapon\.mod_|v400\.weapon\.mod/i.test(plugCat(p)) || /^weapon mod/i.test((p && p.itemTypeDisplayName) || '');
+const isMwPlug = p => /masterworks\.stat|masterwork/i.test(plugCat(p)) && !/tracker|catalyst/i.test(plugCat(p));
+const AMMO = { 1: 'Primary', 2: 'Special', 3: 'Heavy' };
 
 async function loadDetail(hash, item){
   const def = await ent('DestinyInventoryItemDefinition', hash);
   const cats = (def.sockets && def.sockets.socketCategories) || [];
   const entries = (def.sockets && def.sockets.socketEntries) || [];
-  const perkIdx = (cats.find(c => c.socketCategoryHash === CAT_PERKS) || {}).socketIndexes || [];
+  const perkIdx0 = (cats.find(c => c.socketCategoryHash === CAT_PERKS) || {}).socketIndexes || [];
   const intrIdx = (cats.find(c => c.socketCategoryHash === CAT_INTRINSIC) || {}).socketIndexes || [];
-  const sets = await entMany('DestinyPlugSetDefinition', perkIdx.flatMap(k => [entries[k].randomizedPlugSetHash, entries[k].reusablePlugSetHash]));
-  const columns = perkIdx.map(k => {
+  // socket types tell us which socket takes weapon mods and which takes the masterwork
+  const stypes = await entMany('DestinySocketTypeDefinition', entries.map(e => e.socketTypeHash).filter(Boolean));
+  const accepts = k => ((stypes[(entries[k] || {}).socketTypeHash] || {}).plugWhitelist || []).map(w => w.categoryIdentifier || '').join(' ');
+  let modIdx = entries.findIndex((e, k) => /weapon\.mod_|v400\.weapon\.mod/i.test(accepts(k)));
+  let mwIdx = entries.findIndex((e, k) => /masterworks\.stat/i.test(accepts(k)));
+  const extraIdx = [modIdx, mwIdx].filter(k => k >= 0);
+  const sets = await entMany('DestinyPlugSetDefinition', perkIdx0.concat(extraIdx).flatMap(k => [entries[k].randomizedPlugSetHash, entries[k].reusablePlugSetHash]));
+  const poolOf = (k, perk) => {
     const e = entries[k];
     const ps = sets[e.randomizedPlugSetHash] || sets[e.reusablePlugSetHash];
-    let pool = ps ? ps.reusablePlugItems.filter(p => p.currentlyCanRoll !== false).map(p => p.plugItemHash)
+    let pool = ps ? ps.reusablePlugItems.filter(p => !perk || p.currentlyCanRoll !== false).map(p => p.plugItemHash)
       : (e.reusablePlugItems || []).map(p => p.plugItemHash);
     if (!pool.length && e.singleInitialItemHash) pool = [e.singleInitialItemHash];
-    if (item){   // make sure this copy's own perks are in the column
+    if (item){   // make sure this copy's own plugs are in the list
       for (const h of (item.owned[k] || [])) if (!pool.includes(h)) pool.push(h);
       if (item.cur[k] && !pool.includes(item.cur[k])) pool.push(item.cur[k]);
     }
-    return { socketIndex: k, pool: [...new Set(pool)] };
-  }).filter(c => c.pool.length);
-  const plugHashes = columns.flatMap(c => c.pool).concat(item ? Object.values(item.cur) : entries.map(e => e.singleInitialItemHash))
+    return [...new Set(pool)];
+  };
+  const rawCols = perkIdx0.map(k => ({ socketIndex: k, pool: poolOf(k, true) }));
+  const modPool = modIdx >= 0 ? poolOf(modIdx) : [], mwPool = mwIdx >= 0 ? poolOf(mwIdx) : [];
+  const plugHashes = rawCols.flatMap(c => c.pool).concat(modPool, mwPool).concat(item ? Object.values(item.cur) : entries.map(e => e.singleInitialItemHash))
     .concat(intrIdx.map(k => entries[k].singleInitialItemHash));
   const plugs = await entMany('DestinyInventoryItemDefinition', plugHashes);
+  // no socket type info: fall back to what the copy has in each socket
+  if (modIdx < 0 && item) modIdx = +(Object.keys(item.cur).find(k => isModPlug(plugs[item.cur[k]])) ?? -1);
+  if (mwIdx < 0 && item) mwIdx = +(Object.keys(item.cur).find(k => isMwPlug(plugs[item.cur[k]])) ?? -1);
+  // perk columns: only real perks (barrel, magazine, traits, origin), never mod / masterwork / empty sockets
+  const columns = rawCols.filter(c => c.socketIndex !== modIdx && c.socketIndex !== mwIdx)
+    .map(c => ({ socketIndex: c.socketIndex, pool: c.pool.filter(h => isPerkPlug(plugs[h])) })).filter(c => c.pool.length);
   const sg = def.stats && def.stats.statGroupHash ? await ent('DestinyStatGroupDefinition', def.stats.statGroupHash) : null;
   const scaled = sg ? sg.scaledStats : [];
   const statDefs = await entMany('DestinyStatDefinition', scaled.map(s => s.statHash).concat(plugHashes.flatMap(h => ((plugs[h] || {}).investmentStats || []).map(s => s.statTypeHash))));
-  // collapse enhanced/normal versions of a perk into one icon, preferring the one this copy has
+  // collapse enhanced/normal versions of a perk into one icon; keep both so the Enhanced toggle can swap them
+  let enhAvail = false;
   for (const c of columns){
     const byName = new Map();
     for (const h of c.pool){
       const p = plugs[h]; if (!p) continue;
       const k = normName(p.displayProperties.name);
+      const enh = /enhanced/i.test(p.itemTypeDisplayName || '');
       const mineHas = item && ((item.owned[c.socketIndex] || []).includes(h) || item.cur[c.socketIndex] === h);
-      const prev = byName.get(k);
-      if (!prev || (mineHas && !prev.mine) || (!prev.mine && /enhanced/i.test(plugs[prev.h].itemTypeDisplayName || '') && !/enhanced/i.test(p.itemTypeDisplayName || ''))) byName.set(k, { h, mine: !!mineHas });
+      const v = byName.get(k) || { normal: 0, enhanced: 0, pick: 0, mine: false };
+      if (enh) v.enhanced = v.enhanced || h; else v.normal = v.normal || h;
+      if (!v.pick || (mineHas && !v.mine) || (!v.mine && v.pick === v.enhanced && !enh)) { v.pick = h; v.mine = v.mine || !!mineHas; }
+      byName.set(k, v);
     }
-    c.opts = [...byName.values()].map(v => v.h);
+    const vs = [...byName.values()];
+    c.opts = vs.map(v => v.pick);
+    c.optsEnh = vs.map(v => (v.mine ? v.pick : v.enhanced || v.pick));
+    if (vs.some(v => v.enhanced && v.normal)) enhAvail = true;
   }
-  return { def, columns, plugs, scaled, statDefs, intrinsic: intrIdx.map(k => plugs[entries[k].singleInitialItemHash]).filter(Boolean) };
+  // column headers: Barrel / Magazine / Perk 1 / Perk 2 / Origin (or the weapon's own names, e.g. Bowstring, Blade)
+  let traitN = 0;
+  for (const c of columns){
+    const t = ((plugs[c.opts[0]] || {}).itemTypeDisplayName || '').replace(/^enhanced\s+/i, '');
+    c.label = /origin/i.test(t) ? 'Origin' : /trait/i.test(t) ? 'Perk ' + (++traitN) : (t || 'Perk');
+  }
+  // weapon mods: one per name, real mods only
+  const seenMod = new Set();
+  const mods = modPool.filter(h => { const p = plugs[h]; if (!p || !isModPlug(p) || !p.displayProperties.icon || /^(empty|default)/i.test(p.displayProperties.name)) return false;
+    const k = normName(p.displayProperties.name); if (seenMod.has(k)) return false; seenMod.add(k); return true; })
+    .sort((x, y) => (plugs[x].displayProperties.name || '').localeCompare(plugs[y].displayProperties.name || ''));
+  // masterworks: the strongest option per stat (+10 at full masterwork)
+  const mwBest = new Map();
+  for (const h of mwPool){
+    const p = plugs[h]; if (!p || !isMwPlug(p)) continue;
+    const st = (p.investmentStats || []).filter(s => s.value > 0).sort((a, b) => b.value - a.value)[0];
+    if (!st) continue;
+    const prev = mwBest.get(st.statTypeHash);
+    if (!prev || st.value > prev.val) mwBest.set(st.statTypeHash, { h, stat: st.statTypeHash, val: st.value });
+  }
+  const mws = [...mwBest.values()].sort((a, b) => ((statDefs[a.stat] || {}).displayProperties || {}).name > ((statDefs[b.stat] || {}).displayProperties || {}).name ? 1 : -1);
+  let dmg = '';
+  if (def.defaultDamageTypeHash){ try { dmg = ((await ent('DestinyDamageTypeDefinition', def.defaultDamageTypeHash)).displayProperties || {}).name || ''; } catch {} }
+  const ammo = AMMO[(def.equippingBlock || {}).ammoType] || '';
+  return { def, columns, plugs, scaled, statDefs, intrinsic: intrIdx.map(k => plugs[entries[k].singleInitialItemHash]).filter(Boolean),
+    modIdx, mods, mwIdx, mws, enhAvail, dmg, ammo };
 }
 
 function interp(v, st){
@@ -1110,7 +1170,7 @@ function calcStats(selection){
 }
 
 async function openDetail(item, hash){
-  D.item = item; D.preview = {}; D.data = null;
+  D.item = item; D.preview = {}; D.extra = {}; D.data = null;
   $('detail').classList.remove('hidden');
   $('dbody').innerHTML = '<div class="dloading">Loading perks and stats from Bungie...</div>';
   try {
@@ -1140,10 +1200,11 @@ function godPicks(hash){
 }
 
 function renderDetail(){
-  const { def, columns, plugs, intrinsic } = D.data;
+  const { def, columns, plugs, intrinsic, modIdx, mods, mwIdx, mws, enhAvail, dmg, ammo } = D.data;
   const item = D.item;
   const sel = Object.assign({}, D.base, D.preview);
-  const baseStats = calcStats(D.base), newStats = calcStats(sel);
+  const statSel = Object.assign({}, sel, D.extra);   // mods and masterwork change the preview, not what gets applied
+  const baseStats = calcStats(D.base), newStats = calcStats(statSel);
   const picks = godPicks(def.hash);
   const mine = myRolls()[normName(def.displayProperties.name)];
   const mineNames = new Set(mine ? mine.names : []);
@@ -1157,64 +1218,100 @@ function renderDetail(){
       (d ? '<i class="' + (d > 0 ? 'up' : 'down') + '" style="left:' + pct(lo) + '%;width:' + (pct(hi) - pct(lo)) + '%"></i>' : '') + '</div></div>';
   }).join('');
   const colHtml = columns.map(c => {
-    const maxPick = Math.max(0, ...c.opts.map(h => picks.get(normName(plugName(h))) || 0));
-    return '<div class="pcol">' + c.opts.map(h => {
+    const opts = D.enh ? c.optsEnh : c.opts;
+    const maxPick = Math.max(0, ...opts.map(h => picks.get(normName(plugName(h))) || 0));
+    return '<div class="pcol"><div class="phead">' + esc(c.label) + '</div>' + opts.map(h => {
       const p = plugs[h]; if (!p) return '';
       const k = normName(p.displayProperties.name);
       const owned = item && ((item.owned[c.socketIndex] || []).some(x => normName(plugName(x)) === k) || normName(plugName(item.cur[c.socketIndex])) === k);
       const selected = normName(plugName(sel[c.socketIndex])) === k;
       const pc = picks.get(k) || 0;
       const isPick = pc && maxPick && pc >= maxPick * 0.25;
-      return '<button class="perk-o' + (selected ? ' sel' : '') + (owned ? ' own' : '') + (item && !owned ? ' notown' : '') + '" data-col="' + c.socketIndex + '" data-plug="' + h + '">' +
+      const enh = /enhanced/i.test(p.itemTypeDisplayName || '');
+      return '<button class="perk-o' + (selected ? ' sel' : '') + (owned ? ' own' : '') + (item && !owned ? ' notown' : '') + (enh ? ' enh' : '') + '" data-col="' + c.socketIndex + '" data-plug="' + h + '">' +
         '<img src="https://www.bungie.net' + esc(p.displayProperties.icon) + '" alt="">' +
         (selected ? '<b class="chk">✓</b>' : '') + (mineNames.has(k) ? '<b class="star" title="In MY god roll">★</b>' : isPick ? '<b class="thumb" title="Recommended in the god roll lists">👍</b>' : '') +
         '</button>';
     }).join('') + '</div>';
   }).join('');
+  // weapon mods (stats preview only)
+  const curMod = modIdx >= 0 ? (modIdx in D.extra ? D.extra[modIdx] : D.base[modIdx]) : 0;
+  const modHtml = modIdx >= 0 && mods.length ? '<div class="dsub"><h4>Mods <small>click to preview stats</small></h4><div class="modgrid">' +
+    mods.map(h => { const p = plugs[h]; const on = curMod && normName(plugName(curMod)) === normName(p.displayProperties.name);
+      return '<button class="mod-o' + (on ? ' sel' : '') + '" data-mod="' + h + '" title="' + esc(p.displayProperties.name) + '"><img src="https://www.bungie.net' + esc(p.displayProperties.icon) + '" alt=""></button>'; }).join('') +
+    '</div></div>' : '';
+  // masterwork list (stats preview only)
+  const curMw = mwIdx >= 0 ? (mwIdx in D.extra ? D.extra[mwIdx] : D.base[mwIdx]) : 0;
+  const curMwStat = curMw && plugs[curMw] ? ((plugs[curMw].investmentStats || []).filter(s => s.value > 0).sort((a, b) => b.value - a.value)[0] || {}).statTypeHash : 0;
+  const mwHtml = mwIdx >= 0 && mws.length ? '<div class="mwlist"><div class="dim-lbl">Masterwork</div>' +
+    '<button class="mw-o' + (!curMwStat ? ' sel' : '') + '" data-mw="0">No Masterwork</button>' +
+    mws.map(m => '<button class="mw-o' + (curMwStat === m.stat ? ' sel' : '') + '" data-mw="' + m.h + '"><span>' + esc(((D.data.statDefs[m.stat] || {}).displayProperties || {}).name || 'Stat') + '</span><b>+' + m.val + '</b></button>').join('') +
+    '</div>' : '';
   const changed = Object.keys(D.preview).filter(k => normName(plugName(D.preview[k])) !== normName(plugName(D.base[k])));
+  const extraChanged = Object.keys(D.extra).length > 0;
   const notOwned = item ? changed.filter(k => !((item.owned[k] || []).some(x => normName(plugName(x)) === normName(plugName(D.preview[k]))))) : [];
   const r = item && item.r;
+  // header: Hand Cannon · Adaptive Frame · Kinetic · Primary, plus where this copy is
+  const metaBits = [def.itemTypeDisplayName, intrinsic[0] && intrinsic[0].displayProperties.name, dmg, ammo].filter(Boolean);
+  const where = item ? [item.loc, item.power ? 'Power ' + item.power : '', item.gearTier ? 'Tier ' + item.gearTier : '', item.locked ? '🔒 Locked' : ''].filter(Boolean).join(' · ') : 'Not in inventory';
   $('dbody').innerHTML =
     '<div class="dhead" style="--shot:url(' + (def.screenshot ? 'https://www.bungie.net' + esc(def.screenshot) : '') + ')">' +
       '<img class="dicon" src="https://www.bungie.net' + esc(def.displayProperties.icon) + '" alt="">' +
       '<div><div class="dname">' + esc(def.displayProperties.name) + (r ? ' <span class="badge ' + r.verdict + '">' + LABEL[r.verdict] + '</span>' : '') + '</div>' +
-      '<div class="meta">' + esc(def.itemTypeDisplayName || '') + (intrinsic[0] ? ' · ' + esc(intrinsic[0].displayProperties.name) : '') +
-        (item ? ' · ' + esc(item.loc) + (item.power ? ' · Power ' + item.power : '') + (item.gearTier ? ' · Tier ' + item.gearTier : '') + (item.locked ? ' · 🔒 Locked' : '') : ' · not one of your copies') + '</div>' +
-      (r ? '<div class="reason">' + esc(r.reason) + (item.score != null ? ' · Score ' + item.score : '') + (item.aegis ? ' · Aegis ' + item.aegis : '') + '</div>' : '') +
+      '<div class="meta">' + metaBits.map(esc).join(' · ') + '</div>' +
+      '<div class="dstatus"><span class="where' + (item ? '' : ' none') + '">' + esc(where) + '</span>' +
+        (r ? '<span class="dim-lbl">' + esc(r.reason) + (item.score != null ? ' · Score ' + item.score : '') + (item.aegis ? ' · Aegis ' + item.aegis : '') + '</span>' : '') + '</div>' +
       '</div><button class="ghost dclose" id="dClose">✕</button></div>' +
-    '<div class="dgrid"><div class="dstats"><h4>Stats' + (changed.length ? ' <small>(preview)</small>' : '') + '</h4>' + statHtml + '</div>' +
-      '<div class="dperks"><h4>Perks <small>click to preview · ✓ selected' + (item ? ' · bright = on this copy' : '') + ' · 👍 list pick · ★ my god roll</small></h4><div class="pcols">' + colHtml + '</div>' +
+    '<div class="dgrid"><div class="dstats"><h4>Stats' + (changed.length || extraChanged ? ' <small>(preview)</small>' : '') + '</h4>' + statHtml + '</div>' +
+      '<div class="dperks"><h4>Perks <small>click to preview · ✓ selected' + (item ? ' · bright = on this copy' : '') + ' · 👍 list pick · ★ my god roll</small>' +
+        (enhAvail ? '<button class="enhtog' + (D.enh ? ' on' : '') + '" id="dEnh" title="Show the enhanced version of each perk where the weapon has one">Enhanced</button>' : '') + '</h4>' +
+        '<div class="pcols">' + colHtml + '</div>' +
       (changed.length && notOwned.length ? '<div class="swapnote">This copy does not have: ' + notOwned.map(k => esc(plugName(D.preview[k]))).join(', ') + '. Those can only be saved as your god roll, not applied.</div>' : '') +
+      modHtml +
       '</div>' +
-      '<div class="dside">' +
+      '<div class="dside">' + mwHtml +
         '<button class="primary" id="dSave">★ Save as My god roll</button>' +
         (mine ? '<button class="ghost" id="dClear">Clear my god roll</button>' : '') +
-        (changed.length ? '<button class="ghost" id="dReset">Reset to ' + (item ? 'current perks' : 'default') + '</button>' : '') +
+        (changed.length || extraChanged ? '<button class="ghost" id="dReset">Reset to ' + (item ? 'current perks' : 'default') + '</button>' : '') +
         (item ? '<button class="ghost needauth apply" id="dApply"' + (!changed.length || notOwned.length ? ' disabled title="Pick perks this copy has, different from the current ones"' : '') + '>Apply selected perks in game</button>' +
           '<button class="ghost needauth" id="dLock">' + (item.locked ? '🔒 Unlock' : '🔓 Lock') + '</button>' +
           (item.equipped ? '<button class="ghost needauth" id="dUneq">Unequip (swap in another weapon)</button>' : (item.charId !== selChar() ? '<button class="ghost needauth" id="dPull">Pull to character</button>' : '')) : '') +
         (item ? '<div class="dim-lbl">DIM tag</div>' + tagBoxes(item.id, tagFor(item)) : '') +
         (item ? '<div class="dim-lbl">My notes</div><textarea id="dNote" rows="4" maxlength="1000" placeholder="Anything about this copy, e.g. keep for raid DPS, swap to Rolling Storm">' + esc(noteFor(item.id)) + '</textarea>' +
           '<button class="tagapply" id="dNoteSave" disabled>Save note</button>' : '') +
-        '<div class="dimhelp">Applying perks only works while your character is in orbit, a social space, or offline. Lock, Pull and Apply need Sign in with Bungie.</div>' +
+        '<div class="dimhelp">Applying perks only works while your character is in orbit, a social space, or offline. Mod and masterwork picks preview stats only. Lock, Pull and Apply need Sign in with Bungie.</div>' +
       '</div></div>' +
     '<div id="dtip" class="dtip hidden"></div>';
   const tip = $('dtip');
+  const showTip = (b, h) => {
+    const p = plugs[h]; if (!p) return;
+    const st = (p.investmentStats || []).filter(s => !s.isConditionallyActive && s.value && D.data.statDefs[s.statTypeHash]).map(s =>
+      '<div class="' + (s.value > 0 ? 'up' : 'down') + '">' + (s.value > 0 ? '+' : '') + s.value + ' ' + esc(D.data.statDefs[s.statTypeHash].displayProperties.name) + '</div>').join('');
+    tip.innerHTML = '<b>' + esc(p.displayProperties.name) + '</b><div class="meta">' + esc(p.itemTypeDisplayName || '') + '</div><p>' + esc(p.displayProperties.description || '') + '</p>' + (st ? '<div class="tstats">' + st + '</div>' : '');
+    const rc = b.getBoundingClientRect(), host = $('dbody').getBoundingClientRect();
+    tip.style.left = Math.max(0, Math.min(rc.right - host.left + 8, host.width - 300)) + 'px'; tip.style.top = (rc.top - host.top) + 'px';
+    tip.classList.remove('hidden');
+  };
   $('dbody').querySelectorAll('.perk-o').forEach(b => {
     b.onclick = () => { const col = b.dataset.col, h = +b.dataset.plug; if (normName(plugName(D.base[col])) === normName(plugName(h))) delete D.preview[col]; else D.preview[col] = h; renderDetail(); };
-    b.onmouseenter = () => {
-      const p = plugs[b.dataset.plug]; if (!p) return;
-      const st = (p.investmentStats || []).filter(s => !s.isConditionallyActive && s.value && D.data.statDefs[s.statTypeHash]).map(s =>
-        '<div class="' + (s.value > 0 ? 'up' : 'down') + '">' + (s.value > 0 ? '+' : '') + s.value + ' ' + esc(D.data.statDefs[s.statTypeHash].displayProperties.name) + '</div>').join('');
-      tip.innerHTML = '<b>' + esc(p.displayProperties.name) + '</b><div class="meta">' + esc(p.itemTypeDisplayName || '') + '</div><p>' + esc(p.displayProperties.description || '') + '</p>' + (st ? '<div class="tstats">' + st + '</div>' : '');
-      const rc = b.getBoundingClientRect(), host = $('dbody').getBoundingClientRect();
-      tip.style.left = Math.min(rc.right - host.left + 8, host.width - 300) + 'px'; tip.style.top = (rc.top - host.top) + 'px';
-      tip.classList.remove('hidden');
-    };
+    b.onmouseenter = () => showTip(b, b.dataset.plug);
     b.onmouseleave = () => tip.classList.add('hidden');
   });
+  $('dbody').querySelectorAll('.mod-o').forEach(b => {
+    b.onclick = () => { const h = +b.dataset.mod; const cur = modIdx in D.extra ? D.extra[modIdx] : D.base[modIdx];
+      if (cur && normName(plugName(cur)) === normName(plugName(h))) D.extra[modIdx] = 0; else D.extra[modIdx] = h;   // click again to take it off
+      if (D.extra[modIdx] === (D.base[modIdx] || 0)) delete D.extra[modIdx];
+      renderDetail(); };
+    b.onmouseenter = () => showTip(b, b.dataset.mod);
+    b.onmouseleave = () => tip.classList.add('hidden');
+  });
+  $('dbody').querySelectorAll('.mw-o').forEach(b => {
+    b.onclick = () => { D.extra[mwIdx] = +b.dataset.mw; if (D.extra[mwIdx] === (D.base[mwIdx] || 0)) delete D.extra[mwIdx]; renderDetail(); };
+    if (+b.dataset.mw){ b.onmouseenter = () => showTip(b, b.dataset.mw); b.onmouseleave = () => tip.classList.add('hidden'); }
+  });
+  if ($('dEnh')) $('dEnh').onclick = () => { D.enh = !D.enh; ls.set('enhPerks', D.enh ? '1' : '0'); renderDetail(); };
   $('dClose').onclick = closeDetail;
-  if ($('dReset')) $('dReset').onclick = () => { D.preview = {}; renderDetail(); };
+  if ($('dReset')) $('dReset').onclick = () => { D.preview = {}; D.extra = {}; renderDetail(); };
   $('dSave').onclick = () => {
     // save the selected perk in every column that has a real choice (skips fixed and origin columns)
     const hashes = columns.filter(c => c.opts.length > 1 && !/origin/i.test((plugs[c.opts[0]] || {}).itemTypeDisplayName || '')).map(c => sel[c.socketIndex]).filter(Boolean);
