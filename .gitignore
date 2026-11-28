@@ -6,3 +6,4 @@ Thumbs.db
 config.js
 tests/out/
 __pycache__/
+tests/*.png

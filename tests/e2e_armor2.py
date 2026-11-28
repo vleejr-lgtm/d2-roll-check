@@ -62,7 +62,7 @@ async def main():
       t=(await c.inner_text()).split('\n'); print('--', ' | '.join(t[:7])[:230])
     print('footer:', (await pg.inner_text('#sitefoot'))[:160])
     # filters: Hunter + set picker
-    await pg.click('#fCls .chip[data-val="1"]'); await pg.click('#setInput'); await pg.click('.setopt[data-set="AION Adapter"]')
+    await pg.click('#fCls .chip[data-val="1"]'); await pg.click('#setInput'); await pg.click('.setopt[data-set="AION Adapter"]'); await pg.keyboard.press('Escape')
     print('filter count:', await pg.inner_text('#fCount'), [ (await c.inner_text()).split('\n')[0] for c in await pg.query_selector_all('.card')])
     print('gear to get:', (await pg.inner_text('#getBody'))[-500:].replace('\n',' | '))
     await pg.click('#fReset')

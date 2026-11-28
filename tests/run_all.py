@@ -35,13 +35,15 @@ def link_paths():
 def run(path, timeout=420):
     t0 = time.time()
     try:
-        out = subprocess.run([sys.executable, path], capture_output=True, text=True, timeout=timeout, cwd=HERE)
+        out = subprocess.run([sys.executable, path], capture_output=True, text=True, timeout=timeout, cwd=os.path.join(HERE, 'out'))
         text = out.stdout + out.stderr
     except subprocess.TimeoutExpired as e:
         return path, False, 'timed out after %ds' % timeout, time.time() - t0
     lines = [l for l in text.splitlines() if l.startswith('errors')]
     ok = 'Traceback' not in text and bool(lines) and lines[-1].strip() == 'errors []'
-    why = '' if ok else (lines[-1] if lines else text.strip().splitlines()[-1] if text.strip() else 'no output')
+    # on failure keep the end of the output (Playwright call log, traceback), so CI logs show what went wrong
+    tail = '\n'.join('        | ' + l for l in text.strip().splitlines()[-30:])
+    why = '' if ok else ((lines[-1] if lines else 'crashed') + '\n' + tail)
     return path, ok, why, time.time() - t0
 
 def main():
@@ -57,7 +59,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(jobs) as ex:
         for path, ok, why, secs in ex.map(run, tests):
             name = os.path.basename(path)
-            print(('PASS ' if ok else 'FAIL ') + name.ljust(26) + ('%5.0fs' % secs) + ('' if ok else '  ' + why[:300]), flush=True)
+            print(('PASS ' if ok else 'FAIL ') + name.ljust(26) + ('%5.0fs' % secs) + ('' if ok else '  ' + why), flush=True)
             if not ok:
                 failed.append(name)
     # a page test can time out when several browsers share a small machine: run failures again, one at a time
@@ -67,7 +69,7 @@ def main():
         still = []
         for name in failed:
             path, ok, why, secs = run(os.path.join(HERE, name))
-            print(('PASS ' if ok else 'FAIL ') + name.ljust(26) + ('%5.0fs' % secs) + ('  (flaky: passed on retry)' if ok else '  ' + why[:300]), flush=True)
+            print(('PASS ' if ok else 'FAIL ') + name.ljust(26) + ('%5.0fs' % secs) + ('  (flaky: passed on retry)' if ok else '  ' + why), flush=True)
             (flaky if ok else still).append(name)
         failed = still
     print('\n%d tests, %d failed%s%s' % (len(tests), len(failed), (': ' + ', '.join(failed)) if failed else '', ('; passed on retry: ' + ', '.join(flaky)) if flaky else ''))
