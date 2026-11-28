@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2 Roll Check · Tower</title>
+<style>
+  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340; --text:#e6e9ee; --dim:#8b95a5;
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body:not(.authed) .needauth{display:none!important}
+  .hidden{display:none!important}
+  .modal{position:fixed;inset:0;background:rgba(5,7,10,.78);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}
+  .authbanner{display:flex;gap:14px;align-items:center;justify-content:center;background:#3a2a10;border-bottom:1px solid #6b4d16;color:#f0d08a;padding:9px 16px;font-size:13.5px}
+  .authbanner.soon{background:#1f2a36;border-color:#2b4f6b;color:#9fc6ef}
+  .stream{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:100%;background:#12161c;border-left:1px solid var(--line);z-index:48;display:flex;flex-direction:column;box-shadow:-10px 0 30px #0009}
+  .stream-head{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  #streamList{overflow:auto;flex:1;padding:8px 10px 20px}
+  .sev{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--panel)}
+  .sev.info{color:var(--dim)} .sev.gone{color:#c9d1db}
+  .sev.drop{display:flex;gap:10px} .sev.drop img{width:44px;height:44px;border-radius:4px;flex:none;background:#000}
+  .sev.unseen{border-color:#2fd3c8}
+  .sb-body{flex:1;min-width:0} .sb-top{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .sw{float:right;color:var(--dim);font-size:11px;margin-left:8px}
+  .sloc{margin-top:3px;color:#c9d1db} .sloc.pm{color:#ffd27a;font-weight:600}
+  .sbtn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .sbtn button,.sbtn a{background:none;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;text-decoration:none}
+  .sbtn button:hover,.sbtn a:hover{color:var(--text)}
+  .sb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:3px;white-space:nowrap;background:#3a4656;color:#fff}
+  .sb-god{background:#e8b84a;color:#1a1300} .sb-close{background:#4aa3e8;color:#041320} .sb-trash{background:#d9534f}
+  .sb-exotic{background:#ceae33;color:#1a1300} .sb-keep{background:#3fb37f;color:#04140b} .sb-legacy{background:#c98a2e;color:#1a1000} .sb-review{background:#4aa3e8;color:#041320}
+  .scount{background:#2fd3c8;color:#04201e;border-radius:999px;padding:0 6px;font-size:11px;margin-left:4px}
+  .eqbadge.pm{color:#9fe7ff;background:#10303a;border-color:#2b5f6b}
+  body.streampinned{padding-right:390px}
+  body.streampinned .stream{box-shadow:none}
+  body.streampinned .bulkbar{left:calc((100% - 390px) / 2)}
+  body.streampinned .toast{left:calc((100% - 390px) / 2)}
+  body.streampinned .modal{right:390px}
+  #streamPin.on{color:#2fd3c8;border-color:#2fd3c8}
+  header{flex-wrap:wrap;row-gap:8px} header h1,header .tab,header button,header select,header #authStatus{white-space:nowrap}
+  .toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);background:var(--keep);color:#03140c;padding:8px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+  .toast.show{opacity:1}
+  .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
+  .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
+  #charSel{padding:6px 8px;font-size:13px}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  .sb-new{background:#2fd3c8;color:#04201e}
+  /* ---- tower page ---- */
+  .twtools{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:12px 16px; margin-bottom:14px}
+  .twtools .spacer{flex:1}
+  .twlegend{display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--dim)}
+  .twlegend span{display:inline-flex; align-items:center; gap:6px}
+  .lg{width:12px; height:12px; border-radius:50%; display:inline-block; border:2px solid #5d7f6c}
+  .lg.glow{border-color:#9dffb8; box-shadow:0 0 8px 2px #5dff8f99} .lg.new{background:#2fd3c8; border-color:#2fd3c8; width:8px; height:8px} .lg.block{border-color:#E5534B}
+  .twmap{position:relative; width:100%; aspect-ratio:16/9; min-height:420px; border:1px solid var(--line2); border-radius:var(--radius); overflow:hidden;
+    background:radial-gradient(ellipse at 45% 70%, #16302366, transparent 60%), radial-gradient(ellipse at 80% 30%, #12283066, transparent 55%), #0a1310}
+  .twmap svg{position:absolute; inset:0; width:100%; height:100%}
+  .twmap .zone{fill:#13241b; stroke:#3b5b48; stroke-width:.25} .twmap .zone.alt{fill:#102019}
+  .twmap .zlbl{fill:#a9c7b4; font:600 2.1px Georgia, serif; letter-spacing:.35px}
+  .twmap .grid{stroke:#1d3326; stroke-width:.08}
+  .twpin{position:absolute; transform:translate(-50%,-50%); width:46px; height:52px; display:grid; place-items:center; cursor:pointer; border:0; padding:0; background:none; z-index:2}
+  .twpin .shield{width:40px; height:46px; display:grid; place-items:center; background:#1b3a2a; border:2px solid #6f9a80;
+    clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%); transition:transform .12s}
+  .twpin .shield img{width:30px; height:30px; margin-top:-6px; filter:drop-shadow(0 1px 1px #000)}
+  .twpin .shield .ini{color:#e6f5ea; font:700 13px Georgia, serif; margin-top:-6px}
+  .twpin:hover .shield, .twpin.on .shield{transform:scale(1.12); border-color:var(--accent)}
+  .twpin.glow::before{content:""; position:absolute; inset:-10px; border-radius:50%; border:2px dashed #9dffb8aa; animation:twspin 9s linear infinite;
+    box-shadow:0 0 18px 6px #4dff8a55, inset 0 0 14px 4px #4dff8a44}
+  .twpin.glow.block::before{border-color:#ff8a80cc; box-shadow:0 0 18px 6px #ff5a4a44, inset 0 0 14px 4px #ff5a4a33}
+  .twwhy.block{border-color:#7a3a36; background:#2a1414; color:#ffd0cc} .twwhy.block b{color:#ff9d94}
+  .twpin.glow .shield{border-color:#c9ffd8; background:#1f5236}
+  .twpin.new::after{content:""; position:absolute; top:0; right:2px; width:10px; height:10px; border-radius:50%; background:#2fd3c8; box-shadow:0 0 0 2px #0a1310}
+  .twpin.away{opacity:.45}
+  .twpin .tlbl{position:absolute; top:100%; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:11px; color:#cfe3d6; text-shadow:0 1px 2px #000; pointer-events:none; margin-top:-2px}
+  .twmap.arranging .twpin{cursor:grab} .twmap.arranging .twpin.drag{cursor:grabbing; z-index:5}
+  .twmap.arranging{outline:2px dashed var(--accent); outline-offset:-2px}
+  @keyframes twspin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){ .twpin.glow::before{animation:none} }
+  .twpanel{position:fixed; z-index:45; width:min(560px, calc(100vw - 24px)); max-height:min(78vh, 760px); overflow:auto; background:#12161c; border:1px solid var(--line2); border-radius:var(--radius);
+    box-shadow:0 18px 50px #000c; padding:16px 18px}
+  .twpanel h3{margin:0; font-size:17px} .twpanel .twsub{font-size:12.5px; color:var(--dim); margin-top:2px}
+  .twhead{display:flex; gap:12px; align-items:center; margin-bottom:10px} .twhead img{width:44px; height:44px; border-radius:6px; background:#0A0C0F}
+  .twhead .x{margin-left:auto}
+  .twwhy{border:1px solid #3f7a55; background:#12301f; border-radius:8px; padding:9px 12px; margin:0 0 12px; font-size:13px; color:#c9f5d6}
+  .twwhy.none{border-color:var(--line); background:var(--panel); color:var(--dim)}
+  .twwhy b{color:#9dffb8} .twwhy ul{margin:4px 0 0; padding-left:18px} .twwhy li{margin:2px 0}
+  .twcat{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:12px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px}
+  .twitems{display:flex; flex-direction:column; gap:6px}
+  .twit{display:grid; grid-template-columns:44px 1fr auto; gap:10px; align-items:center; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel)}
+  .twit.cant{border-color:#5a2a28; background:#1a1213}
+  .twit.ready{border-color:#3f7a55; background:#12261b}
+  .twit .ic{width:44px; height:44px; border-radius:4px; background:#0A0C0F; display:block}
+  .twit .nm{font-weight:650; font-size:13.5px} .twit .nm.rl{cursor:help; text-decoration:underline dotted #ffffff55}
+  .twit .ty{font-size:11.5px; color:var(--dim)}
+  .twit .why{font-size:12px; margin-top:3px; color:#f0a09b} .twit .why.ok{color:#8fe3ac}
+  .twcost{display:flex; flex-direction:column; align-items:flex-end; gap:3px; font-size:12px; white-space:nowrap}
+  .twcost span{display:inline-flex; align-items:center; gap:4px} .twcost img{width:16px; height:16px}
+  .twcost .short{color:#f0a09b}
+  .twst{font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px solid}
+  .twst.ok{color:#8fe3ac; border-color:#3f7a55} .twst.no{color:#f0a09b; border-color:#7a3a36} .twst.rw{color:#1a1300; background:var(--accent); border-color:var(--accent)}
+  .twlist{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:16px}
+  .twrowv{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--panel); cursor:pointer; text-align:left; font:inherit; color:inherit}
+  .twrowv:hover{border-color:var(--accent)} .twrowv.glow{border-color:#3f7a55; background:#12261b}
+  .twrowv img{width:34px; height:34px; border-radius:4px; background:#0A0C0F; flex:none}
+  .twrowv b{display:block; font-size:13.5px} .twrowv span{font-size:12px; color:var(--dim)}
+  .twrowv .g{color:#9dffb8} .twrowv > div{min-width:0} .twrowv span{white-space:normal; overflow-wrap:anywhere}
+  @media (max-width:700px){ .twmap{min-height:300px} .twpin{transform:translate(-50%,-50%) scale(.78)} .twpin .tlbl{display:none}
+    .twpanel{left:8px!important; right:8px; top:auto!important; bottom:8px; width:auto; max-height:70vh} }
+</style>
+<link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0D0F12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://www.bungie.net" crossorigin>
+<link rel="dns-prefetch" href="https://www.bungie.net">
+<script src="config.js" onerror="this.remove()"></script>
+<script src="rating.js?v=__BUILD__"></script>
+<script src="core.js?v=__BUILD__"></script>
+</head>
+<body>
+<header>
+  <h1><a class="brand" href="index.html?v=__BUILD__#home" title="Home overview">D2 Roll Check</a></h1>
+  <nav class="tabs">
+    <a class="nav" href="today.html?v=__BUILD__">Today</a>
+    <a class="nav" href="index.html?v=__BUILD__#weapons">Weapons</a>
+    <a class="nav" href="armor.html?v=__BUILD__">Armor triage</a>
+    <a class="nav" href="vault.html?v=__BUILD__">Vault</a>
+    <a class="nav" href="character.html?v=__BUILD__">Character</a>
+    <a class="nav" href="vendors.html?v=__BUILD__">Vendors &amp; Xûr</a>
+    <a class="nav active" href="tower.html?v=__BUILD__">Tower</a>
+    <a class="nav" href="shaders.html?v=__BUILD__">Shaders</a>
+  </nav>
+  <div class="spacer"></div>
+  <span id="authStatus" class="dim-lbl"></span>
+  <select id="charSel" class="hidden" title="Character to pull drops to"></select>
+  <button class="ghost" id="btnStream" title="New drops and dismantles">📡 Activity<b id="streamCount" class="scount hidden"></b></button>
+  <button class="ghost" id="btnAuth">Sign in with Bungie</button>
+  <a class="navbtn" href="index.html?v=__BUILD__#settings" title="API key and lists are set on the Weapons page">Settings</a>
+</header>
+<div id="stream" class="stream hidden">
+  <div class="stream-head"><b>📡 Activity Stream</b><span style="flex:1"></span>
+    <label class="dim-lbl"><input type="checkbox" id="streamMute"> Mute pop-ups</label>
+    <button class="ghost" id="streamPin" title="Dock the panel and move the page over so nothing is hidden">📌 Pin</button>
+    <button class="ghost" id="streamClear">Clear</button><button class="ghost" id="streamClose">✕</button></div>
+  <div class="dim-lbl" style="padding:0 14px 8px">New weapon and armor drops and dismantles found by each refresh. Tracks both on every page.</div>
+  <div id="streamList"></div>
+</div>
+<div id="authBanner" class="authbanner hidden"><span id="authBannerText"></span><button class="primary" id="authBannerBtn">Sign in again</button></div>
+<main>
+  <div id="status"></div>
+  <div class="sectionhead"><h2>Tower</h2><span class="dim-lbl" id="lastScan"></span></div>
+  <div class="shsignin hidden" id="twSignin"><span><b>Signed out.</b> Sign in with Bungie to see the Tower vendors, what they sell and why their pins glow.</span><button class="primary" id="twSigninBtn">Sign in with Bungie</button></div>
+  <div class="panel twtools">
+    <div class="twlegend"><span><i class="lg glow"></i>Glowing: something to collect or turn in</span><span><i class="lg block"></i>⚠ glowing but blocked</span><span><i class="lg new"></i>New stock</span><span><i class="lg"></i>Nothing waiting</span></div>
+    <span class="spacer"></span>
+    <span class="dim-lbl" id="twCount"></span>
+    <button class="ghost" id="twArrange" title="Drag pins to match the in-game map">Move pins</button>
+    <button class="ghost" id="twResetPos" title="Put every pin back in its default spot">Reset pins</button>
+    <button class="ghost" id="btnScan" title="Re-read the vendors from Bungie">↻ Refresh</button>
+  </div>
+  <div class="twmap" id="twMap"><div id="twPins"></div></div>
+  <div class="twlist" id="twList"></div>
+</main>
+<div class="twpanel hidden" id="twPanel" role="dialog" aria-label="Vendor loot pool"></div>
+<footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
+
+<script>
+/* ===================== shared helpers (same storage as the Weapons page) ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+// Hosted site: config.js (written by the deploy workflow from repo secrets) supplies the shared Bungie app's key and client_id.
+// When it's there it wins over anything saved in this browser; without it (localhost) Settings works as before.
+const SITE_CFG = window.D2RC_CONFIG || {};
+const SHARED_APP = !!(SITE_CFG.apiKey && SITE_CFG.clientId);
+const ls = { get: k => { if (SHARED_APP && (k === 'apiKey' || k === 'clientId')) return SITE_CFG[k]; try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* setStatus: core.js */
+/* toast: core.js */
+/* copyText: core.js */
+
+/* idb: core.js */
+/* cacheGet: core.js */
+/* cacheSet: core.js */
+
+/* net: core.js */
+const auth = {
+  get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
+  set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
+  valid(){ const a = this.get(); return !!(a && a.token && a.exp > Date.now() + 60e3); }
+};
+function updateAuthUi(){
+  const ok = auth.valid(), a = auth.get();
+  $('btnAuth').textContent = ok ? 'Sign out' : 'Sign in with Bungie';
+  $('authStatus').textContent = ok ? 'Signed in until ' + new Date(a.exp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  $('charSel').classList.toggle('hidden', !ok || !state.chars.length);
+  document.body.classList.toggle('authed', ok);
+  // sign-in lasts about an hour: warn 5 minutes before, and say clearly when it has run out
+  const b = $('authBanner');
+  if (b){
+    const left = a && a.token ? a.exp - Date.now() : null;
+    if (a && a.token && !ok){
+      b.className = 'authbanner'; $('authBannerText').textContent = 'Your Bungie sign-in expired (it lasts about an hour), so Pull, Lock and Apply are hidden.';
+      $('authBannerBtn').textContent = 'Sign in again';
+    } else if (ok && left < 5 * 60e3){
+      b.className = 'authbanner soon'; $('authBannerText').textContent = 'Bungie sign-in ends in ' + Math.max(1, Math.round(left / 60e3)) + ' min. Sign in again now to keep Pull and Lock working.';
+      $('authBannerBtn').textContent = 'Renew sign-in';
+    } else b.className = 'authbanner hidden';
+  }
+}
+$('authBannerBtn').onclick = () => { if (auth.valid()) auth.set(Object.assign(auth.get(), { exp: 0 })); $('btnAuth').click(); };
+setInterval(() => { const was = document.body.classList.contains('authed'); updateAuthUi(); if (was !== auth.valid()) scan(); }, 20e3);
+$('btnAuth').onclick = () => {
+  if (auth.valid()){ auth.set(null); ls.set('authAuto', ''); updateAuthUi(); setStatus('Signed out.'); return; }
+  const cid = ls.get('clientId');
+  if (!cid || !ls.get('apiKey')){ setStatus('Add your API key and OAuth client_id in Settings on the Weapons page first.', true); return; }
+  if (location.protocol !== 'https:'){ setStatus('Bungie sign-in needs https. Open the hosted site, or run start-server-https.ps1 and use https://localhost:8443 on this PC.', true); return; }
+  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'tower.html'); } catch {}
+  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
+};
+/* bungie: core.js */
+/* bungieAction: core.js */
+/* entMem: core.js */
+/* ent: core.js */
+/* entMany: core.js */
+
+
+
+
+/* ===================== state ===================== */
+const CLASS = ['Titan', 'Hunter', 'Warlock'];
+const state = { defs: null, sets: {}, manVer: '', chars: [], acct: null, vend: [], have: {}, scanning: false };
+const PM_BUCKET = 215593132;
+/* ---- account, characters, inventory (for the Activity stream) ---- */
+const selChar = () => {
+  if (!state.chars || !state.chars.length) return null;
+  const v = $('charSel').value;
+  return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
+};
+/* fillCharSel: core.js */
+$('charSel').onchange = () => { ls.set('pullChar2', $('charSel').value); closePanel(); scan(); };
+/* setLock: core.js */
+/* transfer: core.js */
+/* pullFromPostmaster: core.js */
+/* pullTo: core.js */
+/* isGoneError: core.js */
+
+/* getAccount: core.js */
+
+
+/* ===================== manifest: item names (shared manifestArmor cache) ===================== */
+async function loadDefs(){
+  if (state.defs) return;
+  setStatus('Checking Bungie manifest version...');
+  const man = await bungie('/Destiny2/Manifest/');
+  state.manVer = man.version; updateFooter();
+  const cached = await cacheGet('manifestArmor');
+  if (cached && cached.version === man.version){ state.defs = cached.data; state.sets = cached.sets || {}; return; }
+  const paths = man.jsonWorldComponentContentPaths.en;
+  setStatus('Downloading item definitions (first run only, about 30 to 60 MB)...');
+  const raw = await (await net('https://www.bungie.net' + paths.DestinyInventoryItemLiteDefinition, 'the Bungie item definitions file')).json(), data = {};
+  for (const h in raw){ const d = raw[h], dp = d.displayProperties || {}, inv = d.inventory || {};
+    data[h] = { n: dp.name || '', i: dp.icon || '', t: d.itemTypeDisplayName || '', it: d.itemType, tier: inv.tierType || 0, b: inv.bucketTypeHash || 0, c: d.classType }; }
+  const sets = {};
+  if (paths.DestinyEquipableItemSetDefinition){
+    try { const sraw = await (await net('https://www.bungie.net' + paths.DestinyEquipableItemSetDefinition, 'armor set definitions')).json();
+      for (const h in sraw){ const sd = sraw[h]; for (const ih of (sd.setItems || [])) sets[ih] = (sd.displayProperties || {}).name || ''; } }
+    catch (e){ console.warn('Set definitions unavailable', e.message); }
+  }
+  await cacheSet('manifestArmor', { version: man.version, data, sets });
+  state.defs = data; state.sets = sets;
+}
+
+/* ===================== why a vendor glows ===================== */
+/* The game lights up a vendor's map pin when there is something to collect there. Bungie's vendor data shows the
+   same things, so each reason below is read from it, never guessed:
+   - a rank-up reward that is earned and not claimed yet (vendor progression, reward item state Earned and not Claimed)
+   - engrams, tokens or ciphers you hold that this vendor turns into gear (a sale paid only with them that you can afford)
+   - an item Bungie flags as a reward waiting for you (sale item augment RewardAvailable)
+   When one of those is blocked (inventory full, rank too low, locked), the pin still glows in game but you can't
+   collect: the reason comes from the sale status and the vendor's own failure text. */
+const RESET_H = 17;
+const ST = [[1, 'Your inventory is full for this item'], [2, 'Not enough currency'], [4, 'Vendor rank too low'], [8, 'Locked: needs an unlock first'],
+  [16, 'Sold out'], [32, 'Not on sale right now'], [64, 'Not available to you'], [128, 'You can only hold one'], [256, 'Bungie reported an unknown error'],
+  [4096, 'You already own it'], [8192, 'Shown for reference, earned elsewhere']];
+const statusText = s => ST.filter(([b]) => s & b).map(x => x[1]);
+const TURNIN = h => { const d = (state.defs || {})[h] || {}; return /engram|token|cipher|key|rank[- ]?up|package|redemption|voucher/i.test((d.t || '') + ' ' + (d.n || '')); };
+const nameOf = h => ((state.defs || {})[h] || {}).n || 'Item';
+const iconOf = h => ((state.defs || {})[h] || {}).i || '';
+const haveOf = h => state.have[h] || 0;
+const cleanCat = n => (n || '').replace(/\s*\([^)]*\{var:[^)]*\)/g, '').replace(/\{var:\d+\}/g, '').replace(/\s{2,}/g, ' ').trim();
+const isGearDef = d => d && (d.it === 3 || d.it === 2);
+
+function analyze(v){
+  const def = v.def, reasons = [], items = [];
+  const pr = v.vc.progression;
+  if (pr && (pr.rewardItemStates || []).some(s => (s & 2) && !(s & 4))) reasons.push({ k: 'rank', t: 'Rank-up reward ready to claim' + (pr.level ? ' (rank ' + pr.level + ')' : '') });
+  const spend = new Map();
+  for (const [ix, s] of Object.entries(v.sales)){
+    const d = (state.defs || {})[s.itemHash]; if (!d || !d.n) continue;
+    const costs = (s.costs || []).filter(c => c.quantity > 0).map(c => ({ h: c.itemHash, q: c.quantity, have: haveOf(c.itemHash) }));
+    const short = costs.filter(c => c.have < c.q);
+    const fails = (s.failureIndexes || []).map(i => (def.failureStrings || [])[i]).filter(Boolean);
+    const flags = statusText(s.saleStatus || 0);
+    const blocked = !!(s.saleStatus) || short.length > 0;
+    const reward = !!((s.augments || 0) & 2), isNew = !!((s.augments || 0) & 8);
+    const turnIn = costs.length > 0 && costs.every(c => TURNIN(c.h)) && !short.length;
+    const it = { ix: +ix, h: s.itemHash, d, q: s.quantity || 1, costs, short, fails, flags, blocked, reward, isNew, turnIn, cat: v.catOf[ix] || '' };
+    items.push(it);
+    if (turnIn) for (const c of costs){ const e = spend.get(c.h) || { h: c.h, have: c.have, ok: 0, blocked: 0, why: new Set() }; if (s.saleStatus) { e.blocked++; (fails.length ? fails : flags).forEach(w => e.why.add(w)); } else e.ok++; spend.set(c.h, e); }
+    if (reward) reasons.push({ k: s.saleStatus ? 'block' : 'reward', t: 'Reward ready: ' + d.n + (s.saleStatus ? '. Can\'t claim it: ' + (fails.length ? fails : flags).join('; ') : '') });
+  }
+  for (const e of spend.values()){
+    const n = nameOf(e.h), cnt = e.have.toLocaleString() + ' ' + n + (e.have > 1 && !/s$/.test(n) ? 's' : '');
+    if (e.ok) reasons.push({ k: 'spend', t: 'You have ' + cnt + ' to spend here (' + e.ok + ' item' + (e.ok > 1 ? 's' : '') + ' you can get with ' + (e.have > 1 ? 'them' : 'it') + ')' });
+    if (e.blocked && !e.ok) reasons.push({ k: 'block', t: 'You have ' + cnt + ' for this vendor but can\'t use ' + (e.have > 1 ? 'them' : 'it') + ': ' + [...e.why].join('; ') });
+  }
+  const order = it => it.reward ? 0 : it.turnIn && !it.blocked ? 1 : !it.blocked ? 2 : 3;
+  items.sort((a, b) => order(a) - order(b) || a.cat.localeCompare(b.cat) || b.d.tier - a.d.tier);
+  return { reasons, items, glow: reasons.length > 0, blocked: reasons.some(r => r.k === 'block'), fresh: items.some(i => i.isNew) };
+}
+
+/* ===================== map ===================== */
+// Rough spots on the Tower map (percent of the map box). Pins with no spot line up along the bottom; "Move pins" lets
+// you drag any of them where you like, saved in localStorage towerPos.
+const TOWER_POS = [
+  [/x[uû]r/i, 22.8, 37], [/tess|eververse/i, 8, 40], [/zavala/i, 55.6, 88], [/shaxx/i, 44.2, 86], [/saint-?14/i, 48, 82],
+  [/drifter/i, 48.1, 71.5], [/rahool|cryptarch/i, 46.9, 64.5], [/hawthorne/i, 58.7, 82.5], [/saladin/i, 58.2, 61.5],
+  [/banshee/i, 57.9, 72.5], [/postmaster/i, 61.5, 66], [/ada-?1/i, 51.5, 77], [/amanda|holliday/i, 76, 47], [/ikora/i, 38.2, 67.5], [/\beva\b/i, 43.7, 77]];
+let towerPos = {}; try { towerPos = JSON.parse(ls.get('towerPos') || '{}') || {}; } catch {}
+function posOf(v, i){
+  if (towerPos[v.name]) return towerPos[v.name];
+  const hit = TOWER_POS.find(([re]) => re.test(v.name));
+  return hit ? [hit[1], hit[2]] : [6 + (i % 6) * 5.5, 70 + Math.floor(i / 6) * 9];
+}
+function xurWindow(){
+  const n = new Date(), d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), RESET_H));
+  let add = (5 - d.getUTCDay() + 7) % 7; if (add === 0 && d <= n) add = 7; d.setUTCDate(d.getUTCDate() + add);
+  const fri = d.getTime(), lastFri = fri - 7 * 864e5, now = Date.now(), here = now >= lastFri && now < lastFri + 4 * 864e5;
+  return { here, arrives: here ? lastFri : fri, leaves: (here ? lastFri : fri) + 4 * 864e5 };
+}
+const isXur = v => /x[uû]r/i.test(v.name);
+const fmtWhen = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+const MAP_SVG = (() => {
+  const Y = v => (v * .5625).toFixed(2), P = pts => pts.map(([x, y]) => x + ',' + Y(y)).join(' ');
+  let g = ''; for (let x = 0; x <= 100; x += 4) g += '<line class="grid" x1="' + x + '" y1="0" x2="' + x + '" y2="56.25"/>'; for (let y = 0; y <= 100; y += 7) g += '<line class="grid" x1="0" y1="' + Y(y) + '" x2="100" y2="' + Y(y) + '"/>';
+  return '<svg viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">' + g +
+    '<polygon class="zone" points="' + P([[2, 20], [30, 20], [30, 33], [36, 33], [36, 86], [14, 86], [14, 94], [2, 94]]) + '"/>' +
+    '<polygon class="zone" points="' + P([[36, 46], [62, 46], [62, 52], [66, 52], [66, 97], [40, 97], [40, 80], [36, 80]]) + '"/>' +
+    '<polygon class="zone alt" points="' + P([[62, 8], [97, 8], [97, 52], [66, 52], [62, 46]]) + '"/>' +
+    '<polygon class="zone alt" points="' + P([[66, 56], [98, 56], [98, 97], [66, 97]]) + '"/>' +
+    '<text class="zlbl" x="11" y="' + Y(30) + '">BAZAAR</text><text class="zlbl" x="38" y="' + Y(51) + '">COURTYARD</text>' +
+    '<text class="zlbl" x="74" y="' + Y(20) + '">HANGAR</text><text class="zlbl" x="76" y="' + Y(64) + '">ANNEX</text></svg>';
+})();
+function pinTip(v){
+  const a = v.a, xw = isXur(v) ? xurWindow() : null;
+  if (xw && !xw.here) return v.name + ': not at the Tower now. Back ' + fmtWhen(xw.arrives) + '.';
+  if (!a.glow) return v.name + ': nothing to collect' + (a.fresh ? ' (new items in stock)' : '') + '. Hover for the loot pool.';
+  return v.name + ' is glowing:\n' + a.reasons.map(r => '• ' + r.t).join('\n');
+}
+function render(){
+  const authed = auth.valid();
+  $('twSignin').classList.toggle('hidden', authed);
+  const map = $('twMap'); map.classList.toggle('arranging', arranging);
+  if (!map.querySelector('svg')) map.insertAdjacentHTML('afterbegin', MAP_SVG);
+  $('twPins').innerHTML = state.vend.map((v, i) => {
+    const [x, y] = posOf(v, i), a = v.a, xw = isXur(v) ? xurWindow() : null;
+    const icon = v.mapIcon ? '<img decoding="async" src="' + img(v.mapIcon) + '" alt="" style="width:44px;height:50px">' :
+      '<span class="shield">' + (v.icon ? '<img decoding="async" src="' + img(v.icon) + '" alt="">' : '<span class="ini">' + esc(v.name.slice(0, 2)) + '</span>') + '</span>';
+    return '<button class="twpin' + (a.glow ? ' glow' : '') + (a.fresh ? ' new' : '') + (a.blocked ? ' block' : '') + (xw && !xw.here ? ' away' : '') + (openVh === v.vh ? ' on' : '') + '" data-vh="' + v.vh + '" style="left:' + x + '%;top:' + y + '%" title="' + esc(pinTip(v)) + '" aria-label="' + esc(pinTip(v)) + '">' +
+      icon + '<span class="tlbl">' + esc(v.short) + '</span></button>';
+  }).join('');
+  const list = state.vend.slice().sort((a, b) => (b.a.glow - a.a.glow) || a.name.localeCompare(b.name));
+  $('twList').innerHTML = list.map(v => '<button class="twrowv' + (v.a.glow ? ' glow' : '') + '" data-vh="' + v.vh + '">' + (v.icon ? '<img decoding="async" src="' + img(v.icon) + '" alt="">' : '') +
+    '<div><b>' + esc(v.name) + '</b>' + (v.a.glow ? v.a.reasons.map(r => '<span class="' + (r.k === 'block' ? '' : 'g') + '" style="display:block">' + (r.k === 'block' ? '⚠ ' : '✦ ') + esc(r.t) + '</span>').join('') :
+      '<span>' + v.a.items.length + ' item' + (v.a.items.length === 1 ? '' : 's') + ', nothing to collect' + (v.a.fresh ? ', new stock' : '') + '</span>') + '</div></button>').join('');
+  const g = state.vend.filter(v => v.a.glow).length;
+  $('twCount').textContent = state.vend.length ? state.vend.length + ' vendors at the Tower · ' + g + ' glowing' : '';
+  if (openVh && !arranging) drawPanel();
+}
+
+/* ===================== loot pool panel ===================== */
+let openVh = 0, openAnchor = null, hoverT = 0;
+const VROLL = {};
+window.vendorRoll = id => VROLL[id] || null;
+const single = {};
+async function loadRolls(v){
+  // the all-vendors answer leaves out perks and stats, so ask this vendor alone once (like DIM)
+  if (single[v.vh] || !v.a.items.some(i => isGearDef(i.d)) || !state.acct) return;
+  single[v.vh] = 'loading';
+  try {
+    const r = await bungie('/Destiny2/' + state.acct.membershipType + '/Profile/' + state.acct.membershipId + '/Character/' + v.cid + '/Vendors/' + v.vh + '/?components=300,304,305,310,402');
+    single[v.vh] = (r && r.itemComponents) || {};
+  } catch (e){ single[v.vh] = {}; console.warn('vendor rolls', v.vh, e.message); }
+  if (openVh === v.vh) drawPanel();
+}
+function rollIdOf(v, it){
+  const ic = single[v.vh]; if (!ic || ic === 'loading' || !isGearDef(it.d)) return '';
+  const sk = ((ic.sockets || {}).data || {})[it.ix]; if (!sk || !(sk.sockets || []).length) return '';
+  const id = 'v:' + v.vh + ':' + it.ix + ':' + it.h;
+  VROLL[id] = { sockets: sk.sockets, reuse: (((ic.reusablePlugs || {}).data || {})[it.ix] || {}).plugs || {}, stats: (((ic.stats || {}).data || {})[it.ix] || {}).stats || {},
+    ins: ((ic.instances || {}).data || {})[it.ix] || {}, charId: null, vendor: true, split: null };
+  return id;
+}
+function itemHtml(v, it){
+  const rid = rollIdOf(v, it), ra = rid ? ' data-roll="' + esc(rid) + '" data-rh="' + it.h + '"' : '';
+  const ic = '<img decoding="async" class="ic" src="' + img(it.d.i) + '" alt="">';
+  const st = it.reward ? '<span class="twst rw">Reward</span>' : it.blocked ? '<span class="twst no">Can\'t get</span>' : '<span class="twst ok">Can get</span>';
+  const why = it.blocked ? [...it.fails, ...it.flags.filter(f => !(it.fails.length && /currency|rank|locked/i.test(f))), ...it.short.map(c => 'Need ' + c.q.toLocaleString() + ' ' + nameOf(c.h) + ', you have ' + c.have.toLocaleString())]
+    : it.turnIn ? ['Uses your ' + it.costs.map(c => nameOf(c.h)).join(' + ')] : [];
+  const uniq = [...new Set(why)];
+  return '<div class="twit' + (it.blocked ? ' cant' : it.reward || it.turnIn ? ' ready' : '') + '">' +
+    '<span' + ra + '>' + ic + '</span>' +
+    '<div style="min-width:0"><div class="nm' + (rid ? ' rl' : '') + '"' + ra + (rid ? ' title="Hover or tap for perks and stats"' : '') + '>' + esc(it.d.n) + (it.q > 1 ? ' ×' + it.q : '') + (it.isNew ? ' <span class="twst ok" style="border-color:#2fd3c8;color:#2fd3c8">New</span>' : '') + '</div>' +
+      '<div class="ty">' + esc(it.d.t || '') + '</div>' + (uniq.length ? '<div class="why' + (it.blocked ? '' : ' ok') + '">' + uniq.map(esc).join(' · ') + '</div>' : '') + '</div>' +
+    '<div class="twcost">' + st + it.costs.map(c => '<span class="' + (c.have < c.q ? 'short' : '') + '" title="You have ' + c.have.toLocaleString() + '">' + (iconOf(c.h) ? '<img decoding="async" src="' + img(iconOf(c.h)) + '" alt="">' : '') + c.q.toLocaleString() + ' ' + esc(nameOf(c.h)) + '</span>').join('') + '</div></div>';
+}
+function drawPanel(){
+  const v = state.vend.find(x => x.vh === openVh), pn = $('twPanel'); if (!v){ closePanel(); return; }
+  const a = v.a, xw = isXur(v) ? xurWindow() : null;
+  const why = a.glow ? '<div class="twwhy' + (a.blocked && !a.reasons.some(r => r.k !== 'block') ? ' block' : '') + '"><b>Why it\'s glowing</b><ul>' + a.reasons.map(r => '<li>' + (r.k === 'block' ? '⚠ ' : '') + esc(r.t) + '</li>').join('') + '</ul></div>'
+    : '<div class="twwhy none">Not glowing: no rank reward, nothing waiting for you, and none of your engrams or tokens are spent here.' + (xw && !xw.here ? ' Xûr isn\'t at the Tower now; back ' + esc(fmtWhen(xw.arrives)) + '. This is the stock Bungie lists for him.' : '') + '</div>';
+  const groups = new Map(); for (const it of a.items){ const k = it.cat || 'For sale'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+  const loading = single[v.vh] === 'loading';
+  pn.innerHTML = '<div class="twhead">' + (v.icon ? '<img decoding="async" src="' + img(v.icon) + '" alt="">' : '') + '<div><h3>' + esc(v.name) + '</h3><div class="twsub">' + esc(v.where || 'The Tower') +
+    (v.vc.nextRefreshDate ? ' · stock changes ' + esc(fmtWhen(Date.parse(v.vc.nextRefreshDate))) : '') + '</div></div><button class="ghost x" id="twClose" aria-label="Close">✕</button></div>' + why +
+    (loading ? '<div class="dim-lbl" style="margin-bottom:6px">Reading perks and stats...</div>' : a.items.some(i => isGearDef(i.d)) ? '<div class="dim-lbl" style="margin-bottom:6px">Hover or tap a weapon or armor name for its perks and stats.</div>' : '') +
+    (a.items.length ? [...groups].map(([k, l]) => '<div class="twcat">' + esc(k) + '</div><div class="twitems">' + l.map(it => itemHtml(v, it)).join('') + '</div>').join('') : '<div class="dim-lbl">Bungie lists nothing for sale here right now.</div>');
+  pn.classList.remove('hidden');
+  $('twClose').onclick = closePanel;
+  placePanel();
+}
+function placePanel(){
+  const pn = $('twPanel'); if (pn.classList.contains('hidden') || !openAnchor || !document.body.contains(openAnchor)) return;
+  if (innerWidth <= 700){ pn.style.left = ''; pn.style.top = ''; return; }
+  const r = openAnchor.getBoundingClientRect(), w = pn.offsetWidth, h = pn.offsetHeight, pin = parseInt(getComputedStyle(document.body).getPropertyValue('--pinw')) || 0;
+  const room = innerWidth - pin;
+  let x = r.right + 12; if (x + w > room - 8) x = Math.max(8, r.left - w - 12);
+  let y = Math.min(Math.max(70, r.top - 40), innerHeight - h - 10);
+  pn.style.left = x + 'px'; pn.style.top = Math.max(8, y) + 'px';
+}
+function openPanel(vh, anchor){
+  openVh = +vh; openAnchor = anchor;
+  document.querySelectorAll('.twpin').forEach(p => p.classList.toggle('on', +p.dataset.vh === openVh));
+  const v = state.vend.find(x => x.vh === openVh); if (!v) return;
+  drawPanel(); loadRolls(v);
+}
+function closePanel(){ openVh = 0; openAnchor = null; $('twPanel').classList.add('hidden'); document.querySelectorAll('.twpin.on').forEach(p => p.classList.remove('on')); }
+addEventListener('resize', placePanel); addEventListener('scroll', placePanel, { passive: true });
+$('twPins').addEventListener('mouseover', e => {
+  const p = e.target.closest('.twpin'); if (!p || arranging || matchMedia('(hover: none)').matches) return;
+  clearTimeout(hoverT); hoverT = setTimeout(() => { if (+p.dataset.vh !== openVh) openPanel(p.dataset.vh, p); }, 220);
+});
+$('twPins').addEventListener('mouseout', e => { if (e.target.closest('.twpin')) clearTimeout(hoverT); });
+$('twPins').addEventListener('click', e => { const p = e.target.closest('.twpin'); if (!p || arranging || dragMoved) return; +p.dataset.vh === openVh ? closePanel() : openPanel(p.dataset.vh, p); });
+$('twList').addEventListener('click', e => { const p = e.target.closest('[data-vh]'); if (!p) return; openPanel(p.dataset.vh, p); });
+document.addEventListener('pointerdown', e => {
+  if (!openVh || e.target.closest('#twPanel, .twpin, .twrowv, #rollPop')) return;
+  closePanel();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && openVh) closePanel(); });
+
+/* ---- Move pins: drag them to match your map; saved in localStorage towerPos ---- */
+let arranging = false, drag = null, dragMoved = false;
+$('twArrange').onclick = () => { arranging = !arranging; $('twArrange').textContent = arranging ? 'Done moving' : 'Move pins'; $('twArrange').classList.toggle('primary', arranging); closePanel(); render(); };
+$('twResetPos').onclick = () => { towerPos = {}; ls.set('towerPos', ''); render(); setStatus('Pins are back in their default spots.'); };
+$('twPins').addEventListener('pointerdown', e => {
+  const p = e.target.closest('.twpin'); dragMoved = false; if (!p || !arranging) return;
+  e.preventDefault(); drag = p; p.classList.add('drag'); p.setPointerCapture(e.pointerId);
+});
+$('twPins').addEventListener('pointermove', e => {
+  if (!drag) return; const r = $('twMap').getBoundingClientRect();
+  const x = Math.min(98, Math.max(2, (e.clientX - r.left) / r.width * 100)), y = Math.min(97, Math.max(3, (e.clientY - r.top) / r.height * 100));
+  drag.style.left = x + '%'; drag.style.top = y + '%'; dragMoved = true;
+});
+$('twPins').addEventListener('pointerup', () => {
+  if (!drag) return; const v = state.vend.find(x => x.vh === +drag.dataset.vh);
+  if (v && dragMoved){ towerPos[v.name] = [Math.round(parseFloat(drag.style.left) * 10) / 10, Math.round(parseFloat(drag.style.top) * 10) / 10]; ls.set('towerPos', JSON.stringify(towerPos)); }
+  drag.classList.remove('drag'); drag = null;
+});
+
+/* ===================== load ===================== */
+$('btnScan').onclick = () => scan({ force: true });
+async function scan(opts = {}){
+  if (state.scanning) return;
+  state.scanning = true; $('btnScan').disabled = true;
+  try {
+    const defsP = loadDefs(); defsP.catch(() => {});
+    if (!auth.valid()){ await defsP; state.vend = []; render(); setStatus('Sign in with Bungie to see the Tower vendors and why they glow.'); return; }
+    const acct = await getAccount();
+    if (!opts.silent) setStatus('Reading your characters and what you hold...');
+    const p = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/?components=102,103,200,201,205,300');
+    await defsP;
+    const chars = (p.characters && p.characters.data) || {};
+    state.chars = Object.values(chars).sort((a, b) => new Date(b.dateLastPlayed) - new Date(a.dateLastPlayed))
+      .map(c => ({ id: c.characterId, name: CLASS[c.classType] || 'Character', light: c.light, cls: c.classType }));
+    fillCharSel(p); updateAuthUi(); trackDrops(p);
+    const cid = selChar(); if (!cid) throw new Error('No characters found on this account.');
+    // what you hold: profile inventory, this character's inventory and currencies (engrams and tokens live in all three)
+    const have = {}, add = (h, q) => { have[h] = (have[h] || 0) + (q || 1); };
+    for (const it of ((p.profileInventory || {}).data || {}).items || []) add(it.itemHash, it.quantity);
+    for (const it of ((((p.characterInventories || {}).data || {})[cid]) || {}).items || []) add(it.itemHash, it.quantity);
+    for (const it of ((p.profileCurrencies || {}).data || {}).items || []) add(it.itemHash, it.quantity);
+    state.have = have;
+    if (!opts.silent) setStatus('Reading the Tower vendors for your ' + ((state.chars.find(c => c.id === cid) || {}).name || 'character') + '...');
+    const r = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/Character/' + cid + '/Vendors/?components=400,401,402');
+    const vData = (r.vendors && r.vendors.data) || {}, hashes = Object.keys(vData).map(Number);
+    const vDefs = await entMany('DestinyVendorDefinition', hashes);
+    const destH = hashes.map(h => { const d = vDefs[h], v = vData[h]; return d && d.locations && d.locations[v.vendorLocationIndex] ? d.locations[v.vendorLocationIndex].destinationHash : 0; }).filter(Boolean);
+    const dests = await entMany('DestinyDestinationDefinition', destH);
+    const places = await entMany('DestinyPlaceDefinition', Object.values(dests).map(d => d.placeHash).filter(Boolean));
+    const vend = [];
+    for (const vh of hashes){
+      const def = vDefs[vh], vc = vData[vh]; if (!def || def.visible === false) continue;
+      const loc = def.locations && def.locations[vc.vendorLocationIndex], dest = loc ? dests[loc.destinationHash] : null, place = dest ? places[dest.placeHash] : null;
+      const where = [dest && dest.displayProperties.name, place && place.displayProperties.name].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+      if (!/tower|last city/i.test(where)) continue;
+      const catOf = {};
+      for (const c of ((((r.categories || {}).data || {})[vh] || {}).categories || [])){
+        const dc = (def.displayCategories || [])[c.displayCategoryIndex], n = cleanCat(dc && dc.displayProperties && dc.displayProperties.name);
+        for (const ix of c.itemIndexes || []) catOf[ix] = n;
+      }
+      const dp = def.displayProperties || {};
+      const v = { vh, cid, def, vc, name: dp.name || 'Vendor', short: (dp.name || '').replace(/^(commander|lord|master)\s+/i, ''), icon: dp.smallTransparentIcon || dp.icon || '', mapIcon: dp.mapIcon || '',
+        where, catOf, sales: ((((r.sales || {}).data || {})[vh]) || {}).saleItems || {} };
+      v.a = analyze(v);
+      if (!v.a.items.length && !v.a.glow) continue;
+      vend.push(v);
+    }
+    state.vend = vend; state.lastScan = Date.now();
+    for (const k in single) delete single[k];
+    render();
+    const g = vend.filter(v => v.a.glow);
+    if (!opts.silent) setStatus(vend.length + ' Tower vendors. ' + (g.length ? g.length + ' glowing: ' + g.map(v => v.short).join(', ') + '.' : 'None glowing right now.'));
+  } catch (e){ setStatus(e.message, true); }
+  finally { state.scanning = false; $('btnScan').disabled = false; tickRefresh(); }
+}
+$('twSigninBtn').onclick = () => $('btnAuth').click();
+
+/* ===================== footer, refresh ===================== */
+function updateFooter(){
+  $('sitefoot').innerHTML = ['<b>Vendors, stock and why they glow:</b> Bungie.net API (GetVendors components 400, 401, 402; your inventory and currencies) ' + (state.manVer ? '<code>' + esc(state.manVer) + '</code>' : ''),
+    '<b>Map:</b> a simple drawing of the Tower with approximate pin spots. Use Move pins to put them where you like.',
+    'Not affiliated with Bungie'].join('<br>');
+}
+const REFRESH_SECS = 60;
+function autoRefreshOk(minAge){ return ls.get('autoRefresh') !== '0' && state.acct && auth.valid() && !state.scanning && !document.hidden && !openVh && !arranging && Date.now() - (state.lastScan || 0) > minAge; }
+window.addEventListener('focus', () => { if (autoRefreshOk(15e3)) scan({ silent: true }); });
+function tickRefresh(){
+  const el = $('lastScan'); if (!el) return;
+  if (!state.lastScan){ el.textContent = ''; return; }
+  el.textContent = 'Vendors read ' + new Date(state.lastScan).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (ls.get('autoRefresh') !== '0' ? ' · auto-refresh on' : '');
+  if (Date.now() - state.lastScan > REFRESH_SECS * 1000 && autoRefreshOk(REFRESH_SECS * 1000)) scan({ silent: true });
+}
+setInterval(tickRefresh, 5000);
+
+/* ===================== activity stream hooks (stream.js) ===================== */
+/* ---- keep the Bungie sign-in going ----
+   Public Bungie apps get about 1 hour tokens and no refresh token. After someone has signed in once (localStorage
+   authAuto = '1'), an expired or nearly expired token is renewed with a quick trip through bungie.net, which skips the
+   Approve screen for apps the user already approved. Never mid-scan, never in a hidden tab, and at most once every
+   3 minutes per tab (sessionStorage renewAt) so a Bungie problem can't cause a redirect loop. Sign out clears authAuto. */
+let lastInput = Date.now();
+['pointerdown', 'keydown', 'wheel'].forEach(t => addEventListener(t, () => { lastInput = Date.now(); }, { passive: true }));
+/* autoRenew: core.js */
+setInterval(autoRenew, 30e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoRenew(); });
+autoRenew();
+
+const PAGE = 'tower';
+const streamInfo = null, streamOpen = null;
+const byId = () => null;
+const runAction = () => {};
+
+updateFooter();
+updateAuthUi();
+render();
+if (ls.get('apiKey')) scan(); else setStatus('Add your Bungie API key in Settings (on the Weapons page) first.', true);
+</script>
+<script src="stream.js?v=__BUILD__"></script>
+</body>
+</html>

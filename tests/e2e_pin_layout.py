@@ -16,7 +16,7 @@ async def main():
   async with async_playwright() as p:
     b = await p.chromium.launch()
     bad = 0
-    for page in ['index.html#weapons', 'armor.html', 'vault.html', 'character.html', 'vendors.html', 'today.html', 'shaders.html']:
+    for page in ['index.html#weapons', 'armor.html', 'vault.html', 'character.html', 'vendors.html', 'today.html', 'shaders.html', 'tower.html']:
       for w in [1920, 1600, 1440, 1280, 1024, 800, 390]:
         pg = await b.new_page(viewport={'width': w, 'height': 800})
         await pg.route('**/*', lambda rt: rt.abort() if 'bungie' in rt.request.url or 'githubusercontent' in rt.request.url else rt.continue_())
