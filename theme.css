@@ -608,3 +608,8 @@ button,.chip,a.navbtn,.badge,select{white-space:nowrap}
 #btnReload.spinning,#streamReload.spinning{animation:d2spin .8s linear infinite; opacity:.85}
 @keyframes d2spin{to{transform:rotate(360deg)}}
 .pill.weekly{background:rgba(91,168,230,.16); color:#8cc4f0; border:1px solid rgba(91,168,230,.4)}
+/* Vendors: "What Bungie sent" diagnostics table */
+.vdiag{width:100%; border-collapse:collapse; font-size:12px} .vdiag th,.vdiag td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+.vdiag th{color:var(--faint); font-weight:700} .vdiag td small{color:var(--faint)} .vdiag tr.hit td{color:var(--text); background:rgba(226,183,75,.07)}
+.vdecide{margin:6px 0 4px; font-size:13px; color:var(--dim)} .vdecide b{font-size:14px}
+.vdecide.buy b{color:#5fd39c} .vdecide.maybe b{color:#E2B74B} .vdecide.skip b{color:#ff7b73} .vdecide.unrated b{color:var(--dim)}
