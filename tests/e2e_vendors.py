@@ -131,6 +131,17 @@ async def main():
     print('ROLLPOP:', (await pg.inner_text('#rollPop')).replace('\n', ' | ')[:300], '| hidden:', await pg.eval_on_selector('#rollPop', 'e => e.classList.contains("hidden")'))
     await pg.mouse.move(5, 5); await pg.wait_for_timeout(500)
     print('skip tiles:', await pg.eval_on_selector_all('.skipt', 'els => els.length'))
+    # the badge follows the PvE / PvP bars: a partial wishlist match that scores S for PvE becomes Buy, a weak one becomes Skip
+    agree = await pg.evaluate('''() => {
+      const keepRate = window.rateItem, keepSplit = window.modeSplit, out = [];
+      window.rateItem = () => ({ verdict: 'close', reason: 'Only matches part of a recommended roll (not both traits)', full: [] });
+      for (const sp of [{pve: [90, 60, 80, 0, 0], pvp: [25, 0, 30, 0, 0]}, {pve: [30, 0, 40, 0, 0], pvp: [20, 0, 30, 0, 0]}]){
+        window.modeSplit = () => sp; rate();
+        const it = Object.values(state.vend).flatMap(v => v.vendors.flatMap(x => x.items)).find(i => i.name === 'Zavala Pulse');
+        out.push(it.v + ' / ' + it.why);
+      }
+      window.rateItem = keepRate; window.modeSplit = keepSplit; rate(); return out; }''')
+    print('AGREE:', agree)
     await pg.uncheck('#hideCipher'); await pg.wait_for_timeout(100)
     print('XUR shown:', (await pg.inner_text('#xurPanel')).replace('\n', ' | ')[:400])
     await pg.screenshot(path='vendors.png', full_page=True)
