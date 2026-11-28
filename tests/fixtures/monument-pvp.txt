@@ -1,0 +1,6 @@
+title:Giggletwig - Monument of Triumph PVP Community Wishlist
+description:Curated Monument of Triumph refreshed and reprised weapon rolls. Trait-focused matching; barrel and magazine are intentionally unrestricted.
+// Generated 2026-11-20. Weapon hashes checked against the supplied Bungie manifest export.
+// Each line specifies one or more trait perks only. DIM supports partial perk matching; enhanced versions are matched automatically.
+
+//notes:Eyasluna | Grasp of Avarice | Primary | High confidence | Current Monument-era PvP recommendation and a leading community-used trait combination.

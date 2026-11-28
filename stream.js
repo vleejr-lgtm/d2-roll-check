@@ -276,6 +276,49 @@
   const pmBtn = document.createElement('button');
   pmBtn.className = 'ghost needauth hidden'; pmBtn.id = 'btnPM'; pmBtn.type = 'button'; pmBtn.title = 'Postmaster: pull lost items to your characters';
   $('btnStream').insertAdjacentElement('beforebegin', pmBtn);
+  // ---- manual refresh, every page: header ↻, Activity panel ↻ and the R key read your data from Bungie again
+  // (the page's own scan) without reloading the page. The Postmaster panel has its own ↻ that does the same.
+  let reloading = null, lastReload = 0;
+  async function manualRefresh(btn){
+    if (typeof scan !== 'function') return;
+    if (reloading) return reloading;
+    if (typeof auth !== 'undefined' && !auth.valid() && PAGE !== 'today' && PAGE !== 'shaders'){ setStatus('Sign in first, then refresh.', true); return; }
+    const btns = [$('btnReload'), $('streamReload')].filter(Boolean);
+    btns.forEach(b => { b.classList.add('spinning'); b.disabled = true; });
+    reloading = (async () => {
+      try {
+        if (window.state && state.scanning){ for (let i = 0; i < 100 && state.scanning; i++) await new Promise(r => setTimeout(r, 150)); }
+        await scan();
+        lastReload = Date.now();
+        btns.forEach(b => { b.title = 'Refresh: read your data from Bungie again (R). Last read ' + new Date(lastReload).toLocaleTimeString(); });
+        if (typeof pmRender === 'function') try { pmRender(); } catch {}
+        renderStream();
+        toast('Updated from Bungie');
+      } catch (e){ setStatus('Refresh failed: ' + e.message, true); }
+      finally { btns.forEach(b => { b.classList.remove('spinning'); b.disabled = false; }); reloading = null; }
+    })();
+    return reloading;
+  }
+  {
+    const hb = document.createElement('button');
+    hb.className = 'ghost needauth'; hb.id = 'btnReload'; hb.type = 'button'; hb.textContent = '↻';
+    hb.title = 'Refresh: read your data from Bungie again (R)'; hb.setAttribute('aria-label', 'Refresh');
+    if (PAGE === 'today' || PAGE === 'shaders') hb.classList.remove('needauth');
+    hb.onclick = () => manualRefresh(hb);
+    $('btnStream').insertAdjacentElement('beforebegin', hb);
+    const clr = $('streamClear');
+    if (clr){
+      const sb = document.createElement('button');
+      sb.className = 'ghost'; sb.id = 'streamReload'; sb.type = 'button'; sb.textContent = '↻'; sb.title = 'Check for new drops now';
+      sb.onclick = () => manualRefresh(sb);
+      clr.insertAdjacentElement('beforebegin', sb);
+    }
+    document.addEventListener('keydown', e => {
+      if ((e.key !== 'r' && e.key !== 'R') || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      e.preventDefault(); manualRefresh($('btnReload'));
+    });
+  }
   function pmButton(){
     const n = pmTotal(), full = pmFull();
     pmBtn.classList.toggle('hidden', !pm && !auth.valid());
@@ -537,6 +580,7 @@
     const frame = x.rows.filter(r => r.kind === 'frame'), perks = x.rows.filter(r => r.kind === 'perk'), mods = x.rows.filter(r => r.kind === 'mod');
     const swap = (r, o) => esc(x.id + '|' + r.ix + '|' + o.h + '|' + x.hash);
     return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? (typeof tierIcon === 'function' ? tierIcon('<img decoding="async" src="' + img(x.icon) + '" alt="">', x.tier) : '<img decoding="async" src="' + img(x.icon) + '" alt="">') : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
+      moveBar(x.id) +
       (typeof savedSplit === 'function' && savedSplit(x.id) ? modeGraph(savedSplit(x.id)) : '') +
       (x.stats.length ? '<div class="rp-stats">' + x.stats.map(s => '<div class="rp-stat"><span>' + esc(s.n) + '</span>' + (NOBAR.has(s.h) || s.v > 100 ? '<i class="nobar"></i>' : '<i><em style="width:' + Math.max(0, Math.min(100, s.v)) + '%"></em></i>') + '<b>' + s.v + '</b></div>').join('') + '</div>' : '') +
       frame.map(r => '<div class="rp-frame" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>').join('') +
@@ -640,6 +684,39 @@
     catch (e){ if (rollFor === el){ rpop.innerHTML = '<div class="dim-lbl">' + esc(e.message || 'Could not read this roll.') + '</div>'; placeRoll(el); } }
   }
   function hideRoll(){ rollFor = null; rpop.classList.add('hidden'); }
+  // ---- tap to move (phones and anyone): "Move to" buttons in the roll popup on every page ----
+  function moveBar(id){
+    if (typeof auth === 'undefined' || !auth.valid() || !state.acct || !state.gear) return '';
+    const g = state.gear.get(id); if (!g) return '';
+    const cls = state.defs && state.defs[g.hash] ? state.defs[g.hash].c : undefined;
+    const chars = (state.chars || []).filter(c => g.postmaster || c.id !== g.charId).filter(c => g.kind !== 'armor' || cls === undefined || cls === null || cls > 2 || c.name === CLS[cls]);
+    const btns = chars.map(c => '<button class="ghost" data-rmove="' + esc(id + '|' + c.id) + '"' + (g.equipped ? ' disabled title="Equipped: equip something else first"' : '') + '>' + (g.postmaster && c.id === g.charId ? '📬 Pull to ' : '→ ') + esc(c.name) + '</button>').join('') +
+      (g.charId || g.postmaster ? '<button class="ghost" data-rmove="' + esc(id + '|vault') + '"' + (g.equipped ? ' disabled' : '') + '>→ Vault</button>' : '');
+    return btns ? '<div class="rp-move"><span>Move to</span>' + btns + '</div>' : '';
+  }
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest('[data-rmove]'); if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const [id, to] = b.dataset.rmove.split('|'), g = state.gear && state.gear.get(id); if (!g) return;
+    const bar = b.closest('.rp-move'); bar.querySelectorAll('button').forEach(x => x.disabled = true);
+    const was = b.textContent; b.textContent = 'Moving…';
+    try {
+      if (to === 'vault'){
+        if (g.postmaster){ await pullFromPostmaster(g); }
+        await transfer(g, true, g.charId); g.charId = null; g.loc = 'Vault';
+      } else await pullTo(g, to);
+      toast('Moved ' + g.name + ' to ' + (to === 'vault' ? 'the vault' : g.loc));
+      const mine = typeof byId === 'function' ? byId(id) : null;
+      if (mine && mine !== g){ mine.charId = g.charId; mine.postmaster = false; mine.loc = g.loc; if ('where' in mine) mine.where = g.charId || 'vault'; }
+      hideRoll();
+      if (typeof render === 'function') try { render(); } catch {}
+      if (typeof scan === 'function') setTimeout(() => scan({ silent: true }), 2000);
+      renderStream();
+    } catch (e){
+      b.textContent = was; bar.querySelectorAll('button').forEach(x => x.disabled = false);
+      setStatus(isGoneError(e) ? g.name + ' moved in game. Refreshing.' : g.name + ': ' + e.message, true);
+    }
+  }, true);
   window.rollHtmlFor = async (id, hash) => rollHtml(await readRoll(id, hash));
   const fineHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   if (fineHover){

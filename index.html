@@ -183,10 +183,15 @@
   .sharedapp b{color:#E2B74B}
 </style>
 <link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0D0F12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preconnect" href="https://www.bungie.net" crossorigin>
 <link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
 <script src="rating.js?v=__BUILD__"></script>
+<script src="core.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
@@ -519,19 +524,13 @@ const VERDICT_ORDER = { god: 0, close: 1, exotic: 2, unrated: 3, trash: 4 };
 const LABEL = { god: 'God roll', close: 'Close', trash: 'Trash', unrated: 'Unrated', exotic: 'Exotic' };
 const CLASS = ['Titan', 'Hunter', 'Warlock'];
 
-function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+/* setStatus: core.js */
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
 // ---- tiny IndexedDB cache ----
-function idb(){
-  return new Promise((res, rej) => {
-    const r = indexedDB.open('d2rollcheck', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-  });
-}
-async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
-async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+/* idb: core.js */
+/* cacheGet: core.js */
+/* cacheSet: core.js */
 
 // ---- settings ----
 // Hosted site: config.js (written by the deploy workflow from repo secrets) supplies the shared Bungie app's key and client_id.
@@ -563,17 +562,11 @@ $('btnSave').onclick = () => {
   $('settings').classList.remove('open');
   setStatus(changed ? 'Settings saved. Wishlists changed, click Scan again to re-rate your weapons.' : 'Settings saved.');
 };
-$('btnRefresh').onclick = async () => { await cacheSet('manifest2', null); for (const L of activeLists()) await cacheSet('wl:' + L.url, null); state.defs = null; state.wl = null; setStatus('Cache cleared. Data will download again on the next scan or lookup.'); };
+$('btnRefresh').onclick = async () => { await cacheSet('manifest2', null); await cacheSet('wlSlim', null); state.wlSlim = false; for (const L of activeLists()) await cacheSet('wl:' + L.url, null); state.defs = null; state.wl = null; setStatus('Cache cleared. Data will download again on the next scan or lookup.'); };
 if (!ls.get('apiKey')) $('settings').classList.add('open');
 
 // fetch wrapper that names which download failed
-async function net(url, what, opts){
-  try { return await fetch(url, opts); }
-  catch (e){
-    console.error('Fetch failed for', what, url, e);
-    throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nThis is usually an ad blocker, browser shield, or firewall blocking the request. Press F12 and check the Console tab for the exact reason.');
-  }
-}
+/* net: core.js */
 
 // ---- Bungie sign-in (OAuth, public client: no refresh token, about 1 hour per sign-in) ----
 const auth = {
@@ -624,14 +617,7 @@ async function handleOAuthRedirect(){
   let expected = null; try { expected = sessionStorage.getItem('oauthState'); sessionStorage.removeItem('oauthState'); } catch {}
   if (!expected || q.get('state') !== expected){ setStatus('Sign-in was rejected: the response did not match this browser session. Try Sign in again.', true); return false; }
   setStatus('Finishing Bungie sign-in...');
-  const r = await net('https://www.bungie.net/Platform/App/OAuth/Token/', 'Bungie sign-in token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-API-Key': ls.get('apiKey') || '' },
-    body: 'grant_type=authorization_code&code=' + encodeURIComponent(code) + '&client_id=' + encodeURIComponent(ls.get('clientId') || '')
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!j.access_token){ setStatus('Bungie sign-in failed: ' + (j.error_description || j.error || ('HTTP ' + r.status)), true); return false; }
-  auth.set({ token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, bnetId: j.membership_id });
+  try { await exchangeCode(code); } catch (e){ setStatus(e.message, true); return false; }
   ls.set('authAuto', '1');   // from now on, renew the sign-in automatically when it runs out
   updateAuthUi();
   let back = null; try { back = sessionStorage.getItem('returnTo'); sessionStorage.removeItem('returnTo'); } catch {}
@@ -640,37 +626,9 @@ async function handleOAuthRedirect(){
 }
 
 // ---- Bungie API ----
-async function bungie(path, body, plainBody){
-  const key = ls.get('apiKey');
-  if (!key) throw new Error('Add your Bungie API key in Settings first.');
-  const headers = { 'X-API-Key': key };
-  if (body && !plainBody) headers['Content-Type'] = 'application/json';
-  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
-  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', {
-    method: body ? 'POST' : 'GET',
-    headers,
-    cache: 'no-store',   // always read your current inventory, never a cached copy
-    body: body ? JSON.stringify(body) : undefined
-  });
-  let j;
-  try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
-  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
-  return j.Response;
-}
+/* bungie: core.js */
 // POST for item actions; retries without the JSON content type if the browser blocks the first try
-async function bungieAction(path, body){
-  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right). Sign-in lasts about an hour.');
-  // Bungie throttles item moves when they come too fast: wait a moment and try again instead of failing
-  // (lets multi-step moves run back to back with no fixed pauses)
-  for (let n = 0; ; n++){
-    try { return await bungie(path, body); }
-    catch (e){
-      if (/Could not download/.test(e.message)){ try { return await bungie(path, body, true); } catch (e2){ e = e2; } }
-      if (n < 3 && /thrott|too many|too quickly|try again/i.test(e.message || '')){ await sleep(350 * (n + 1)); continue; }
-      throw e;
-    }
-  }
-}
+/* bungieAction: core.js */
 
 async function loadDefs(){
   if (state.defs) return state.defs;
@@ -703,10 +661,21 @@ function activeLists(){
   return lists;
 }
 
-async function loadWishlist(){
-  if (state.wl) return state.wl;
+// Speed: parsing every list (≈46 MB) takes about a second, so after a full parse the page keeps a "slim" copy in
+// IndexedDB (wlSlim) with only the rolls for weapons you own. The next load uses it straight away; the full lists
+// are parsed only when something needs them (Look up, a weapon the slim copy doesn't cover, changed lists).
+const wlSig = lists => lists.map(l => l.url + '@' + (l.mode || '')).join('|');
+async function loadWishlist(opts = {}){
+  if (state.wl && (!state.wlSlim || !opts.full)) return state.wl;
   const lists = activeLists();
   if (!lists.length) throw new Error('No wishlists are turned on. Open Settings and pick at least one.');
+  if (!opts.full && !state.wl){
+    const slim = await cacheGet('wlSlim');
+    if (slim && slim.sig === wlSig(lists) && Date.now() - slim.at < 24 * 3600e3){
+      state.wl = slim.wl; state.wlSlim = true; state.wlCovered = new Set(slim.covered); state.wlInfo = slim.info; updateFooter();
+      return state.wl;
+    }
+  }
   let acc = null;
   for (let i = 0; i < lists.length; i++){
     const L = lists[i];
@@ -731,8 +700,21 @@ async function loadWishlist(){
   acc.sources = lists.map(l => l.name);
   state.wlInfo = lists;
   updateFooter();
-  state.wl = acc;
+  state.wl = acc; state.wlSlim = false; state.wlCovered = null;
   return state.wl;
+}
+// keep only the rolls for the weapons you own (notes re-indexed), for the next page load
+async function saveSlimWishlist(){
+  if (!state.wl || state.wlSlim || !state.wlInfo) return;
+  const owned = [...new Set(state.items.map(i => i.hash))].sort((a, b) => a - b), key = owned.join(',');
+  if (state.slimKey === key) return;
+  const notes = [''], idx = new Map([[0, 0]]), ni = n => { if (!idx.has(n)){ idx.set(n, notes.length); notes.push(state.wl.notes[n] || ''); } return idx.get(n); };
+  const copy = e => Object.assign({}, e, { n: ni(e.n || 0), ti: ni(e.ti || 0) });
+  const good = new Map(), trash = new Map();
+  for (const h of owned){ const g = state.wl.good.get(h), t = state.wl.trash.get(h); if (g) good.set(h, g.map(copy)); if (t) trash.set(h, t.map(copy)); }
+  const at = Math.min(...state.wlInfo.map(l => l.at || Date.now()));
+  await cacheSet('wlSlim', { sig: wlSig(activeLists()), at, covered: owned, info: state.wlInfo, wl: { good, trash, notes, sources: state.wl.sources } });
+  state.slimKey = key;
 }
 
 const nameOf = h => (state.defs[h] && state.defs[h].n) || '';
@@ -807,8 +789,10 @@ async function scan(opts = {}){
     state.bungieTime = p.responseMintedTimestamp ? new Date(p.responseMintedTimestamp).getTime() : 0;
     await defsP; await wlP;
     buildItems(p);
+    if (state.wlSlim && state.items.some(i => !state.wlCovered.has(i.hash))){ setStatus('New weapon found, reading the full god roll lists...'); await loadWishlist({ full: true }); }
     rerate();
     trackDrops(p);
+    setTimeout(() => saveSlimWishlist().catch(() => {}), 1500);
     // what disappeared since the last scan (dismantled, or moved off this account view)
     const nowIds = new Set(state.items.map(i => i.id));
     const gone = prevIds.size ? [...prevIds].filter(id => !nowIds.has(id)) : [];
@@ -1076,34 +1060,9 @@ function saveMyRoll(name, hashes){
 }
 
 // ---- full manifest entities, fetched per weapon and cached ----
-const entMem = new Map();
-async function ent(type, hash){
-  const k = type + ':' + hash;
-  if (entMem.has(k)) return entMem.get(k);
-  const p = (async () => {
-    const c = await cacheGet('ent:' + k);
-    if (c && c.v === state.manVer) return c.d;
-    // retry a few times: Bungie sometimes rejects a request right after app settings change, or under load
-    let d, lastErr;
-    for (const wait of [0, 1500, 4000]){
-      if (wait) await sleep(wait);
-      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
-      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
-    }
-    if (lastErr) throw lastErr;
-    await cacheSet('ent:' + k, { v: state.manVer, d });
-    return d;
-  })();
-  entMem.set(k, p);
-  try { return await p; } catch (e){ entMem.delete(k); throw e; }
-}
-async function entMany(type, hashes){
-  const out = {}, list = [...new Set(hashes.filter(Boolean))];
-  for (let i = 0; i < list.length; i += 8){
-    await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
-  }
-  return out;
-}
+/* entMem: core.js */
+/* ent: core.js */
+/* entMany: core.js */
 
 // ---- weapon detail view ----
 const CAT_PERKS = 4241085061, CAT_INTRINSIC = 3956125808;
@@ -1574,7 +1533,7 @@ function wireBulkBar(){
 
 
 // Bungie says the item doesn't exist: it was dismantled (or deleted) after the last refresh. Drop it from the list.
-function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+/* isGoneError: core.js */
 function dropGone(i){
   state.items = state.items.filter(x => x.id !== i.id);
   state.picked.delete(i.id);
@@ -1624,59 +1583,15 @@ const selChar = () => {
   const v = $('charSel').value;
   return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
 };
-function fillCharSel(p){
-  const acts = (p.characterActivities && p.characterActivities.data) || {};
-  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
-  state.activeChar = (live || state.chars[0] || {}).id;
-  const a = state.chars.find(c => c.id === state.activeChar);
-  const saved = ls.get('pullChar2') || 'auto';
-  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
-    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
-  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
-}
+/* fillCharSel: core.js */
 $('charSel').onchange = () => { ls.set('pullChar2', $('charSel').value); render(); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const byId = id => state.items.find(i => i.id === id);
 
-async function setLock(i, state_){
-  await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: state_, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType });
-  i.locked = state_;
-}
-async function transfer(i, toVault, charId){
-  const go = () => bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType });
-  if (toVault){ await go(); if (typeof pmLeft === 'function') pmLeft(charId, i.id); return; }
-  // to a character: when that slot is full, stream.js first moves the lowest rarity, lowest power unlocked item there to the vault
-  const room = async force => { if (typeof pmEnsureRoom !== 'function') return {}; const r = await pmEnsureRoom(charId, i.hash, true, force);
-    if (r.err) throw new Error('No room for ' + i.name + ': ' + r.err + '.'); if (r.moved){ toast('Moved ' + r.moved + ' to the vault to make room'); await sleep(300); } return r; };
-  await room(false);
-  try { await go(); }
-  catch (e){ if (typeof pmIsNoRoom !== 'function' || !pmIsNoRoom(e) || ls.get('pmMakeRoom') === '0') throw e; await room(true); await go(); }
-  if (typeof pmLanded === 'function') pmLanded(charId, { id: i.id, hash: i.hash, qty: 1 });
-}
-async function pullFromPostmaster(i){
-  // stream.js (Postmaster panel) frees a slot first by moving an unlocked item to the vault when the slot is full
-  const go = () => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: i.qty || 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
-  const room = async force => { if (typeof pmEnsureRoom !== 'function') return {}; const r = await pmEnsureRoom(i.charId, i.hash, !!i.id && i.id !== '0', force);
-    if (r.err) throw new Error(i.name + ' stayed in the postmaster: ' + r.err + '.'); if (r.moved){ toast('Moved ' + r.moved + ' to the vault to make room'); await sleep(300); } return r; };
-  await room(false);
-  try { await go(); }
-  catch (e){ if (typeof pmIsNoRoom !== 'function' || !pmIsNoRoom(e) || ls.get('pmMakeRoom') === '0') throw e; await room(true); await go(); }
-  if (typeof pmLanded === 'function') pmLanded(i.charId, { id: i.id, hash: i.hash, qty: i.qty || 1 });
-  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
-}
-async function pullTo(i, target){
-  if (i.postmaster){ await pullFromPostmaster(i); }   // postmaster items go to their own character first
-  if (i.charId === target) return;
-  if (i.equipped) throw new Error(i.name + ' is equipped on another character. Unequip it in game first.');
-  if (i.charId){
-    // free a slot on the target (if it's full) while the item travels to the vault: two Bungie calls at once, not one after the other
-    const pre = typeof pmEnsureRoom === 'function' && ls.get('pmMakeRoom') !== '0' ? pmEnsureRoom(target, i.hash, true, false).then(r => { if (r && r.moved) toast('Moved ' + r.moved + ' to the vault to make room'); }).catch(() => {}) : null;
-    await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault';
-    if (pre) await pre;
-  }
-  await transfer(i, false, target);
-  i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
-}
+/* setLock: core.js */
+/* transfer: core.js */
+/* pullFromPostmaster: core.js */
+/* pullTo: core.js */
 async function applyPerks(i){
   const target = selChar();
   if (!i.charId){ setStatus('Pulling ' + i.name + ' to your character first...'); await pullTo(i, target); await sleep(300); }
@@ -1726,16 +1641,8 @@ async function bulkLock(filterFn, label){
 }
 
 // ---- DIM integration ----
-function toast(msg){
-  let t = document.querySelector('.toast');
-  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
-}
-async function copyText(text, msg){
-  try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); }
-  catch { prompt('Copy this:', text); }
-}
+/* toast: core.js */
+/* copyText: core.js */
 function dimSearch(items){ return items.map(i => 'id:' + i.id).join(' or '); }
 
 $('btnSearch').onclick = () => {
@@ -1789,7 +1696,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = async () => {
   document.querySelector('.subtabs').classList.remove('hidden');
   if (location.hash === '#home') history.replaceState(null, '', '#' + (t.dataset.view === 'lookup' ? 'lookup' : 'weapons'));
   if (t.dataset.view === 'lookup'){
-    try { await loadDefs(); await loadWishlist(); setStatus('Ready. Type a weapon name.'); } catch (e){ setStatus(e.message, true); }
+    try { await loadDefs(); await loadWishlist({ full: true }); setStatus('Ready. Type a weapon name.'); } catch (e){ setStatus(e.message, true); }
   }
 });
 let lookupTimer, lastLookup = null;
@@ -1798,6 +1705,7 @@ $('lookupMode').onchange = () => { if (lastLookup) showRolls(lastLookup); };
 
 function lookup(){
   if (!state.defs || !state.wl) return;
+  if (state.wlSlim){ setStatus('Reading the full god roll lists...'); loadWishlist({ full: true }).then(() => { setStatus('Ready.'); lookup(); }).catch(e => setStatus(e.message, true)); return; }
   const q = $('lookupText').value.trim().toLowerCase();
   $('lookupRolls').innerHTML = '';
   if (q.length < 2){ $('lookupResults').innerHTML = ''; return; }
@@ -1896,23 +1804,7 @@ setInterval(tickRefresh, 1000);
    3 minutes per tab (sessionStorage renewAt) so a Bungie problem can't cause a redirect loop. Sign out clears authAuto. */
 let lastInput = Date.now();
 ['pointerdown', 'keydown', 'wheel'].forEach(t => addEventListener(t, () => { lastInput = Date.now(); }, { passive: true }));
-function autoRenew(){
-  if (ls.get('authAuto') !== '1' || location.protocol !== 'https:' || document.hidden) return false;
-  if (/[?&]code=/.test(location.search)) return false;           // finishing a sign-in right now
-  const a = auth.get(); if (!a || !a.token) return false;
-  const expired = !auth.valid(), idle = Date.now() - lastInput > 60e3;
-  if (!expired && !(a.exp - Date.now() < 4 * 60e3 && idle)) return false;   // renew early only when nobody is clicking
-  if (state.scanning) return false;
-  let last = 0; try { last = +sessionStorage.getItem('renewAt') || 0; } catch {}
-  if (Date.now() - last < 3 * 60e3) return false;
-  const cid = ls.get('clientId'); if (!cid) return false;
-  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const page = (location.pathname.split('/').pop() || 'index.html') + (/^#[a-z]+$/.test(location.hash) ? location.hash : '');
-  try { sessionStorage.setItem('renewAt', String(Date.now())); sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', page); } catch {}
-  setStatus('Renewing your Bungie sign-in...');
-  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
-  return true;
-}
+/* autoRenew: core.js */
 setInterval(autoRenew, 30e3);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) autoRenew(); });
 autoRenew();

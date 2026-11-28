@@ -1,0 +1,83 @@
+import json, asyncio
+from playwright.async_api import async_playwright
+lite={}
+def d(h,n,t,it,tier=5,b=0,c=3): lite[str(h)]={"displayProperties":{"name":n,"icon":"/i%d.png"%h},"itemTypeDisplayName":t,"itemType":it,"inventory":{"tierType":tier,"bucketTypeHash":b},"classType":c}
+d(1,"Fatebringer","Hand Cannon",3,5,1498876634); d(2,"Gjallarhorn","Rocket Launcher",3,6); d(3,"Techsec Helm","Helmet",2,5,3448274439,0); d(4,"Enhancement Core","Material",9,3)
+d(5,"Gilded Sunrise","Shader",19,5); d(6,"Dawnblade","Subclass",16); d(7,"Some Bounty","Bounty",26,2); d(8,"Exotic Engram","Engram",8,6); d(9,"Sparrow X","Vehicle",22,5); d(11,"Old Rare Gun","Auto Rifle",3,4,1498876634); d(12,"Kept Gun","Scout Rifle",3,5,1498876634); d(13,"Lost Gun","Pulse Rifle",3,5,1498876634); d(3159615086,"Glimmer","Currency",1,1); d(2817410917,"Bright Dust","Currency",1,5); d(1022552290,"Legendary Shards","Currency",1,5)
+prof={"profileCurrencies":{"data":{"items":[{"itemHash":3159615086,"quantity":481558},{"itemHash":2817410917,"quantity":950},{"itemHash":1022552290,"quantity":0}]}},"profileInventory":{"data":{"items":[{"itemHash":1,"itemInstanceId":"V1","bucketHash":138197802,"state":1},{"itemHash":2,"itemInstanceId":"V2","bucketHash":138197802},{"itemHash":4,"bucketHash":1469714392,"quantity":420},{"itemHash":5,"bucketHash":3313201758,"quantity":3},{"itemHash":9,"itemInstanceId":"V9","bucketHash":138197802}]}},
+ "characters":{"data":{"c1":{"characterId":"c1","classType":0,"light":2010,"dateLastPlayed":"2026-11-26T00:00:00Z"},"c2":{"characterId":"c2","classType":2,"light":1990,"dateLastPlayed":"2026-11-20T00:00:00Z"}}},
+ "characterInventories":{"data":{"c1":{"items":[{"itemHash":11,"itemInstanceId":"W11","bucketHash":1498876634},{"itemHash":12,"itemInstanceId":"W12","bucketHash":1498876634,"state":1},{"itemHash":13,"itemInstanceId":"PW","bucketHash":215593132},{"itemHash":3,"itemInstanceId":"C3","bucketHash":3448274439},{"itemHash":7,"bucketHash":1345459588},{"itemHash":8,"itemInstanceId":"P8","bucketHash":215593132}]},"c2":{"items":[{"itemHash":1,"itemInstanceId":"C21","bucketHash":1498876634}]}}},
+ "characterEquipment":{"data":{"c1":{"items":[{"itemHash":12,"itemInstanceId":"EQK","bucketHash":1498876634},{"itemHash":6,"itemInstanceId":"S6","bucketHash":3284755031},{"itemHash":2,"itemInstanceId":"E2","bucketHash":953998645}]}}},
+ "itemComponents":{"instances":{"data":{"V1":{"primaryStat":{"value":550}},"V2":{"primaryStat":{"value":560},"gearTier":5},"C3":{"primaryStat":{"value":540},"gearTier":4},"E2":{"primaryStat":{"value":555}},"C21":{"primaryStat":{"value":530}}}}}}
+S={'sw':False}
+for h,n,t in [(9001,'Arrowhead Brake','Barrel'),(9002,'Explosive Payload','Trait'),(9003,'Kill Tracker','Tracker'),(9004,'Default Shader','Shader'),(9005,'Firefly','Enhanced Trait'),(9006,'Hidden',''),(9010,'Adaptive Frame','Intrinsic'),(9011,'Corkscrew Rifling','Barrel'),(9012,'Masterwork: Range','Masterwork'),(9020,'Empty Mod Socket',''),(9013,'Rampage','Trait')]: d(h,n,t,19)
+
+import time
+reqlog=[]
+ok=lambda r:{"ErrorCode":1,"Response":r}
+ITEM=(lambda S: {"instance":{"data":{"primaryStat":{"value":550},"gearTier":5}},"stats":{"data":{"stats":{"4284893193":{"statHash":4284893193,"value":140},"1240592695":{"statHash":1240592695,"value":62},"155624089":{"statHash":155624089,"value":48}}}},           "sockets":{"data":{"sockets":[{"plugHash":9010,"isVisible":True},{"plugHash":9001 if not S['sw'] else 9011,"isVisible":True,"isEnabled":True},{"plugHash":9002,"isVisible":True},{"plugHash":9003,"isVisible":True},{"plugHash":9004,"isVisible":True},{"plugHash":9005,"isVisible":True},{"plugHash":9006,"isVisible":False},{"plugHash":9012,"isVisible":True},{"plugHash":9020 if not S.get('mod') else 9031,"isVisible":True}]}},           "reusablePlugs":{"data":{"plugs":{"1":[{"plugItemHash":9001,"canInsert":True,"enabled":True},{"plugItemHash":9011,"canInsert":True,"enabled":True}],"2":[{"plugItemHash":9002,"canInsert":True},{"plugItemHash":9013,"canInsert":False}]}}}})
+
+async def main():
+  async with async_playwright() as p:
+    b=await p.chromium.launch(args=['--disable-web-security']); pg=await b.new_page(viewport={'width':1440,'height':1000})
+    calls=[]; errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+    async def route(rt):
+      u=rt.request.url
+      if 'bungie' in u and ('/Platform/' in u or '/Destiny2/' in u):
+        await asyncio.sleep(0.25); reqlog.append((round(time.time()*1000), u.split('/Platform')[-1][:90]))
+      if 'Destiny2/Manifest' in u and u.rstrip('/').endswith('Manifest'): body=ok({"version":"v1","jsonWorldComponentContentPaths":{"en":{"DestinyInventoryItemLiteDefinition":"/c/lite.json"}}})
+      elif '/c/lite.json' in u: body=lite
+      elif '/Item/' in u and '/Profile/' in u:
+        calls.append(('item', u.split('/Item/')[1].split('/')[0], u.split('components=')[1]))
+        body=ok({"instance":{"data":{"primaryStat":{"value":550},"gearTier":5}},"stats":{"data":{"stats":{"4284893193":{"statHash":4284893193,"value":140},"1240592695":{"statHash":1240592695,"value":62},"155624089":{"statHash":155624089,"value":48}}}},
+          "sockets":{"data":{"sockets":[{"plugHash":9010,"isVisible":True},{"plugHash":9001 if not S['sw'] else 9011,"isVisible":True,"isEnabled":True},{"plugHash":9002,"isVisible":True},{"plugHash":9003,"isVisible":True},{"plugHash":9004,"isVisible":True},{"plugHash":9005,"isVisible":True},{"plugHash":9006,"isVisible":False},{"plugHash":9012,"isVisible":True},{"plugHash":9020 if not S.get('mod') else 9031,"isVisible":True}]}},
+          "reusablePlugs":{"data":{"plugs":{"1":[{"plugItemHash":9001,"canInsert":True,"enabled":True},{"plugItemHash":9011,"canInsert":True,"enabled":True}],"2":[{"plugItemHash":9002,"canInsert":True},{"plugItemHash":9013,"canInsert":False}]}}}})
+      elif '/Manifest/DestinyInventoryItemDefinition/' in u:
+        h=u.rstrip('/').split('/')[-1]
+        P={"9001":{"displayProperties":{"name":"Arrowhead Brake","icon":"/p1.png","description":"Lightly vented."},"itemTypeDisplayName":"Barrel","plug":{"plugCategoryIdentifier":"barrels"}},
+           "9002":{"displayProperties":{"name":"Explosive Payload","icon":"/p2.png"},"itemTypeDisplayName":"Trait","plug":{"plugCategoryIdentifier":"frames"}},
+           "9003":{"displayProperties":{"name":"Kill Tracker","icon":"/p3.png"},"itemTypeDisplayName":"Tracker","plug":{"plugCategoryIdentifier":"v400.plugs.weapons.masterworks.trackers"}},
+           "9004":{"displayProperties":{"name":"Default Shader","icon":"/p4.png"},"plug":{"plugCategoryIdentifier":"shader"}},
+           "9005":{"displayProperties":{"name":"Firefly","icon":"/p5.png"},"itemTypeDisplayName":"Enhanced Trait","plug":{"plugCategoryIdentifier":"frames"}},
+           "9006":{"displayProperties":{"name":"Hidden","icon":"/p6.png"},"plug":{"plugCategoryIdentifier":"frames"}},
+           "9010":{"displayProperties":{"name":"Adaptive Frame","icon":"/f0.png","description":"140 rpm"},"itemTypeDisplayName":"Intrinsic","plug":{"plugCategoryIdentifier":"intrinsics"}},
+           "9011":{"displayProperties":{"name":"Corkscrew Rifling","icon":"/p11.png"},"itemTypeDisplayName":"Barrel","plug":{"plugCategoryIdentifier":"barrels"}},
+           "9012":{"displayProperties":{"name":"Masterwork: Range","icon":"/mw.png"},"itemTypeDisplayName":"Masterwork","plug":{"plugCategoryIdentifier":"v400.plugs.weapons.masterworks.stat.range"}},
+           "9020":{"displayProperties":{"name":"Empty Mod Socket","icon":"/em.png"},"plug":{"plugCategoryIdentifier":"v400.weapon.mod_empty"}},
+           "9030":{"displayProperties":{"name":"Backup Mag","icon":"/bm.png","description":"More ammo."},"itemTypeDisplayName":"Weapon Mod","plug":{"plugCategoryIdentifier":"v400.weapon.mod_magazine","energyCost":{"energyCost":0}}},
+           "9031":{"displayProperties":{"name":"Counterbalance Stock","icon":"/cb.png"},"itemTypeDisplayName":"Weapon Mod","plug":{"plugCategoryIdentifier":"v400.weapon.mod_guns"}},
+           "9013":{"displayProperties":{"name":"Rampage","icon":"/p13.png"},"itemTypeDisplayName":"Trait","plug":{"plugCategoryIdentifier":"frames"}}}
+        body=ok(P.get(h, {"displayProperties":{"name":"Fatebringer","icon":"/f.png"},"itemTypeAndTierDisplayName":"Legendary Hand Cannon","sockets":{"socketEntries":[{},{},{},{},{},{},{},{},{"reusablePlugSetHash":555}]}}))
+      elif '/Manifest/DestinyStatDefinition/' in u:
+        h=u.rstrip('/').split('/')[-1]; body=ok({"4284893193":{"displayProperties":{"name":"Rounds Per Minute"}},"1240592695":{"displayProperties":{"name":"Range"}},"155624089":{"displayProperties":{"name":"Stability"}}}.get(h,{}))
+      elif '/Manifest/DestinyInventoryBucketDefinition/' in u:
+        h=u.rstrip('/').split('/')[-1]; body=ok({'1498876634':{'itemCount':3,'category':3},'138197802':{'itemCount':1300,'displayProperties':{'name':'General'}},'1469714392':{'itemCount':50,'displayProperties':{'name':'Consumables'}},'3313201758':{'itemCount':1,'displayProperties':{'name':'Modifications'}}}.get(h,{}))
+      elif 'GetMembershipsForCurrentUser' in u: body=ok({"destinyMemberships":[{"membershipType":3,"membershipId":"42"}],"primaryMembershipId":"42"})
+      elif '/Profile/' in u and 'components=305' in u and '/Item/' not in u: calls.append(('plugsets','305')); body=ok({"profilePlugSets":{"data":{"plugs":{"555":[{"plugItemHash":9030,"canInsert":True,"enabled":True},{"plugItemHash":9031,"canInsert":True,"enabled":True},{"plugItemHash":9020,"canInsert":True,"enabled":True}]}}}})
+      elif '/Profile/' in u: body=ok(prof)
+      elif '/Actions/' in u:
+        if 'InsertSocketPlugFree' in u:
+          pbx=json.loads(rt.request.post_data)
+          if pbx['plug']['socketIndex']==8: S['mod']=True
+          else: S['sw']=True
+        calls.append((u.split('/Actions/Items/')[1], json.loads(rt.request.post_data))); body=ok(0)
+      elif u.endswith('.png'): return await rt.fulfill(body=b'')
+      else: return await rt.continue_()
+      await rt.fulfill(body=json.dumps(body), headers={"access-control-allow-origin":"*","content-type":"application/json"})
+    await pg.route('**/*', route)
+    import sys, time
+    url='file://'+sys.argv[1]+'/vault.html'
+    it=ITEM(S)
+    if sys.argv[2]=='prof':
+      prof['itemComponents']['sockets']={'data':{'V1':it['sockets']['data'],'V2':it['sockets']['data']}}
+      prof['itemComponents']['stats']={'data':{'V1':it['stats']['data'],'V2':it['stats']['data']}}
+      prof['itemComponents']['reusablePlugs']={'data':{'V1':it['reusablePlugs']['data'],'V2':it['reusablePlugs']['data']}}
+    await pg.goto(url); await pg.evaluate("localStorage.clear(); localStorage.setItem('apiKey','k'); localStorage.setItem('auth', JSON.stringify({token:'T',exp:Date.now()+3600e3}))")
+    await pg.goto(url); await pg.wait_for_selector('.vit[data-roll="V1"]', timeout=30000); await pg.wait_for_timeout(1500)
+    for _ in range(2):
+      t0=time.time()
+      r=await pg.evaluate("(async()=>{ const i=state.items.find(x=>x.charId==='c2' && x.id && !x.equipped && !x.postmaster) || state.items.find(x=>x.charId && x.charId!=='c1' && x.id && !x.equipped); if(!i) return 'no item'; const t=performance.now(); await pullTo(i,'c1'); return [i.name, Math.round(performance.now()-t)]; })()")
+      print(sys.argv[1].split('/')[-1], 'char->char pullTo:', r, '| requests:', [x[1] for x in reqlog[-3:]])
+      await pg.goto(url); await pg.wait_for_selector('.vit[data-roll="V1"]', timeout=30000); await pg.wait_for_timeout(800)
+    await b.close()
+asyncio.run(main())
