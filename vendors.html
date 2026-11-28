@@ -203,6 +203,9 @@
   .core{border-color:#2b4f6b;background:linear-gradient(90deg,#10202e,#161b22 60%)}
   .corebox{margin-bottom:14px;padding-top:12px;border-top:1px solid var(--line2)} .corebox:first-child{border-top:0;padding-top:0} .corebox:last-child{margin-bottom:0}
   .corebox > summary{list-style:none;cursor:pointer;user-select:none} .corebox > summary::-webkit-details-marker{display:none}
+  .xurbox > summary{list-style:none;cursor:pointer;user-select:none} .xurbox > summary::-webkit-details-marker{display:none}
+  .xurbox > summary:hover h3{color:var(--accent)} .xurbox:not([open]) .vfold{transform:rotate(-90deg)} .xurbox:not([open]) .vhead{margin-bottom:0}
+  .xgist{font-size:13px;color:var(--dim);margin-top:2px} #vg-xur{scroll-margin-top:118px}
   .corebox > summary:hover h3{color:var(--accent)} .corebox:not([open]) .vfold{transform:rotate(-90deg)}
   .vrollhit{cursor:help} span.name.vrollhit:hover{text-decoration:underline dotted}
   .coresay{font-size:15px;font-weight:600;margin:4px 0 8px} .coresay.go{color:#5fe0a0} .coresay.no{color:#ffb4b0} .coresay.meh{color:#9fc6ef}
@@ -915,13 +918,13 @@ function render(){
 function foldSet(){ try { return new Set(JSON.parse(ls.get('vendFold') || '[]').map(String)); } catch { return new Set(); } }
 function saveFold(set){ ls.set('vendFold', JSON.stringify([...set])); }
 document.addEventListener('toggle', e => {
-  const d = e.target; if (!d.matches || !d.matches('details.vgroup, details.corebox')) return;
+  const d = e.target; if (!d.matches || !d.matches('details.vgroup, details.corebox, details.xurbox')) return;
   const f = foldSet(); d.open ? f.delete(d.dataset.vh) : f.add(d.dataset.vh); saveFold(f);
 }, true);
 // jump bar: one link per section so the page isn't one long scroll
 function renderNav(groups, v){
   const nav = $('vNav'), links = [];
-  links.push(['xurPanel', 'Xûr', null]);
+  links.push([$('vg-xur') ? 'vg-xur' : 'xurPanel', 'Xûr', null]);
   v.vendors.filter(x => x.core).sort((a, b) => a.core.localeCompare(b.core) * -1).forEach(x => links.push(['vg-' + x.hash, x.name, null]));
   groups.forEach(g => links.push(['vg-' + g.x.hash, g.x.name, g.items.length]));
   if (v.random.length) links.push(['vSkipped', 'Rolls when bought', v.random.length]);
@@ -942,7 +945,7 @@ $('vNav').addEventListener('click', e => {
   const b = e.target.closest('[data-foldall]');
   if (b){
     const close = b.dataset.foldall === '1', f = foldSet();
-    document.querySelectorAll('#groups details.vgroup, #corePanel details.corebox').forEach(d => { d.open = !close; close ? f.add(d.dataset.vh) : f.delete(d.dataset.vh); });
+    document.querySelectorAll('#groups details.vgroup, #corePanel details.corebox, #xurPanel details.xurbox').forEach(d => { d.open = !close; close ? f.add(d.dataset.vh) : f.delete(d.dataset.vh); });
     saveFold(f);
   }
 });
@@ -974,14 +977,16 @@ function renderXur(x, v){
       (items.length ? fold('His Strange Coin shop' + (where ? ' at ' + esc(where) : '') + ' is open all week: ' + items.length + ' items', main.concat(rest)) : '');
     return;
   }
-  el.innerHTML = '<div class="vhead">' + (x && x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
-    '<div><h3>Xûr is here</h3><div class="vloc">📍 ' + esc(where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span>' +
-    '<div style="text-align:right"><div class="xurtime">Leaves in ' + cd(xw.leaves) + '</div><div class="dim-lbl">' + fmtWhen(xw.leaves) + ' your time</div></div></div>' +
+  const rated = main.filter(i => i.kind !== 'other'), nb = rated.filter(i => i.v === 'buy').length, nm = rated.filter(i => i.v === 'maybe').length;
+  const gist = rated.length ? (nb ? nb + ' to purchase' : 'Nothing to purchase') + (nm ? ', ' + nm + ' maybe' : '') + ' out of ' + rated.length + ' with a visible roll' : '';
+  el.innerHTML = '<details class="xurbox" id="vg-xur" data-vh="xur"' + (foldSet().has('xur') ? '' : ' open') + '><summary><div class="vhead">' + (x && x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+    '<div><h3>Xûr is here' + (main.length ? ' <span class="vcount">' + main.length + '</span>' : '') + '</h3><div class="vloc">📍 ' + esc(where || 'Location not given by Bungie') + '</div>' + (gist ? '<div class="xgist">' + gist + '</div>' : '') + '</div><span class="spacer"></span>' +
+    '<div style="text-align:right"><div class="xurtime">Leaves in ' + cd(xw.leaves) + '</div><div class="dim-lbl">' + fmtWhen(xw.leaves) + ' your time</div></div><span class="vfold" aria-hidden="true">▾</span></div></summary>' +
     (!items.length ? '<div>It\'s his weekend, but Bungie isn\'t returning his stock for this character yet. Try ↻ Refresh in a few minutes.</div>' : '') +
     '<div class="grid">' + main.map(card).join('') + '</div>' +
     fold('Other stock: ' + rest.length + ' bounties, materials and rank rewards', rest) +
     (items.length - shown.length ? '<div class="dim-lbl" style="margin-top:8px">' + (items.length - shown.length === 1 ? '1 Xûr item that costs' : (items.length - shown.length) + ' Xûr items that cost') + ' Exotic Ciphers hidden. Untick "Hide items that cost Exotic Ciphers" to see them.</div>' : '') +
-    (rnd.length ? '<div class="dim-lbl" style="margin-top:6px">Also sells ' + rnd.length + ' item' + (rnd.length > 1 ? 's' : '') + ' that roll when bought: ' + esc(rnd.map(i => i.name).join(', ')) + '.</div>' : '');
+    (rnd.length ? '<div class="dim-lbl" style="margin-top:6px">Also sells ' + rnd.length + ' item' + (rnd.length > 1 ? 's' : '') + ' that roll when bought: ' + esc(rnd.map(i => i.name).join(', ')) + '.</div>' : '') + '</details>';
 }
 
 // Zavala and Shaxx: say plainly what to grab from each, or that there's nothing to judge because it's all random rolls
