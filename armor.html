@@ -830,6 +830,10 @@ function renderSetList(){
 $('setInput').onfocus = () => { renderSetList(); $('setList').classList.remove('hidden'); };
 $('setInput').oninput = renderSetList;
 $('setInput').onblur = () => setTimeout(() => $('setList').classList.add('hidden'), 150);
+// close the set list with Escape or a click anywhere outside the picker (it stays open while you pick several sets,
+// and on smaller screens it can sit over the filter buttons below it)
+$('setInput').addEventListener('keydown', e => { if (e.key === 'Escape'){ $('setList').classList.add('hidden'); $('setInput').blur(); } });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#setPick, #setList')) $('setList').classList.add('hidden'); }, true);
 $('setClear').onclick = () => { F.sets.clear(); renderChips(); render(); };
 $('fReset').onclick = () => { Object.values(F).forEach(x => x.clear()); state.vFilter = new Set(Object.keys(VLABEL)); $('filterText').value = ''; renderChips(); render(); };
 function passes(i, ignoreVerdict){
