@@ -201,7 +201,10 @@
   .xur{border:1px solid #6b4d16;background:linear-gradient(90deg,#2a2010,#161b22 60%)}
   .xur h3{font-size:16px;margin:0 0 4px}
   .core{border-color:#2b4f6b;background:linear-gradient(90deg,#10202e,#161b22 60%)}
-  .corebox{margin-bottom:14px} .corebox:last-child{margin-bottom:0}
+  .corebox{margin-bottom:14px;padding-top:12px;border-top:1px solid var(--line2)} .corebox:first-child{border-top:0;padding-top:0} .corebox:last-child{margin-bottom:0}
+  .corebox > summary{list-style:none;cursor:pointer;user-select:none} .corebox > summary::-webkit-details-marker{display:none}
+  .corebox > summary:hover h3{color:var(--accent)} .corebox:not([open]) .vfold{transform:rotate(-90deg)}
+  .vrollhit{cursor:help} span.name.vrollhit:hover{text-decoration:underline dotted}
   .coresay{font-size:15px;font-weight:600;margin:4px 0 8px} .coresay.go{color:#5fe0a0} .coresay.no{color:#ffb4b0} .coresay.meh{color:#9fc6ef}
   .rlist{font-size:12.5px;color:#c9d1db;margin-top:6px}
   details.xshop{margin-top:10px} details.xshop summary{cursor:pointer;color:var(--dim)}
@@ -661,7 +664,8 @@ async function loadVendors(cid){
     for (const c of ((((r.categories || {}).data || {})[vh] || {}).categories || [])){
       const dc = (def.displayCategories || [])[c.displayCategoryIndex];
       const n = dc && dc.displayProperties ? dc.displayProperties.name : '';
-      for (const ix of c.itemIndexes || []) catOf[ix] = n;
+      const clean = (n || '').replace(/\s*\([^)]*\{var:[^)]*\)/g, '').replace(/\{var:\d+\}/g, '').replace(/\s{2,}/g, ' ').trim();
+      for (const ix of c.itemIndexes || []) catOf[ix] = clean;
     }
     const ic = (r.itemComponents || {})[vh] || {};
     const sk = (ic.sockets || {}).data || {}, st = (ic.stats || {}).data || {}, ins = (ic.instances || {}).data || {}, rp = (ic.reusablePlugs || {}).data || {};
@@ -703,6 +707,8 @@ async function loadVendors(cid){
         it.random = !sockets || !sockets.length || sockets.some(x => /random/i.test(nameOf(x.plugHash)));
         if (it.random){ if (!hidden){ random.push(it); V0.rolls.push(it); } continue; }
         it.sockets = sockets;
+        it.rid = 'v:' + vh + ':' + ix + ':' + s.itemHash;
+        VROLL[it.rid] = { sockets, reuse: (rp[ix] || {}).plugs || {}, stats: (st[ix] || {}).stats || {}, ins: ins[ix] || {}, charId: null, vendor: true, it };
         if (kind === 'weapons'){
           it.have = new Set(); it.sel = new Set(); it.perks = [];
           sockets.forEach(x => { const n = nameOf(x.plugHash); if (!n) return; it.have.add(normName(n)); it.sel.add(normName(n));
@@ -845,6 +851,9 @@ function decisionLine(it){
     : 'the perks don\'t match what the community recommends';
   return '<div class="vdecide ' + cls + '"><b>' + word + '</b> · ' + sub + '</div>';
 }
+// vendor rolls for the shared roll popup (stream.js): data-roll="v:<vendor>:<index>:<hash>"
+const VROLL = {};
+window.vendorRoll = id => { const r = VROLL[id]; if (r) r.split = r.it.split || null; return r || null; };
 function card(it){
   const vb = '<span class="badge ' + it.v + '">' + V[it.v] + '</span>';
   const rar = (it.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (it.weekly ? '<span class="pill weekly" title="' + esc(it.weekly) + '">Weekly reward</span>' : '');
@@ -859,8 +868,9 @@ function card(it){
   const cost = it.costs.length ? '<div class="cost' + (it.cipher ? ' cipher' : '') + '">Cost: ' + it.costs.map(c => esc(c.n) + ' ' + c.q.toLocaleString()).join(' · ') + '</div>' : '';
   const nb = it.weekly ? '<div class="dim-lbl">Earned from the weekly rewards track (' + esc(it.weekly) + '), not bought.</div>' : !it.canBuy ? '<div class="nobuy">Can\'t buy yet' + (it.fail.length ? ': ' + esc(it.fail.join(' ')) : '') + '</div>' : '';
   const cls = it.kind === 'armor' && CLASS[it.cls] ? CLASS[it.cls] + ' · ' : '';
-  return '<div class="card vcard ' + (it.v || '') + '">' + tierIcon('<img decoding="async" class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) +
-    '<div class="body"><div class="top"><span class="name">' + esc(it.name) + '</span>' + (it.kind !== 'other' ? vb : '') + '</div>' +
+  const ra = it.rid ? ' data-roll="' + esc(it.rid) + '" data-rh="' + it.hash + '" title="Hover or click for the full roll"' : '';
+  return '<div class="card vcard ' + (it.v || '') + '"><span class="vrollhit"' + ra + '>' + tierIcon('<img decoding="async" class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) + '</span>' +
+    '<div class="body"><div class="top"><span class="name' + (it.rid ? ' vrollhit' : '') + '"' + ra + '>' + esc(it.name) + '</span>' + (it.kind !== 'other' ? vb : '') + '</div>' +
     '<div class="meta">' + esc(cls + it.type) + (it.cat ? ' · ' + esc(it.cat) : '') + '</div>' + rar + body +
     decisionLine(it) + (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + (it.split && (it.split.pve || it.split.pvp) ? modeGraph(it.split, { compact: true }) : '') + cost + nb +
     '<a class="cbtn" href="https://www.light.gg/db/items/' + it.hash + '/" target="_blank" rel="noopener">light.gg ↗</a></div></div>';
@@ -904,19 +914,19 @@ function render(){
 // vendor sections fold; folded vendor hashes are kept in localStorage vendFold
 function foldSet(){ try { return new Set(JSON.parse(ls.get('vendFold') || '[]').map(String)); } catch { return new Set(); } }
 function saveFold(set){ ls.set('vendFold', JSON.stringify([...set])); }
-$('groups').addEventListener('toggle', e => {
-  const d = e.target; if (!d.matches || !d.matches('details.vgroup')) return;
+document.addEventListener('toggle', e => {
+  const d = e.target; if (!d.matches || !d.matches('details.vgroup, details.corebox')) return;
   const f = foldSet(); d.open ? f.delete(d.dataset.vh) : f.add(d.dataset.vh); saveFold(f);
 }, true);
 // jump bar: one link per section so the page isn't one long scroll
 function renderNav(groups, v){
   const nav = $('vNav'), links = [];
   links.push(['xurPanel', 'Xûr', null]);
-  if (!$('corePanel').classList.contains('hidden')) links.push(['corePanel', 'Zavala & Shaxx', null]);
+  v.vendors.filter(x => x.core).sort((a, b) => a.core.localeCompare(b.core) * -1).forEach(x => links.push(['vg-' + x.hash, x.name, null]));
   groups.forEach(g => links.push(['vg-' + g.x.hash, g.x.name, g.items.length]));
   if (v.random.length) links.push(['vSkipped', 'Rolls when bought', v.random.length]);
   nav.innerHTML = '<div class="vnav-links">' + links.map(([id, n, c]) => '<a href="#' + id + '" data-jump="' + id + '">' + esc(n) + (c != null ? ' <b>' + c + '</b>' : '') + '</a>').join('') + '</div>' +
-    (groups.length ? '<span class="vnav-acts"><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="0">Expand all</button><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="1">Collapse all</button></span>' : '');
+    (groups.length || v.vendors.some(x => x.core) ? '<span class="vnav-acts"><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="0">Expand all</button><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="1">Collapse all</button></span>' : '');
   nav.classList.remove('hidden');
 }
 $('vNav').addEventListener('click', e => {
@@ -932,7 +942,7 @@ $('vNav').addEventListener('click', e => {
   const b = e.target.closest('[data-foldall]');
   if (b){
     const close = b.dataset.foldall === '1', f = foldSet();
-    document.querySelectorAll('#groups details.vgroup').forEach(d => { d.open = !close; close ? f.add(d.dataset.vh) : f.delete(d.dataset.vh); });
+    document.querySelectorAll('#groups details.vgroup, #corePanel details.corebox').forEach(d => { d.open = !close; close ? f.add(d.dataset.vh) : f.delete(d.dataset.vh); });
     saveFold(f);
   }
 });
@@ -976,7 +986,7 @@ function renderXur(x, v){
 
 // Zavala and Shaxx: say plainly what to grab from each, or that there's nothing to judge because it's all random rolls
 function renderCore(v){
-  const el = $('corePanel');
+  const el = $('corePanel'), fold = foldSet();
   const boxes = CORE.map(c => {
     const x = v.vendors.find(y => y.core === c.key);
     if (!x) return '<div class="corebox"><h3>' + c.label + '</h3><div class="coresay meh">Bungie didn\'t return ' + c.label + '\'s stock for this character.</div></div>';
@@ -989,11 +999,11 @@ function renderCore(v){
     else if (!rated.length && rolls.length) say = '<div class="coresay no">' + c.label + ' only has random rolls this week. Nothing to judge before you buy, so skip him unless you\'re farming a specific weapon or armor roll.</div>';
     else say = '<div class="coresay no">Nothing worth buying from ' + c.label + ' this week.</div>';
     const show = grab.concat(maybe);
-    return '<div class="corebox"><div class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
-      '<div><h3 style="margin:0">' + esc(x.name) + '</h3><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span></div>' +
-      say + (show.length ? '<div class="grid">' + show.map(card).join('') + '</div>' : '') +
+    return '<details class="corebox" id="vg-' + x.hash + '" data-vh="' + x.hash + '"' + (fold.has(String(x.hash)) ? '' : ' open') + '><summary><div class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+      '<div><h3 style="margin:0">' + esc(x.name) + (show.length ? ' <span class="vcount">' + show.length + '</span>' : '') + '</h3><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span><span class="vfold" aria-hidden="true">▾</span></div>' +
+      say + '</summary>' + (show.length ? '<div class="grid">' + show.map(card).join('') + '</div>' : '') +
       (rated.length - show.length ? '<div class="dim-lbl" style="margin-top:6px">' + (rated.length - show.length) + ' more with a visible roll rated Skip or Have it.</div>' : '') +
-      (rolls.length ? '<div class="rlist">Rolls when you get it (can\'t be judged ahead): ' + esc(rolls.slice(0, 25).join(', ')) + (rolls.length > 25 ? '…' : '') + '</div>' : '') + '</div>';
+      (rolls.length ? '<div class="rlist">Rolls when you get it (can\'t be judged ahead): ' + esc(rolls.slice(0, 25).join(', ')) + (rolls.length > 25 ? '…' : '') + '</div>' : '') + '</details>';
   });
   el.innerHTML = boxes.join('');
   el.classList.remove('hidden');
