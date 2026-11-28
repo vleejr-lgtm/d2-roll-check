@@ -798,6 +798,20 @@ function rate(){
       } else if (r.verdict === 'close'){ it.v = own && (own.best === 'god' || own.best === 'close') ? 'have' : 'maybe'; it.why = r.reason + (it.v === 'have' ? '. You already own one at least this good.' : '.'); }
       else if (r.verdict === 'trash'){ it.v = 'skip'; it.why = r.reason + '.'; }
       else { it.v = 'unrated'; it.why = 'No community recommendations for this weapon.'; }
+      // the badge follows the PvE / PvP bars (the better mode, or the one picked under Rolls for), so they never disagree
+      if (it.split && it.v !== 'skip'){
+        const sc = k => { const x = it.split[k]; return !x ? -1 : x[4] ? 0 : x[0]; };
+        const pe = mode === 'pvp' ? -1 : sc('pve'), pv = mode === 'pve' ? -1 : sc('pvp'), best = Math.max(pe, pv), m = pe >= pv ? 'PvE' : 'PvP';
+        const both = pe >= 70 && pv >= 70, g = typeof modeGrade === 'function' ? modeGrade(best) : '';
+        if (best >= 70 && it.v !== 'buy' && it.v !== 'have'){
+          it.v = own && own.best === 'god' ? 'have' : 'buy';
+          it.why = (both ? 'Strong in PvE and PvP' : 'Strong for ' + m + (g ? ' (grade ' + g + ')' : '')) + ': close to the rolls the community recommends. ' + (it.v === 'have' ? 'You already own a god roll of it.' : own ? 'Beats the ' + own.n + ' you own.' : 'You don\'t own one yet.');
+        } else if (best >= 45 && best < 70 && (it.v === 'unrated' || it.v === 'buy')){
+          if (it.v === 'unrated'){ it.v = own && (own.best === 'god' || own.best === 'close') ? 'have' : 'maybe'; it.why = 'Middle of the pack for ' + m + (g ? ' (grade ' + g + ')' : '') + '.'; }
+        } else if (best >= 0 && best < 45 && (it.v === 'maybe' || it.v === 'unrated')){
+          it.v = 'skip'; it.why = 'Weak in ' + (pe >= 0 && pv >= 0 ? 'both PvE and PvP' : m) + ': far from the rolls the community recommends.';
+        }
+      }
     } else if (it.kind === 'armor'){
       const desc = (it.tier ? 'Tier ' + it.tier + ' ' : '') + (it.arch || '') + (it.tert ? ' (+' + it.tert + ')' : '');
       if (it.legacy){ it.v = 'skip'; it.why = 'Old armor without an archetype or tier. Armor 3.0 replaces it.'; continue; }
