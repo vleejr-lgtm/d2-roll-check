@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment2.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -32,21 +32,39 @@ jobs:
         env:
           BUNGIE_API_KEY: ${{ secrets.BUNGIE_API_KEY }}
           BUNGIE_CLIENT_ID: ${{ secrets.BUNGIE_CLIENT_ID }}
+          BUNGIE_TOKEN_PROXY: ${{ secrets.BUNGIE_TOKEN_PROXY }}
         run: |
           set -euo pipefail
           if [[ ! "$BUNGIE_API_KEY" =~ ^[A-Za-z0-9]{16,64}$ ]]; then echo "BUNGIE_API_KEY secret missing or malformed"; exit 1; fi
           if [[ ! "$BUNGIE_CLIENT_ID" =~ ^[0-9]{2,12}$ ]]; then echo "BUNGIE_CLIENT_ID secret missing or malformed"; exit 1; fi
           mkdir -p _site
-          cp *.html *.css stream.js rating.js .nojekyll _site/
+          cp *.html *.css *.js manifest.webmanifest .nojekyll _site/
+          cp -r icons _site/
+          rm -f _site/config.js   # never ship a local config.js; the real one is written below
           # cache busting: every deploy gets its own ?v= so browsers and the Pages CDN never mix old and new files
           BUILD="${GITHUB_SHA::8}"
-          sed -i "s/__BUILD__/${BUILD}/g" _site/*.html _site/stream.js _site/rating.js
-          printf 'window.D2RC_CONFIG = { apiKey: "%s", clientId: "%s" };\n' "$BUNGIE_API_KEY" "$BUNGIE_CLIENT_ID" > _site/config.js
+          sed -i "s/__BUILD__/${BUILD}/g" _site/*.html _site/*.js
+          # optional sign-in worker (worker/token-worker.js): only used when the secret is set
+          PROXY=""
+          if [[ -n "${BUNGIE_TOKEN_PROXY:-}" ]]; then
+            if [[ ! "$BUNGIE_TOKEN_PROXY" =~ ^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._/-]*)?$ ]]; then echo "BUNGIE_TOKEN_PROXY must be an https URL"; exit 1; fi
+            PROXY="$BUNGIE_TOKEN_PROXY"
+          fi
+          printf 'window.D2RC_CONFIG = { apiKey: "%s", clientId: "%s", tokenProxy: "%s" };\n' "$BUNGIE_API_KEY" "$BUNGIE_CLIENT_ID" "$PROXY" > _site/config.js
           ls -la _site
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+      # GitHub sometimes can't see the just-uploaded artifact for a few seconds ("No artifacts named github-pages").
+      # Try once, wait, and try again instead of failing the whole deploy.
       - id: deployment
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Wait before retrying the deploy
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 20
+      - id: deployment2
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5

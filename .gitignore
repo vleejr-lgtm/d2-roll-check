@@ -4,3 +4,5 @@
 *.log
 Thumbs.db
 config.js
+tests/out/
+__pycache__/

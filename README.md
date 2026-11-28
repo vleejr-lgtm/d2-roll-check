@@ -177,3 +177,13 @@ The first visit downloads Bungie's activity definitions once (cached after that)
 Every weapon gets a separate PvE and PvP grade (S to F) with a five colour bar, and a call for each mode: Keep, Maybe or Trash. It shows on Weapons cards, the weapon detail (it updates live while you preview perks), Look up a weapon, Vault rows, the Character page, the Postmaster, the Activity stream and Vendors. The grade looks at how close the roll is to that mode's recommended rolls, whether it has a recommended trait pair, how many rolls it fully matches, and the Aegis tier for PvE. Search `keep for pvp` or `pve a` on the Vault and Character pages.
 
 Gear tier shows as diamonds down the left of every icon, like DIM.
+
+## More
+
+- **Inventory**: the Character and Vault pages show your Engrams, Consumables, Modifications and other storage like the game's inventory screen, with how full each one is.
+- **Refresh**: ↻ in the header (or press R) reads your data from Bungie again without reloading the page. The Activity and Postmaster panels have their own ↻.
+- **Move from any roll popup**: tap an item on any page and use Move to. Works on phones.
+- **Weekly rewards**: Zavala's and Shaxx's boxes on Vendors rate the weekly reward track gear when Bungie sends it.
+- **Install it**: in Chrome or Edge use Install app, on a phone use Add to Home Screen.
+- **Stay signed in**: optional, see `worker/README.md`.
+- **Tests**: `python tests/run_all.py`. They also run on every pull request.

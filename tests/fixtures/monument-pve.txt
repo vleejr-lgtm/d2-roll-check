@@ -1,0 +1,6 @@
+title:Giggletwig - Monument of Triumph PVE Community Wishlist
+description:Curated Monument of Triumph refreshed and reprised weapon rolls. Trait-focused matching; barrel and magazine are intentionally unrestricted.
+// Generated 2026-11-20. Weapon hashes checked against the supplied Bungie manifest export.
+// Each line specifies one or more trait perks only. DIM supports partial perk matching; enhanced versions are matched automatically.
+
+//notes:Zaouli's Bane | Pantheon / King's Fall | Primary | High confidence | LFCarry's November 2026 Monument meta guide recommends this Solar add-clear pairing.

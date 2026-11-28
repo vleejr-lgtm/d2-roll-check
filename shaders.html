@@ -90,10 +90,15 @@
   @media (max-width:640px){ .shpanel{grid-template-columns:1fr} .shbig{width:100%; height:auto; aspect-ratio:1/1} }
 </style>
 <link rel="stylesheet" href="theme.css?v=__BUILD__">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0D0F12">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preconnect" href="https://www.bungie.net" crossorigin>
 <link rel="dns-prefetch" href="https://www.bungie.net">
 <script src="config.js" onerror="this.remove()"></script>
 <script src="rating.js?v=__BUILD__"></script>
+<script src="core.js?v=__BUILD__"></script>
 </head>
 <body>
 <header>
@@ -161,22 +166,15 @@ const SITE_CFG = window.D2RC_CONFIG || {};
 const SHARED_APP = !!(SITE_CFG.apiKey && SITE_CFG.clientId);
 const ls = { get: k => { if (SHARED_APP && (k === 'apiKey' || k === 'clientId')) return SITE_CFG[k]; try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
-function toast(msg){
-  let t = document.querySelector('.toast');
-  if (!t){ t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2500);
-}
-async function copyText(text, msg){ try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch { prompt('Copy this:', text); } }
+/* setStatus: core.js */
+/* toast: core.js */
+/* copyText: core.js */
 
-function idb(){ return new Promise((res, rej) => { const r = indexedDB.open('d2rollcheck', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-async function cacheGet(k){ try { const db = await idb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch { return undefined; } }
-async function cacheSet(k, v){ try { const db = await idb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch {} }
+/* idb: core.js */
+/* cacheGet: core.js */
+/* cacheSet: core.js */
 
-async function net(url, what, opts){
-  try { return await fetch(url, opts); }
-  catch (e){ console.error('Fetch failed for', what, url, e); throw new Error('Could not download ' + what + '.\nURL: ' + url + '\nUsually an ad blocker, browser shield or firewall. Press F12, Console tab, for the exact reason.'); }
-}
+/* net: core.js */
 const auth = {
   get(){ try { return JSON.parse(ls.get('auth') || 'null'); } catch { return null; } },
   set(v){ ls.set('auth', v ? JSON.stringify(v) : ''); },
@@ -212,55 +210,11 @@ $('btnAuth').onclick = () => {
   try { sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', 'shaders.html'); } catch {}
   location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
 };
-async function bungie(path, body, plainBody){
-  const key = ls.get('apiKey');
-  if (!key) throw new Error('Add your Bungie API key in Settings on the Weapons page first.');
-  const headers = { 'X-API-Key': key };
-  if (body && !plainBody) headers['Content-Type'] = 'application/json';
-  if (auth.valid()) headers.Authorization = 'Bearer ' + auth.get().token;
-  const r = await net('https://www.bungie.net/Platform' + path, 'Bungie API (' + path.split('/').slice(0, 3).join('/') + ')', { method: body ? 'POST' : 'GET', headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
-  let j; try { j = await r.json(); } catch { throw new Error('Bungie API returned HTTP ' + r.status + '. Check that your API key Origin Header matches ' + location.origin); }
-  if (j.ErrorCode !== 1) throw new Error(j.Message || j.ErrorStatus || 'Bungie API error');
-  return j.Response;
-}
-async function bungieAction(path, body){
-  if (!auth.valid()) throw new Error('Sign in with Bungie first (top right).');
-  // Bungie throttles item moves when they come too fast: wait a moment and try again instead of failing
-  // (lets multi-step moves run back to back with no fixed pauses)
-  for (let n = 0; ; n++){
-    try { return await bungie(path, body); }
-    catch (e){
-      if (/Could not download/.test(e.message)){ try { return await bungie(path, body, true); } catch (e2){ e = e2; } }
-      if (n < 3 && /thrott|too many|too quickly|try again/i.test(e.message || '')){ await sleep(350 * (n + 1)); continue; }
-      throw e;
-    }
-  }
-}
-const entMem = new Map();
-async function ent(type, hash){
-  const k = type + ':' + hash;
-  if (entMem.has(k)) return entMem.get(k);
-  const p = (async () => {
-    const c = await cacheGet('ent:' + k);
-    if (c && c.v === state.manVer) return c.d;
-    let d, lastErr;
-    for (const wait of [0, 1500, 4000]){
-      if (wait) await sleep(wait);
-      try { d = await bungie('/Destiny2/Manifest/' + type + '/' + hash + '/'); lastErr = null; break; }
-      catch (e){ lastErr = e; if (!/origin|throttl|busy|unavailable|try again|Could not download/i.test(e.message)) break; }
-    }
-    if (lastErr) throw lastErr;
-    await cacheSet('ent:' + k, { v: state.manVer, d });
-    return d;
-  })();
-  entMem.set(k, p);
-  try { return await p; } catch (e){ entMem.delete(k); throw e; }
-}
-async function entMany(type, hashes){
-  const out = {}, list = [...new Set(hashes.filter(Boolean))];
-  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async h => { try { out[h] = await ent(type, h); } catch (e){ console.warn(type, h, e.message); } }));
-  return out;
-}
+/* bungie: core.js */
+/* bungieAction: core.js */
+/* entMem: core.js */
+/* ent: core.js */
+/* entMany: core.js */
 
 
 
@@ -276,63 +230,15 @@ const selChar = () => {
   const v = $('charSel').value;
   return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
 };
-function fillCharSel(p){
-  const acts = (p.characterActivities && p.characterActivities.data) || {};
-  const live = state.chars.find(c => acts[c.id] && acts[c.id].currentActivityHash);
-  state.activeChar = (live || state.chars[0] || {}).id;
-  const a = state.chars.find(c => c.id === state.activeChar);
-  const saved = ls.get('pullChar2') || 'auto';
-  $('charSel').innerHTML = '<option value="auto">Pull to: Auto (' + esc(a ? a.name : '?') + (live ? ', playing now' : ', last played') + ')</option>' +
-    state.chars.map(c => '<option value="' + esc(c.id) + '">Pull to: ' + esc(c.name) + (c.light ? ' ' + c.light : '') + '</option>').join('');
-  $('charSel').value = (saved !== 'auto' && state.chars.some(c => c.id === saved)) ? saved : 'auto';
-}
+/* fillCharSel: core.js */
 $('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
-async function setLock(i, v){ await bungieAction('/Destiny2/Actions/Items/SetLockState/', { state: v, itemId: i.id, characterId: i.charId || selChar(), membershipType: state.acct.membershipType }); i.locked = v; }
-async function transfer(i, toVault, charId){
-  const go = () => bungieAction('/Destiny2/Actions/Items/TransferItem/', { itemReferenceHash: i.hash, stackSize: 1, transferToVault: toVault, itemId: i.id, characterId: charId, membershipType: state.acct.membershipType });
-  if (toVault){ await go(); if (typeof pmLeft === 'function') pmLeft(charId, i.id); return; }
-  // to a character: when that slot is full, stream.js first moves the lowest rarity, lowest power unlocked item there to the vault
-  const room = async force => { if (typeof pmEnsureRoom !== 'function') return {}; const r = await pmEnsureRoom(charId, i.hash, true, force);
-    if (r.err) throw new Error('No room for ' + i.name + ': ' + r.err + '.'); if (r.moved){ toast('Moved ' + r.moved + ' to the vault to make room'); await sleep(300); } return r; };
-  await room(false);
-  try { await go(); }
-  catch (e){ if (typeof pmIsNoRoom !== 'function' || !pmIsNoRoom(e) || ls.get('pmMakeRoom') === '0') throw e; await room(true); await go(); }
-  if (typeof pmLanded === 'function') pmLanded(charId, { id: i.id, hash: i.hash, qty: 1 });
-}
-async function pullFromPostmaster(i){
-  // stream.js (Postmaster panel) frees a slot first by moving an unlocked item to the vault when the slot is full
-  const go = () => bungieAction('/Destiny2/Actions/Items/PullFromPostmaster/', { itemReferenceHash: i.hash, stackSize: i.qty || 1, itemId: i.id, characterId: i.charId, membershipType: state.acct.membershipType });
-  const room = async force => { if (typeof pmEnsureRoom !== 'function') return {}; const r = await pmEnsureRoom(i.charId, i.hash, !!i.id && i.id !== '0', force);
-    if (r.err) throw new Error(i.name + ' stayed in the postmaster: ' + r.err + '.'); if (r.moved){ toast('Moved ' + r.moved + ' to the vault to make room'); await sleep(300); } return r; };
-  await room(false);
-  try { await go(); }
-  catch (e){ if (typeof pmIsNoRoom !== 'function' || !pmIsNoRoom(e) || ls.get('pmMakeRoom') === '0') throw e; await room(true); await go(); }
-  if (typeof pmLanded === 'function') pmLanded(i.charId, { id: i.id, hash: i.hash, qty: i.qty || 1 });
-  i.postmaster = false; i.loc = (state.chars.find(c => c.id === i.charId) || {}).name || 'Character';
-}
-async function pullTo(i, target){
-  if (i.postmaster){ await pullFromPostmaster(i); }
-  if (i.charId === target) return;
-  if (i.equipped) throw new Error(i.name + ' is equipped. Unequip it in game first.');
-  if (i.charId){
-    // free a slot on the target (if it's full) while the item travels to the vault: two Bungie calls at once, not one after the other
-    const pre = typeof pmEnsureRoom === 'function' && ls.get('pmMakeRoom') !== '0' ? pmEnsureRoom(target, i.hash, true, false).then(r => { if (r && r.moved) toast('Moved ' + r.moved + ' to the vault to make room'); }).catch(() => {}) : null;
-    await transfer(i, true, i.charId); i.charId = null; i.loc = 'Vault';
-    if (pre) await pre;
-  }
-  await transfer(i, false, target); i.charId = target; i.loc = (state.chars.find(c => c.id === target) || {}).name || 'Character';
-}
-function isGoneError(e){ return /item requested was not found|DestinyItemNotFound|item not found/i.test((e && e.message) || ''); }
+/* setLock: core.js */
+/* transfer: core.js */
+/* pullFromPostmaster: core.js */
+/* pullTo: core.js */
+/* isGoneError: core.js */
 
-async function getAccount(){
-  if (state.acct) return state.acct;
-  const me = await (window.myMemberships ? myMemberships(bungie) : bungie('/User/GetMembershipsForCurrentUser/'));
-  const ms = me.destinyMemberships || [];
-  const a = ms.find(x => x.membershipId === me.primaryMembershipId) || ms.find(x => x.crossSaveOverride && x.membershipType === x.crossSaveOverride) || ms[0];
-  if (!a) throw new Error('No Destiny account found on your signed-in Bungie account.');
-  state.acct = { membershipType: a.membershipType, membershipId: a.membershipId };
-  return state.acct;
-}
+/* getAccount: core.js */
 
 
 /* ===================== manifest: item names (shared with Armor/Vendors/Today) and shaders ===================== */
@@ -567,23 +473,7 @@ setInterval(tickRefresh, 5000);
    3 minutes per tab (sessionStorage renewAt) so a Bungie problem can't cause a redirect loop. Sign out clears authAuto. */
 let lastInput = Date.now();
 ['pointerdown', 'keydown', 'wheel'].forEach(t => addEventListener(t, () => { lastInput = Date.now(); }, { passive: true }));
-function autoRenew(){
-  if (ls.get('authAuto') !== '1' || location.protocol !== 'https:' || document.hidden) return false;
-  if (/[?&]code=/.test(location.search)) return false;           // finishing a sign-in right now
-  const a = auth.get(); if (!a || !a.token) return false;
-  const expired = !auth.valid(), idle = Date.now() - lastInput > 60e3;
-  if (!expired && !(a.exp - Date.now() < 4 * 60e3 && idle)) return false;   // renew early only when nobody is clicking
-  if (state.scanning) return false;
-  let last = 0; try { last = +sessionStorage.getItem('renewAt') || 0; } catch {}
-  if (Date.now() - last < 3 * 60e3) return false;
-  const cid = ls.get('clientId'); if (!cid) return false;
-  const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const page = (location.pathname.split('/').pop() || 'index.html') + (/^#[a-z]+$/.test(location.hash) ? location.hash : '');
-  try { sessionStorage.setItem('renewAt', String(Date.now())); sessionStorage.setItem('oauthState', st); sessionStorage.setItem('returnTo', page); } catch {}
-  setStatus('Renewing your Bungie sign-in...');
-  location.href = 'https://www.bungie.net/en/OAuth/Authorize?client_id=' + encodeURIComponent(cid) + '&response_type=code&state=' + st;
-  return true;
-}
+/* autoRenew: core.js */
 setInterval(autoRenew, 30e3);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) autoRenew(); });
 autoRenew();

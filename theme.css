@@ -487,7 +487,7 @@ body.streampinned .pmpanel{right:390px}
 
 /* ---- pinned Activity panel (390px on the right): the page gets that much narrower, so the header has to wrap
    sooner, and floating cards must stay left of the panel ---- */
-@media (max-width:1710px){
+@media (max-width:2100px){
   body.streampinned header{flex-wrap:wrap; row-gap:6px}
   body.streampinned header .tabs{order:3; flex-basis:100%; margin-left:-12px; overflow-x:auto}
 }
@@ -575,10 +575,36 @@ button,.chip,a.navbtn,.badge,select{white-space:nowrap}
 .toolbar .tb-filter #filterText{flex:1 1 200px}
 /* header: wrap the nav onto its own row whenever the visible width gets tight (pinned or not) */
 @media (max-width:1300px){ header{flex-wrap:wrap; row-gap:6px} header .tabs{order:3; flex-basis:100%; overflow-x:auto} }
-@media (max-width:1710px){ body.streampinned header .tabs{margin-left:0} }
+@media (max-width:2100px){ body.streampinned header .tabs{margin-left:0} }
 
 /* ---- speed: the browser skips layout and paint for cards and rows that are off screen ---- */
 .card.wcard,.card.acard{content-visibility:auto; contain-intrinsic-size:auto 360px}
 .vit{content-visibility:auto; contain-intrinsic-size:auto 62px}
 .dvault,.dcell{content-visibility:auto; contain-intrinsic-size:auto 240px}
 .sev{content-visibility:auto; contain-intrinsic-size:auto 120px}
+/* ---- in-game style Inventory section (core.js inventoryHtml) ---- */
+.invpanel{padding:14px 16px; margin:0 0 14px}
+.inv-title{margin-bottom:8px}
+.invgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px 26px}
+.invhead{display:flex; justify-content:space-between; align-items:baseline; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); border-bottom:2px solid var(--line2); padding-bottom:4px; margin-bottom:8px}
+.invhead small{font-weight:600; letter-spacing:0; text-transform:none; color:var(--faint); margin-left:6px}
+.invhead b{color:var(--text); letter-spacing:0}
+.invsec.warn .invhead b{color:#E2B74B} .invsec.full .invhead b{color:#FF7B73} .invsec.full .invhead{border-color:rgba(229,83,75,.6)}
+.invrow{display:flex; flex-wrap:wrap; gap:4px}
+.inv-it{position:relative; width:46px; height:46px; border:1px solid #3a4150; border-radius:3px; background:#0A0C0F; overflow:hidden; flex:none}
+.inv-it img{width:100%; height:100%; display:block}
+.inv-it b{position:absolute; right:0; bottom:0; font-size:10px; font-weight:800; background:rgba(0,0,0,.75); color:#fff; padding:0 3px; border-top-left-radius:3px}
+.inv-it.r6{border-color:#c9a227} .inv-it.r5{border-color:#7b4fd4} .inv-it.r4{border-color:#4a7fc8} .inv-it.r3{border-color:#3e8a50}
+.inv-it.empty{border:1px dashed rgba(255,255,255,.12); background:transparent}
+.inv-it[data-roll]{cursor:pointer}
+/* tap to move row in the roll popup */
+.rp-move{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:0 0 10px}
+.rp-move span{font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-right:2px}
+.rp-move button{font-size:12px; padding:5px 10px; min-height:32px}
+@media (pointer:coarse){ .rp-move button{min-height:40px; padding:8px 12px} }
+.cpop .rp-move{display:none}
+/* manual refresh buttons (stream.js) */
+#btnReload,#streamReload{font-size:16px; line-height:1; padding-inline:11px}
+#btnReload.spinning,#streamReload.spinning{animation:d2spin .8s linear infinite; opacity:.85}
+@keyframes d2spin{to{transform:rotate(360deg)}}
+.pill.weekly{background:rgba(91,168,230,.16); color:#8cc4f0; border:1px solid rgba(91,168,230,.4)}
