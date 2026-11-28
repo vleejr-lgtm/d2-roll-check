@@ -179,7 +179,17 @@
   .badge.have{background:#3a4656;color:#fff} .badge.skip{background:var(--trash);color:#fff} .badge.unrated{background:#2a3038;color:#c9d1db}
   .card.buy{border-left-color:var(--keep)} .card.maybe{border-left-color:var(--review)} .card.have{border-left-color:#3a4656} .card.skip{border-left-color:var(--trash)}
   .vcard{cursor:default;padding-left:12px} .vcard:hover{border-color:var(--line)}
-  .vgroup{margin:18px 0 8px}
+  .vgroup{margin:0;padding:14px 0 6px;border-top:1px solid var(--line2)} .vgroup:first-child{border-top:0}
+  .vgroup > summary{list-style:none;cursor:pointer;user-select:none} .vgroup > summary::-webkit-details-marker{display:none}
+  .vgroup > summary:hover h2{color:var(--accent)} .vgroup:not([open]){padding-bottom:10px} .vgroup:not([open]) > summary{margin-bottom:0}
+  .vfold{color:var(--dim);font-size:14px;transition:transform .15s} .vgroup:not([open]) .vfold{transform:rotate(-90deg)}
+  .vcount{font-size:12px;font-weight:600;color:var(--dim);border:1px solid var(--line2);border-radius:10px;padding:0 7px;margin-left:6px;vertical-align:2px}
+  .vnav{position:sticky;top:60px;z-index:20;display:flex;gap:10px;align-items:center;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 0;margin-bottom:12px}
+  .vnav-links{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:thin}
+  .vnav a{white-space:nowrap;font-size:12.5px;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:3px 10px}
+  .vnav a:hover{color:var(--text);border-color:var(--line2)} .vnav a.on{color:var(--text);border-color:var(--accent)} .vnav a b{color:var(--faint);font-weight:600}
+  .vnav-acts{display:flex;gap:6px;flex:none}
+  #xurPanel,#corePanel,.vgroup,#vSkipped{scroll-margin-top:118px}
   .vhead{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .vhead img{width:40px;height:40px;border-radius:6px;background:#000}
   .vhead h2{margin:0;font-size:16px}
@@ -251,6 +261,8 @@
   </div>
 
   <div class="topinfo" id="topinfo"></div>
+
+  <nav class="vnav hidden" id="vNav" aria-label="Jump to vendor"></nav>
 
   <div class="panel xur" id="xurPanel"></div>
 
@@ -593,6 +605,38 @@ async function loadVendors(cid){
   const r = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/Character/' + cid + '/Vendors/?components=400,401,402,300,304,305,310');
   const vData = (r.vendors && r.vendors.data) || {};
   const hashes = Object.keys(vData).map(Number);
+  // Bungie's all-vendors answer often comes back without the perks and stats of what they sell. DIM asks each
+  // vendor on its own (GetVendor), and that answer has them, so do the same for every vendor that sells gear
+  // but came back without rolls. Weekly reward tracks and Zavala / Shaxx go first.
+  {
+    r.itemComponents = r.itemComponents || {};
+    const sales = (r.sales || {}).data || {};
+    const isGear = h => { const d = state.defs[h]; return d && (d.it === 3 || (d.it === 2 && SLOT[d.b])); };
+    const need = hashes.filter(vh => {
+      const items = Object.entries(((sales[vh] || {}).saleItems) || {}).filter(([, x]) => isGear(x.itemHash));
+      if (!items.length) return false;
+      const sk = ((r.itemComponents[vh] || {}).sockets || {}).data || {};
+      return !items.some(([ix]) => sk[ix] && sk[ix].sockets && sk[ix].sockets.length);
+    });
+    const prio = vh => { const s = String(vh); return CORE.some(c => c.hash === vh) ? 0 : XUR_HASHES.has(vh) ? 1 : 2; };
+    need.sort((a, b) => prio(a) - prio(b));
+    const todo = need.slice(0, 40);
+    if (todo.length){
+      setStatus('Reading the rolls of ' + todo.length + ' vendors one by one (Bungie leaves them out of the full list)...');
+      let next = 0;
+      const one = async () => {
+        while (next < todo.length){
+          const vh = todo[next++];
+          try {
+            const v = await bungie('/Destiny2/' + acct.membershipType + '/Profile/' + acct.membershipId + '/Character/' + cid + '/Vendors/' + vh + '/?components=300,304,305,310,402');
+            if (v && v.itemComponents) r.itemComponents[vh] = v.itemComponents;
+            if (v && v.sales && v.sales.data){ ((r.sales = r.sales || { data: {} }).data[vh] = { saleItems: v.sales.data }); }
+          } catch (e){ console.warn('vendor', vh, e.message); }
+        }
+      };
+      await Promise.all([one(), one(), one(), one()]);
+    }
+  }
   setStatus('Reading ' + hashes.length + ' vendor definitions (cached after the first time)...');
   const vDefs = await entMany('DestinyVendorDefinition', hashes);
   const dests = await entMany('DestinyDestinationDefinition', hashes.map(h => { const d = vDefs[h], v = vData[h]; return d && d.locations && d.locations[v.vendorLocationIndex] ? d.locations[v.vendorLocationIndex].destinationHash : 0; }));
@@ -608,7 +652,7 @@ async function loadVendors(cid){
     const dp = def.displayProperties || {};
     // Hidden vendors are skipped, except weekly reward tracks (Vanguard Arms, Crucible rewards in the Seasonal Hub):
     // their weapons and armor come with fixed perks you can judge, so they are folded into Zavala's or Shaxx's box below.
-    const hidden = def.visible === false && !XUR_HASHES.has(vh);
+    const hiddenV = def.visible === false && !XUR_HASHES.has(vh);
     const loc = def.locations && def.locations[vc.vendorLocationIndex];
     const dest = loc ? dests[loc.destinationHash] : null, place = dest ? places[dest.placeHash] : null;
     const where = [dest && dest.displayProperties.name, place && place.displayProperties.name].filter(Boolean)
@@ -622,7 +666,7 @@ async function loadVendors(cid){
     const ic = (r.itemComponents || {})[vh] || {};
     const sk = (ic.sockets || {}).data || {}, st = (ic.stats || {}).data || {}, ins = (ic.instances || {}).data || {}, rp = (ic.reusablePlugs || {}).data || {};
     const sales = ((((r.sales || {}).data || {})[vh] || {}).saleItems) || {};
-    if (!hidden) salesLog.push({ n: dp.name || 'Vendor', due: vc.nextRefreshDate || null, h: [...new Set(Object.values(sales).map(x => x.itemHash))] });
+    if (!hiddenV) salesLog.push({ n: dp.name || 'Vendor', due: vc.nextRefreshDate || null, h: [...new Set(Object.values(sales).map(x => x.itemHash))] });
     { // diagnostics: every vendor, its categories and how much gear with a visible roll it has
       let gear = 0, rolled = 0;
       for (const ix in sales){ const d = state.defs[sales[ix].itemHash]; if (!d) continue; const k = d.it === 3 || (d.it === 2 && SLOT[d.b]); if (!k) continue; gear++; const so = (sk[ix] || {}).sockets; if (so && so.length && !so.some(x => /random/i.test(nameOf(x.plugHash)))) rolled++; }
@@ -631,6 +675,8 @@ async function loadVendors(cid){
     const isXur = XUR_HASHES.has(vh) || isXurName(dp.name);
     const core = coreOf(vh, dp.name);
     const weeklyOf = n => /vanguard|nightfall|strike|ops/i.test(n || '') && !/crucible/i.test(n || '') ? 'zavala' : /crucible|shaxx|pvp|trials|iron banner/i.test(n || '') ? 'shaxx' : null;
+    // weekly reward tracks show up as their own vendor ("Weekly: Vanguard Arms Rewards"), visible or hidden: fold them into Zavala / Shaxx
+    const hidden = hiddenV || (!core && /^weekly\b|rewards?$/i.test(dp.name || '') && !!weeklyOf(dp.name));
     const V0 = { hash: vh, name: dp.name || 'Vendor', icon: dp.smallTransparentIcon || dp.icon || '', where, refresh: vc.nextRefreshDate, enabled: vc.enabled !== false, isXur, core, items: [], rolls: [] };
     for (const ix in sales){
       const s = sales[ix], d = state.defs[s.itemHash];
@@ -845,14 +891,59 @@ function render(){
   const groups = v.vendors.filter(x => !x.isXur && !x.core).map(x => ({ x, items: x.items.filter(passes).sort((a, b) => VORDER[a.v] - VORDER[b.v] || a.name.localeCompare(b.name)) }))
     .filter(g => g.items.length).sort((a, b) => a.x.name.localeCompare(b.x.name));
   const hiddenCipher = gear.filter(i => i.cipher).length;
+  const fold = foldSet();
+  renderNav(groups, v);
   $('groups').innerHTML = (groups.length ? groups.map(({ x, items }) =>
-    '<div class="vgroup"><div class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
-    '<div><h2>' + esc(x.name) + '</h2><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span></div>' +
-    '<div class="grid">' + items.map(card).join('') + '</div></div>').join('')
+    '<details class="vgroup" id="vg-' + x.hash + '" data-vh="' + x.hash + '"' + (fold.has(String(x.hash)) ? '' : ' open') + '><summary class="vhead">' + (x.icon ? '<img decoding="async" src="https://www.bungie.net' + esc(x.icon) + '" alt="">' : '') +
+    '<div><h2>' + esc(x.name) + ' <span class="vcount">' + items.length + '</span></h2><div class="vloc">📍 ' + esc(x.where || 'Location not given by Bungie') + '</div></div><span class="spacer"></span><span class="vrot">' + rotText(x.refresh) + '</span><span class="vfold" aria-hidden="true">▾</span></summary>' +
+    '<div class="grid">' + items.map(card).join('') + '</div></details>').join('')
     : '<div class="panel dim-lbl">Nothing matches. Turn on more chips under Show (Have it, Skip), or another character.</div>') +
     (hiddenCipher && $('hideCipher').checked ? '<div class="dim-lbl" style="margin-top:10px">' + hiddenCipher + (hiddenCipher > 1 ? ' items that cost' : ' item that costs') + ' Exotic Ciphers hidden.</div>' : '') +
-    (v.random.length ? '<details class="skipped"><summary>Skipped: ' + v.random.length + (v.random.length === 1 ? ' item that rolls its' : ' items that roll their') + ' perks or stats when you buy them</summary><ul>' +
-      v.random.sort((a, b) => a.vendor.name.localeCompare(b.vendor.name)).map(i => '<li>' + esc(i.name) + ' <span class="dim-lbl">(' + esc(i.vendor.name) + (i.cipher ? ', Exotic Cipher' : '') + ')</span></li>').join('') + '</ul></details>' : '');
+    (v.random.length ? '<details class="skipped" id="vSkipped"><summary>Skipped: ' + v.random.length + (v.random.length === 1 ? ' item that rolls its' : ' items that roll their') + ' perks or stats when you buy them</summary>' + skippedGrid(v.random) + '</details>' : '');
+}
+// vendor sections fold; folded vendor hashes are kept in localStorage vendFold
+function foldSet(){ try { return new Set(JSON.parse(ls.get('vendFold') || '[]').map(String)); } catch { return new Set(); } }
+function saveFold(set){ ls.set('vendFold', JSON.stringify([...set])); }
+$('groups').addEventListener('toggle', e => {
+  const d = e.target; if (!d.matches || !d.matches('details.vgroup')) return;
+  const f = foldSet(); d.open ? f.delete(d.dataset.vh) : f.add(d.dataset.vh); saveFold(f);
+}, true);
+// jump bar: one link per section so the page isn't one long scroll
+function renderNav(groups, v){
+  const nav = $('vNav'), links = [];
+  links.push(['xurPanel', 'Xûr', null]);
+  if (!$('corePanel').classList.contains('hidden')) links.push(['corePanel', 'Zavala & Shaxx', null]);
+  groups.forEach(g => links.push(['vg-' + g.x.hash, g.x.name, g.items.length]));
+  if (v.random.length) links.push(['vSkipped', 'Rolls when bought', v.random.length]);
+  nav.innerHTML = '<div class="vnav-links">' + links.map(([id, n, c]) => '<a href="#' + id + '" data-jump="' + id + '">' + esc(n) + (c != null ? ' <b>' + c + '</b>' : '') + '</a>').join('') + '</div>' +
+    (groups.length ? '<span class="vnav-acts"><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="0">Expand all</button><button class="ghost" style="font-size:12px;padding:3px 10px" data-foldall="1">Collapse all</button></span>' : '');
+  nav.classList.remove('hidden');
+}
+$('vNav').addEventListener('click', e => {
+  const a = e.target.closest('[data-jump]');
+  if (a){
+    e.preventDefault();
+    const t = $(a.dataset.jump); if (!t) return;
+    if (t.tagName === 'DETAILS') t.open = true;
+    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('vNav').querySelectorAll('a').forEach(x => x.classList.toggle('on', x === a));
+    return;
+  }
+  const b = e.target.closest('[data-foldall]');
+  if (b){
+    const close = b.dataset.foldall === '1', f = foldSet();
+    document.querySelectorAll('#groups details.vgroup').forEach(d => { d.open = !close; close ? f.add(d.dataset.vh) : f.delete(d.dataset.vh); });
+    saveFold(f);
+  }
+});
+// skipped items as icon tiles grouped by vendor (like DIM's vendor screen) instead of a long text list
+function skippedGrid(items){
+  const by = new Map();
+  for (const i of items){ const k = i.vendor.name; if (!by.has(k)) by.set(k, []); by.get(k).push(i); }
+  return '<div class="skipgrid">' + [...by].sort((a, b) => a[0].localeCompare(b[0])).map(([name, list]) =>
+    '<div class="skipv"><div class="skiph">' + esc(name) + ' <span class="dim-lbl">' + list.length + '</span></div><div class="skiptiles">' +
+    list.map(i => '<a class="skipt r' + (i.rar || 0) + '" href="https://www.light.gg/db/items/' + i.hash + '/" target="_blank" rel="noopener" title="' + esc(i.name + ' · ' + (i.type || '') + (i.cipher ? ' · costs Exotic Ciphers' : '') + ' · rolls when you get it') + '">' +
+      (i.icon ? '<img decoding="async" loading="lazy" src="https://www.bungie.net' + esc(i.icon) + '" alt="">' : '<span>' + esc(i.name.slice(0, 2)) + '</span>') + '</a>').join('') + '</div></div>').join('') + '</div>';
 }
 function renderXur(x, v){
   const xw = xurTimes(), el = $('xurPanel');

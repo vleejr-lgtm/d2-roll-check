@@ -28,7 +28,7 @@ Each page has its own inline `<script>` (page state, scan, render, page-only hel
 
 - **Never rename or remove element IDs, `data-*` hooks (`data-act`, `data-copy`, `data-pick`, `data-tagset`, `data-note`, `data-open`, `data-view`), or event wiring.** Restyle with classes and `theme.css`; wrap elements in new containers if needed, but keep the element and its ID.
 - **Don't change localStorage/IndexedDB keys** (users' tags, notes and caches live there). Current keys:
-  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar todayChar todayOpen todayCat lsToday lsAnchor authAuto pmMakeRoom vendSales shStatus shSource shSort vaultWhere vaultKind vaultSort charView enhPerks armorMeta armorSetSort armorSetFilter armorTopSets verdicts:weapons verdicts:armor charMode charAllShow charLabels` (sessionStorage: `relabelAt:w`, `relabelAt:a`, `acctMe`) (legacy `known:weapons`/`known:armor` are only read for migration)
+  - localStorage: `apiKey clientId auth bungieName tags notes myRolls wlPresets wlCustom wlUrl pullChar2 autoRefresh tagLockSync stream streamMute streamPinned streamSeen known:all weaponIndex weaponSummary armorIndex armorSummary armorRule:* acct:* vendShow vendMode vendHideCipher vendChar vendFold todayChar todayOpen todayCat lsToday lsAnchor authAuto pmMakeRoom vendSales shStatus shSource shSort vaultWhere vaultKind vaultSort charView enhPerks armorMeta armorSetSort armorSetFilter armorTopSets verdicts:weapons verdicts:armor charMode charAllShow charLabels` (sessionStorage: `relabelAt:w`, `relabelAt:a`, `acctMe`) (legacy `known:weapons`/`known:armor` are only read for migration)
   - IndexedDB cache: `wlSlim` (god roll rolls for owned weapons only, see Speed), `manifest2` (weapons), `manifestArmor` (armor/vendors/today items), `manifestToday` (activities), `manifestShaders` (shader list), `armorSetInfo` (set bonus text), `wl:<url>` (wishlists, 24 h), `ent:<Type>/<hash>` (single definitions)
 - **No secrets in files.** API key, OAuth client_id and token stay in the browser's localStorage. Never commit them; the repo is public.
 - **Bungie OAuth:** Public client, redirect `https://localhost:8443/` (lands on `index.html`, which reads `sessionStorage.returnTo` to go back). No refresh token; sign-in lasts about an hour.
@@ -190,6 +190,15 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - Filters: search (name or source), status chips `All / Owned / Need to get` (`shStatus`), source select (`shSource`, `SOURCES` regex buckets on `sourceString`, plus Other), sort (`shSort`: Newest = manifest `index` desc, an approximation; Name; Owned first; Missing first). Grid renders 120 cards at a time with Show more.
 - Detail modal: big swatch with watermark, source text, category, season (`seasonHash` from the full item definition via `ent()`, then `DestinySeasonDefinition`), vendor check, Copy name. Esc or backdrop closes.
 - Vendor check: `vendors.html` writes localStorage `vendSales` `{at, vendors: [{n, due, h: [itemHash]}]}` after every vendor load. Shaders ignores vendors whose `due` has passed. No data = prompt to open the Vendors page.
+
+## Vendors (vendors.html)
+
+- Bulk `GetVendors` returns no sockets for sale items. When a vendor's gear comes back without sockets, the page asks that vendor alone (`/Vendors/{hash}/?components=300,304,305,310,402`, Zavala/Shaxx first, then Xûr, up to 40 vendors, 4 at a time) and merges `itemComponents` and `sales` back in.
+- Weekly reward tracks ("Weekly: Vanguard Arms Rewards", visible or hidden) fold into Zavala's or Shaxx's box (`weeklyOf`), gear with a visible roll only, pill `Weekly reward`, decision `Go get it` instead of `Purchase`.
+- Every rated card has a decision line (`decisionLine`): Purchase / Go get it, Maybe, Your call, Ignore, with a one-line reason.
+- Jump bar `#vNav` (sticky under the header): Xûr, Zavala & Shaxx, one link per vendor with its item count, Rolls when bought, plus Expand all / Collapse all. Vendor sections are `details.vgroup` (`id="vg-<hash>"`, `data-vh`) with a divider; folded hashes are saved in localStorage `vendFold`. Jumping opens a folded section.
+- Items that roll when bought (`#vSkipped`) show as icon tiles grouped by vendor (`skippedGrid`), linked to light.gg, name and type in the tooltip.
+- Drawer `#vDiag` "What Bungie sent" lists every vendor (hidden ones too) with item, gear and rolled counts; ★ marks rows that look like a weekly track.
 
 ## Hosting
 

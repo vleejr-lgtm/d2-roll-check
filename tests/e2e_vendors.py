@@ -50,7 +50,6 @@ vendors = {
             "instances": {"data": {"1": {"gearTier": 5}}}},
     str(XUR): {"sockets": {"data": {"0": S([P1])}}},
     str(ZAV): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}},
-    str(WK): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}},
     str(HID): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}}}}
 ents = {
   "DestinyVendorDefinition/111": {"displayProperties": {"name": "Banshee-44", "icon": "/b.png"}, "visible": True, "locations": [{"destinationHash": 9001}], "displayCategories": [{"displayProperties": {"name": "Weekly Wares"}}], "failureStrings": []},
@@ -86,6 +85,8 @@ async def main():
       elif 'Destiny2/Manifest' in u: body = ok({"version": "v9", "jsonWorldComponentContentPaths": {"en": {"DestinyInventoryItemLiteDefinition": "/common/lite.json"}}})
       elif 'lite.json' in u: body = lite
       elif 'GetMembershipsForCurrentUser' in u: body = ok({"destinyMemberships": [{"membershipType": 3, "membershipId": "42"}], "primaryMembershipId": "42"})
+      elif '/Vendors/%d/' % WK in u:
+        calls.append(('one', WK)); body = ok({"sales": {"data": vendors["sales"]["data"][str(WK)]["saleItems"]}, "itemComponents": {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}}})
       elif '/Vendors/' in u: calls.append(('vendors', u.split('/Character/')[1])); body = ok(vendors)
       elif '/Profile/' in u: body = ok(prof)
       elif '/Actions/' in u: calls.append((u.split('/Actions/')[1], json.loads(rt.request.post_data))); body = ok(0)
@@ -112,6 +113,14 @@ async def main():
     print('DIAG:', (await pg.text_content('#vDiagBody')).replace('\n',' | ')[:500])
     print('CORE:', (await pg.inner_text('#corePanel')).replace('\n', ' | ')[:700])
     print('GROUPS:', (await pg.inner_text('#groups')).replace('\n', ' | ')[:900])
+    print('NAV:', (await pg.inner_text('#vNav')).replace('\n', ' | '))
+    print('singular calls:', [c for c in calls if c[0] == 'one'])
+    await pg.click('#vNav [data-foldall="1"]'); await pg.wait_for_timeout(100)
+    print('folded:', await pg.eval_on_selector_all('#groups details.vgroup', 'els => els.map(e => e.open)'), localStorage_fold := await pg.evaluate("localStorage.getItem('vendFold')"))
+    await pg.click('#vNav a[data-jump^="vg-"]'); await pg.wait_for_timeout(400)
+    print('after jump:', await pg.eval_on_selector_all('#groups details.vgroup', 'els => els.map(e => e.open)'))
+    await pg.click('#vNav [data-foldall="0"]'); await pg.wait_for_timeout(100)
+    print('skip tiles:', await pg.eval_on_selector_all('.skipt', 'els => els.length'))
     await pg.uncheck('#hideCipher'); await pg.wait_for_timeout(100)
     print('XUR shown:', (await pg.inner_text('#xurPanel')).replace('\n', ' | ')[:400])
     await pg.screenshot(path='vendors.png', full_page=True)
