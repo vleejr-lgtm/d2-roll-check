@@ -197,6 +197,8 @@ Every other known set (Pantheos Resplendent, Bushido, Techsec, Ferropotent, Lumi
 - Weekly reward tracks ("Weekly: Vanguard Arms Rewards", visible or hidden) fold into Zavala's or Shaxx's box (`weeklyOf`), gear with a visible roll only, pill `Weekly reward`, decision `Go get it` instead of `Purchase`.
 - Every rated card has a decision line (`decisionLine`): Purchase / Go get it, Maybe, Your call, Ignore, with a one-line reason.
 - Jump bar `#vNav` (sticky under the header): Xûr, Zavala & Shaxx, one link per vendor with its item count, Rolls when bought, plus Expand all / Collapse all. Vendor sections are `details.vgroup` (`id="vg-<hash>"`, `data-vh`) with a divider; folded hashes are saved in localStorage `vendFold`. Jumping opens a folded section.
+- Zavala and Shaxx boxes are `details.corebox` (`id="vg-<hash>"`, same `vendFold` key); the verdict line stays visible when folded. Each gets its own jump link.
+- Roll popup on vendor cards: icon and name carry `data-roll="v:<vendorHash>:<index>:<itemHash>"`. stream.js `readRoll` gets the sockets, reusable plugs, stats and PvE/PvP split from `window.vendorRoll(id)` (no request). Perk and mod buttons are disabled for vendor rolls. Category names have Bungie's `{var:...}` placeholders stripped.
 - Items that roll when bought (`#vSkipped`) show as icon tiles grouped by vendor (`skippedGrid`), linked to light.gg, name and type in the tooltip.
 - Drawer `#vDiag` "What Bungie sent" lists every vendor (hidden ones too) with item, gear and rolled counts; ★ marks rows that look like a weekly track.
 

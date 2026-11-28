@@ -522,21 +522,22 @@
     sockets.forEach((x, ix) => {
       if (!x.plugHash || x.isVisible === false) return;
       const act = P(x.plugHash); if (!act || SKIP_PLUG.test(act.cat)) return;
-      const opts = (reuse[ix] || []).map(o => Object.assign(P(o.plugItemHash) || {}, { can: o.canInsert !== false && o.enabled !== false })).filter(o => o.n && !SKIP_PLUG.test(o.cat || ''));
+      const opts = (reuse[ix] || []).map(o => Object.assign(P(o.plugItemHash) || {}, { can: !src.vendor && o.canInsert !== false && o.enabled !== false })).filter(o => o.n && !SKIP_PLUG.test(o.cat || ''));
       const kind = /intrinsic/i.test(act.cat) ? 'frame' : opts.length > 1 ? 'perk' : 'mod';
       const set = (entries[ix] || {}).reusablePlugSetHash || 0;
-      const editable = kind === 'mod' && !!set && !/masterwork|intrinsic|origin|catalyst|tracker/i.test(act.cat);
+      const editable = !src.vendor && kind === 'mod' && !!set && !/masterwork|intrinsic|origin|catalyst|tracker/i.test(act.cat);
       if (/^(Empty|Default) /i.test(act.n) && !editable) return;
       rows.push({ ix, act, opts: kind === 'perk' ? opts : [], kind, set: editable ? set : 0, empty: /^Empty /i.test(act.n) });
     });
     const st = Object.values(stats).filter(x => x.statHash !== POWER_STAT_H).map(x => ({ h: x.statHash, n: statNames[x.statHash] || '', v: x.value })).filter(x => x.n);
-    return { id, hash, charId: src.charId, name: head.name, icon: head.icon, type: head.type, power: ins.primaryStat ? ins.primaryStat.value : 0, tier: ins.gearTier || 0, rows, stats: st };
+    return { id, hash, charId: src.charId, vendor: !!src.vendor, split: src.split || null, name: head.name, icon: head.icon, type: head.type, power: ins.primaryStat ? ins.primaryStat.value : 0, tier: ins.gearTier || 0, rows, stats: st };
   }
   async function fullRoll(id, hash, src, hashes){
     const [plugs, item] = await Promise.all([
       hashes.size ? entMany('DestinyInventoryItemDefinition', [...hashes]) : {},
       ent('DestinyInventoryItemDefinition', hash).catch(() => null)]);
-    const P = h => { const d = plugs[h]; if (!d || !(d.displayProperties || {}).name) return null; const cat = ((d.plug || {}).plugCategoryIdentifier) || '';
+    const L = state.defs || {};
+    const P = h => { const d = plugs[h]; if (!d || !(d.displayProperties || {}).name){ const l = L[h]; return l && l.n ? { h, n: l.n, i: l.i || '', t: l.t || '', desc: '', enh: /enhanced/i.test(l.t || ''), cat: LITE_CAT(l.t || '') } : null; } const cat = ((d.plug || {}).plugCategoryIdentifier) || '';
       return { h, n: d.displayProperties.name, i: d.displayProperties.icon || '', t: d.itemTypeDisplayName || '', desc: d.displayProperties.description || '', enh: /enhanced/i.test(d.itemTypeDisplayName || ''), cat }; };
     const dp = (item && item.displayProperties) || {};
     return buildRoll(id, hash, src, P, ((item && item.sockets) || {}).socketEntries || [], { name: dp.name || pmDef(hash).n, icon: dp.icon || '', type: (item && item.itemTypeAndTierDisplayName) || '' });
@@ -544,10 +545,13 @@
   async function readRoll(id, hash){
     if (rollCache.has(id)) return rollCache.get(id);
     const job = (async () => {
-      if (!state.acct || !auth.valid()) throw new Error('Sign in to see the roll.');
       let src;
-      const c = profIC && profIC.sockets[id];
-      if (c && profIC.stats[id]) src = { sockets: c.sockets || [], reuse: (profIC.reuse[id] || {}).plugs || {}, stats: (profIC.stats[id] || {}).stats || {}, ins: profIC.inst[id] || {}, charId: profChar[id] || null };
+      // vendor stock (vendors.html): the roll comes from the vendor response, no request needed
+      if (/^v:/.test(id)){ src = typeof window.vendorRoll === 'function' && window.vendorRoll(id); if (!src) throw new Error('Load vendors again to see this roll.'); }
+      else if (!state.acct || !auth.valid()) throw new Error('Sign in to see the roll.');
+      const c = !src && profIC && profIC.sockets[id];
+      if (src){}
+      else if (c && profIC.stats[id]) src = { sockets: c.sockets || [], reuse: (profIC.reuse[id] || {}).plugs || {}, stats: (profIC.stats[id] || {}).stats || {}, ins: profIC.inst[id] || {}, charId: profChar[id] || null };
       else {
         // 300 instance, 304 stats, 305 sockets, 310 reusable plugs (the other perks you can switch to, like DIM's columns)
         const r = await bungie('/Destiny2/' + state.acct.membershipType + '/Profile/' + state.acct.membershipId + '/Item/' + id + '/?components=300,304,305,310');
@@ -581,7 +585,7 @@
     const swap = (r, o) => esc(x.id + '|' + r.ix + '|' + o.h + '|' + x.hash);
     return '<div class="rp" data-rollbox="' + esc(x.id) + '"><div class="rp-head">' + (x.icon ? (typeof tierIcon === 'function' ? tierIcon('<img decoding="async" src="' + img(x.icon) + '" alt="">', x.tier) : '<img decoding="async" src="' + img(x.icon) + '" alt="">') : '') + '<div><b>' + esc(x.name) + '</b><span>' + esc([x.type, x.tier ? 'Tier ' + x.tier : '', x.power ? 'Power ' + x.power : ''].filter(Boolean).join(' · ')) + '</span></div></div>' +
       moveBar(x.id) +
-      (typeof savedSplit === 'function' && savedSplit(x.id) ? modeGraph(savedSplit(x.id)) : '') +
+      (x.split && (x.split.pve || x.split.pvp) && typeof modeGraph === 'function' ? modeGraph(x.split) : typeof savedSplit === 'function' && savedSplit(x.id) ? modeGraph(savedSplit(x.id)) : '') +
       (x.stats.length ? '<div class="rp-stats">' + x.stats.map(s => '<div class="rp-stat"><span>' + esc(s.n) + '</span>' + (NOBAR.has(s.h) || s.v > 100 ? '<i class="nobar"></i>' : '<i><em style="width:' + Math.max(0, Math.min(100, s.v)) + '%"></em></i>') + '<b>' + s.v + '</b></div>').join('') + '</div>' : '') +
       frame.map(r => '<div class="rp-frame" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>').join('') +
       (perks.length ? '<div class="rp-cols">' + perks.map(r => '<div class="rp-col"><div class="rp-cur' + (r.act.enh ? ' enh' : '') + '" title="' + esc(r.act.desc) + '">' + pic(r.act) + '<span><b>' + esc(r.act.n) + '</b><small>' + esc(r.act.t) + '</small></span></div>' +
@@ -589,7 +593,7 @@
       (mods.length ? '<div class="rp-mods">' + mods.map(r => r.set
           ? '<button class="rp-mod edit' + (r.empty ? ' empty' : '') + '" data-modpick="' + esc(x.id + '|' + r.ix + '|' + r.set + '|' + x.hash) + '" title="' + esc((r.empty ? 'Empty mod slot' : r.act.n + (r.act.desc ? ': ' + r.act.desc : '')) + '\nClick to change') + '">' + (r.empty ? '<span class="rp-plus">+</span>' : pic(r.act)) + '</button>'
           : '<span class="rp-mod" title="' + esc(r.act.n + (r.act.t ? ' (' + r.act.t + ')' : '') + (r.act.desc ? ': ' + r.act.desc : '')) + '">' + pic(r.act) + '</span>').join('') + '</div><div class="rp-modlist hidden"></div>' : '') +
-      (perks.some(r => r.opts.length > 1) || mods.some(r => r.set) ? '<div class="rp-hint">' + (perks.length ? 'Click a perk on the right to switch to it. ' : '') + (mods.some(r => r.set) ? 'Click a mod to change it. ' : '') + 'Works in orbit, a social space, or offline.</div>' : '') + '</div>';
+      (!x.vendor && (perks.some(r => r.opts.length > 1) || mods.some(r => r.set)) ? '<div class="rp-hint">' + (perks.length ? 'Click a perk on the right to switch to it. ' : '') + (mods.some(r => r.set) ? 'Click a mod to change it. ' : '') + 'Works in orbit, a social space, or offline.</div>' : x.vendor && perks.some(r => r.opts.length > 1) ? '<div class="rp-hint">Vendor roll: the other perks in each column are what this copy can switch to after you get it.</div>' : '') + '</div>';
   }
   // switch a perk: InsertSocketPlugFree on the item's character (or the Pull-to one for vault items), then re-read the roll
   let swapping = false;

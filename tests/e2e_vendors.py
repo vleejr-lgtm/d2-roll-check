@@ -49,7 +49,7 @@ vendors = {
             "stats": {"data": {"1": {"stats": {str(SW): {"value": 30}, str(SG): {"value": 25}, str(SS): {"value": 20}}}}},
             "instances": {"data": {"1": {"gearTier": 5}}}},
     str(XUR): {"sockets": {"data": {"0": S([P1])}}},
-    str(ZAV): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}},
+    str(ZAV): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}, "reusablePlugs": {"data": {"0": {"plugs": {"2": [{"plugItemHash": P1, "canInsert": True}, {"plugItemHash": P2, "canInsert": True}]}}}}},
     str(HID): {"sockets": {"data": {"0": S([P3, P4, P1, P2])}}}}}
 ents = {
   "DestinyVendorDefinition/111": {"displayProperties": {"name": "Banshee-44", "icon": "/b.png"}, "visible": True, "locations": [{"destinationHash": 9001}], "displayCategories": [{"displayProperties": {"name": "Weekly Wares"}}], "failureStrings": []},
@@ -120,6 +120,11 @@ async def main():
     await pg.click('#vNav a[data-jump^="vg-"]'); await pg.wait_for_timeout(400)
     print('after jump:', await pg.eval_on_selector_all('#groups details.vgroup', 'els => els.map(e => e.open)'))
     await pg.click('#vNav [data-foldall="0"]'); await pg.wait_for_timeout(100)
+    print('core folds:', await pg.eval_on_selector_all('#corePanel details.corebox', 'els => els.map(e => e.open)'))
+    await pg.hover('#corePanel .vrollhit[data-roll]'); await pg.wait_for_timeout(900)
+    print('swap buttons:', await pg.eval_on_selector_all('#rollPop [data-swap]', 'els => els.length'), 'alts:', await pg.eval_on_selector_all('#rollPop .rp-alt', 'els => els.map(e => e.title)'))
+    print('ROLLPOP:', (await pg.inner_text('#rollPop')).replace('\n', ' | ')[:300], '| hidden:', await pg.eval_on_selector('#rollPop', 'e => e.classList.contains("hidden")'))
+    await pg.mouse.move(5, 5); await pg.wait_for_timeout(500)
     print('skip tiles:', await pg.eval_on_selector_all('.skipt', 'els => els.length'))
     await pg.uncheck('#hideCipher'); await pg.wait_for_timeout(100)
     print('XUR shown:', (await pg.inner_text('#xurPanel')).replace('\n', ' | ')[:400])
