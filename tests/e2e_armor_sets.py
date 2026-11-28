@@ -116,6 +116,23 @@ async def main():
     await pg.click('#getTabs [data-gc="0"]'); await pg.wait_for_timeout(200)
     await pg.evaluate("() => document.querySelector('.getcols').scrollIntoView({block:'start'})"); await pg.wait_for_timeout(200)
     await pg.screenshot(path='/home/claude/tests/armor_sets.png', full_page=False)
+    # real mouse clicks on the header text
+    for sel in ['[data-fold="classes"] h3', '#getPanel h3', '[data-fold="arch"] h4', '[data-fold="sets"] h4', '[data-fold="oldex"] h4']:
+        await pg.click(sel); await pg.wait_for_timeout(80)
+        print('MOUSE', sel, await pg.eval_on_selector(sel, "e => e.closest('[data-fold]').classList.contains('folded')"))
+        await pg.click(sel); await pg.wait_for_timeout(80)
+    for k in ['classes', 'get', 'arch', 'sets', 'top', 'oldex', 'list']:
+        await pg.click('[data-fold="' + k + '"] > .foldhead .ftog'); await pg.wait_for_timeout(60)
+        t = await pg.eval_on_selector('[data-fold="' + k + '"] > .foldhead .ftog', "e => getComputedStyle(e, '::after').content")
+        print('BTN', k, await pg.eval_on_selector('[data-fold="' + k + '"]', "e => e.classList.contains('folded')"), t)
+        await pg.click('[data-fold="' + k + '"] > .foldhead .ftog'); await pg.wait_for_timeout(60)
+    await pg.click('[data-foldall="1"]'); await pg.wait_for_timeout(100)
+    print('collapse all:', await pg.eval_on_selector_all('[data-fold].folded', 'e => e.length'))
+    await pg.screenshot(path='armor_folded_all.png', full_page=True)
+    await pg.click('[data-foldall="0"]'); await pg.wait_for_timeout(100)
+    print('expand all:', await pg.eval_on_selector_all('[data-fold].folded', 'e => e.length'))
+    await pg.evaluate("() => document.getElementById('getPanel').scrollIntoView()"); await pg.wait_for_timeout(100)
+    await pg.screenshot(path='armor_open.png')
     # every section folds from its header and stays folded after a reload
     for k in ['classes', 'get', 'arch', 'sets', 'top', 'oldex', 'list']:
         await pg.eval_on_selector('[data-fold="' + k + '"] .foldhead', 'e => e.click()'); await pg.wait_for_timeout(50)
