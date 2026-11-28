@@ -222,7 +222,7 @@ const selChar = () => {
   return (v && v !== 'auto' && state.chars.some(c => c.id === v)) ? v : (state.activeChar || state.chars[0].id);
 };
 /* fillCharSel: core.js */
-$('charSel').onchange = () => ls.set('pullChar2', $('charSel').value);
+$('charSel').onchange = () => { ls.set('pullChar2', $('charSel').value); invPick = ''; if (state.items && state.items.length) render(); };
 /* setLock: core.js */
 /* transfer: core.js */
 /* pullFromPostmaster: core.js */
@@ -350,6 +350,27 @@ function spaceHtml(){
 
 /* ===================== render ===================== */
 const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
+// Inventory follows one character, like the game: the one picked in its tabs, else the Where chip's character,
+// else the Pull-to character, else the last one played. Character buckets the others have show empty for this one.
+let invPick = '';
+function invChar(){
+  const ids = state.chars.map(c => c.id), ok = id => ids.includes(id);
+  if (ok(invPick)) return invPick;
+  if (ok(fWhere)) return fWhere;
+  const sel = $('charSel') && $('charSel').value; if (ok(sel)) return sel;
+  return ids[0] || '';
+}
+function invForChar(){
+  const all = state.inv || []; if (!all.length) return '';
+  const cid = invChar(), name = id => (state.chars.find(c => c.id === id) || {}).name || 'Character';
+  const mine = all.filter(s => !s.owner || s.owner === cid);
+  for (const s of all) if (s.owner && s.owner !== cid && !mine.some(m => m.owner === cid && m.h === s.h)) mine.push(Object.assign({}, s, { owner: cid, items: [] }));
+  const order = h => h === 375726501 ? 0 : h === 1469714392 ? 1 : h === 3313201758 ? 2 : 3;
+  mine.sort((a, b) => order(a.h) - order(b.h) || a.name.localeCompare(b.name));
+  const tabs = state.chars.length > 1 ? '<span class="invtabs">' + state.chars.map(c => '<span class="chip' + (c.id === cid ? ' on' : '') + '" data-invc="' + esc(c.id) + '">' + esc(c.name) + '</span>').join('') + '</span>' : '';
+  return inventoryHtml(mine, name, tabs);
+}
+document.addEventListener('click', e => { const t = e.target.closest('[data-invc]'); if (!t) return; invPick = t.dataset.invc; render(); });
 let fWhere = ls.get('vaultWhere') || 'all', fKind = ls.get('vaultKind') || 'all', fSort = ls.get('vaultSort') || 'type', fText = '', shown = 200;
 const PAGE_SIZE = 200;
 $('vSort').value = ['type', 'name', 'power', 'rarity', 'loc'].includes(fSort) ? fSort : 'type';
@@ -394,11 +415,11 @@ function render(){
   const n = w => state.items.filter(i => i.where === w).length;
   const vaultGear = state.items.filter(i => i.where === 'vault' && (i.kind === 'weapons' || i.kind === 'armor')).length;
   const gen = (state.space || []).find(b => b.h === 138197802);
-  $('vSpace').innerHTML = spaceHtml() + inventoryHtml(state.inv, cid => (state.chars.find(c => c.id === cid) || {}).name || 'Character');
+  $('vSpace').innerHTML = spaceHtml() + invForChar();
   $('vSum').innerHTML = [['Vault', n('vault'), gen && gen.cap ? (gen.cap - gen.used).toLocaleString() + ' of ' + gen.cap.toLocaleString() + ' vault slots free' : vaultGear + ' weapons and armor']].concat(state.chars.map(c => [c.name, n(c.id), c.light ? 'Power ' + c.light : '']))
     .concat([['Postmaster', n('pm'), n('pm') ? state.chars.map(c => { const k = state.items.filter(i => i.postmaster && i.charId === c.id).length; return c.name + ' ' + (typeof pmLabel === 'function' ? pmLabel(k) : k + '/21'); }).join(' · ') : 'Empty']])
     .map(([k, v, s]) => '<div class="hstat' + (k === 'Postmaster' && v >= 18 ? ' gold' : '') + '"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div><div class="s">' + esc(s) + '</div></div>').join('');
-  chips($('vWhere'), [['all', 'Everywhere', state.items.length], ['vault', 'Vault', n('vault')]].concat(state.chars.map(c => [c.id, c.name, n(c.id)])).concat([['pm', 'Postmaster', n('pm')]]), fWhere, 'data-w', 'vaultWhere', v => fWhere = v);
+  chips($('vWhere'), [['all', 'Everywhere', state.items.length], ['vault', 'Vault', n('vault')]].concat(state.chars.map(c => [c.id, c.name, n(c.id)])).concat([['pm', 'Postmaster', n('pm')]]), fWhere, 'data-w', 'vaultWhere', v => { fWhere = v; invPick = ''; });
   const inWhere = state.items.filter(i => fWhere === 'all' || i.where === fWhere);
   chips($('vKind'), [['all', 'All', inWhere.length]].concat(KINDS.map(([k, l]) => [k, l, inWhere.filter(i => i.kind === k).length]).filter(x => x[2] || x[0] === fKind)), fKind, 'data-k', 'vaultKind', v => fKind = v);
   const list = sorted(filtered()), page = list.slice(0, shown);
