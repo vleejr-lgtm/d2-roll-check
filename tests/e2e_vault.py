@@ -6,7 +6,7 @@ d(1,"Fatebringer","Hand Cannon",3,5,1498876634); d(2,"Gjallarhorn","Rocket Launc
 d(5,"Gilded Sunrise","Shader",19,5); d(6,"Dawnblade","Subclass",16); d(7,"Some Bounty","Bounty",26,2); d(8,"Exotic Engram","Engram",8,6); d(9,"Sparrow X","Vehicle",22,5); d(11,"Old Rare Gun","Auto Rifle",3,4,1498876634); d(12,"Kept Gun","Scout Rifle",3,5,1498876634); d(13,"Lost Gun","Pulse Rifle",3,5,1498876634); d(3159615086,"Glimmer","Currency",1,1); d(2817410917,"Bright Dust","Currency",1,5); d(1022552290,"Legendary Shards","Currency",1,5)
 prof={"profileCurrencies":{"data":{"items":[{"itemHash":3159615086,"quantity":481558},{"itemHash":2817410917,"quantity":950},{"itemHash":1022552290,"quantity":0}]}},"profileInventory":{"data":{"items":[{"itemHash":1,"itemInstanceId":"V1","bucketHash":138197802,"state":1},{"itemHash":2,"itemInstanceId":"V2","bucketHash":138197802},{"itemHash":4,"bucketHash":1469714392,"quantity":420},{"itemHash":5,"bucketHash":3313201758,"quantity":3},{"itemHash":9,"itemInstanceId":"V9","bucketHash":138197802}]}},
  "characters":{"data":{"c1":{"characterId":"c1","classType":0,"light":2010,"dateLastPlayed":"2026-11-26T00:00:00Z"},"c2":{"characterId":"c2","classType":2,"light":1990,"dateLastPlayed":"2026-11-20T00:00:00Z"}}},
- "characterInventories":{"data":{"c1":{"items":[{"itemHash":11,"itemInstanceId":"W11","bucketHash":1498876634},{"itemHash":12,"itemInstanceId":"W12","bucketHash":1498876634,"state":1},{"itemHash":13,"itemInstanceId":"PW","bucketHash":215593132},{"itemHash":3,"itemInstanceId":"C3","bucketHash":3448274439},{"itemHash":7,"bucketHash":1345459588},{"itemHash":8,"itemInstanceId":"P8","bucketHash":215593132}]},"c2":{"items":[{"itemHash":1,"itemInstanceId":"C21","bucketHash":1498876634}]}}},
+ "characterInventories":{"data":{"c1":{"items":[{"itemHash":11,"itemInstanceId":"W11","bucketHash":1498876634},{"itemHash":12,"itemInstanceId":"W12","bucketHash":1498876634,"state":1},{"itemHash":13,"itemInstanceId":"PW","bucketHash":215593132},{"itemHash":3,"itemInstanceId":"C3","bucketHash":3448274439},{"itemHash":7,"bucketHash":1345459588},{"itemHash":8,"itemInstanceId":"P8","bucketHash":215593132}]},"c2":{"items":[{"itemHash":1,"itemInstanceId":"C21","bucketHash":1498876634},{"itemHash":4,"bucketHash":375726501,"quantity":1}]}}},
  "characterEquipment":{"data":{"c1":{"items":[{"itemHash":12,"itemInstanceId":"EQK","bucketHash":1498876634},{"itemHash":6,"itemInstanceId":"S6","bucketHash":3284755031},{"itemHash":2,"itemInstanceId":"E2","bucketHash":953998645}]}}},
  "itemComponents":{"instances":{"data":{"V1":{"primaryStat":{"value":550}},"V2":{"primaryStat":{"value":560},"gearTier":5},"C3":{"primaryStat":{"value":540},"gearTier":4},"E2":{"primaryStat":{"value":555}},"C21":{"primaryStat":{"value":530}}}}}}
 S={'sw':False}
@@ -43,7 +43,7 @@ async def main():
       elif '/Manifest/DestinyStatDefinition/' in u:
         h=u.rstrip('/').split('/')[-1]; body=ok({"4284893193":{"displayProperties":{"name":"Rounds Per Minute"}},"1240592695":{"displayProperties":{"name":"Range"}},"155624089":{"displayProperties":{"name":"Stability"}}}.get(h,{}))
       elif '/Manifest/DestinyInventoryBucketDefinition/' in u:
-        h=u.rstrip('/').split('/')[-1]; body=ok({'1498876634':{'itemCount':3,'category':3},'138197802':{'itemCount':1300,'displayProperties':{'name':'General'}},'1469714392':{'itemCount':50,'displayProperties':{'name':'Consumables'}},'3313201758':{'itemCount':1,'displayProperties':{'name':'Modifications'}}}.get(h,{}))
+        h=u.rstrip('/').split('/')[-1]; body=ok({'1498876634':{'itemCount':3,'category':3},'138197802':{'itemCount':1300,'displayProperties':{'name':'General'}},'1469714392':{'itemCount':50,'displayProperties':{'name':'Consumables'}},'3313201758':{'itemCount':1,'displayProperties':{'name':'Modifications'}},'375726501':{'itemCount':10,'category':1,'displayProperties':{'name':'Engrams'}}}.get(h,{}))
       elif 'GetMembershipsForCurrentUser' in u: body=ok({"destinyMemberships":[{"membershipType":3,"membershipId":"42"}],"primaryMembershipId":"42"})
       elif '/Profile/' in u and 'components=305' in u and '/Item/' not in u: calls.append(('plugsets','305')); body=ok({"profilePlugSets":{"data":{"plugs":{"555":[{"plugItemHash":9030,"canInsert":True,"enabled":True},{"plugItemHash":9031,"canInsert":True,"enabled":True},{"plugItemHash":9020,"canInsert":True,"enabled":True}]}}}})
       elif '/Profile/' in u: body=ok(prof)
@@ -108,5 +108,13 @@ async def main():
     print('PM button:', await pg.inner_html('#btnPM'))
     await pg.screenshot(path='/home/claude/tests/vault.png')
     print('nav:', await pg.eval_on_selector_all('header .tabs a', 'e=>e.map(x=>x.textContent+(x.classList.contains("active")?"*":""))'))
+    # Inventory follows the active character (last played first), with tabs to switch
+    await pg.goto('file:///home/claude/godroll-checker/vault.html'); await pg.wait_for_selector('.invpanel', timeout=15000); await pg.wait_for_timeout(300)
+    eng = "() => [...document.querySelectorAll('.invsec')].filter(s => /Engrams/.test(s.textContent)).map(s => s.querySelector('.invhead').textContent)"
+    print('INV default:', await pg.eval_on_selector('.invtabs .chip.on', 'e => e.textContent'), await pg.evaluate(eng))
+    await pg.click('.invtabs [data-invc="c2"]'); await pg.wait_for_timeout(150)
+    print('INV c2:', await pg.eval_on_selector('.invtabs .chip.on', 'e => e.textContent'), await pg.evaluate(eng))
+    await pg.click('#vWhere [data-w="c1"]'); await pg.wait_for_timeout(150)
+    print('INV where c1:', await pg.eval_on_selector('.invtabs .chip.on', 'e => e.textContent'), await pg.evaluate(eng))
     print('errors', errs); await b.close()
 asyncio.run(main())

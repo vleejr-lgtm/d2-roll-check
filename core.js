@@ -214,12 +214,12 @@ async function readInventory(p, charIds){
   out.sort((a, b) => order(a.h) - order(b.h) || a.name.localeCompare(b.name));
   return out;
 }
-function inventoryHtml(sections, charName){
+function inventoryHtml(sections, charName, extra){
   if (!sections || !sections.length) return '';
   const img = p => p ? 'https://www.bungie.net' + esc(p) : '';
   const box = it => '<span class="inv-it r' + it.rar + '"' + (it.id ? ' data-roll="' + esc(it.id) + '" data-rh="' + it.h + '"' : '') + ' title="' + esc(it.n + (it.q > 1 ? ' ×' + it.q.toLocaleString() : '')) + '">' +
     (it.i ? '<img decoding="async" loading="lazy" src="' + img(it.i) + '" alt="">' : '') + (it.q > 1 ? '<b>' + it.q.toLocaleString() + '</b>' : '') + '</span>';
-  return '<div class="panel invpanel"><div class="cslot-lbl inv-title">Inventory</div><div class="invgrid">' + sections.map(s => {
+  return '<div class="panel invpanel"><div class="cslot-lbl inv-title">Inventory' + (extra || '') + '</div><div class="invgrid">' + sections.map(s => {
     const used = s.items.length, full = s.cap && used >= s.cap, warn = s.cap && used / s.cap >= .85;
     const empties = s.cap && s.cap <= 21 ? Math.max(0, s.cap - used) : 0;
     return '<div class="invsec' + (full ? ' full' : warn ? ' warn' : '') + '"><div class="invhead"><span>' + esc(s.name) + (s.owner && charName ? ' <small>' + esc(charName(s.owner)) + '</small>' : '') + '</span><b>' + used + (s.cap ? '/' + s.cap : '') + '</b></div>' +
