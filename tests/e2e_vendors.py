@@ -109,6 +109,7 @@ async def main():
     print('STATUS:', await pg.inner_text('#status'))
     print('TOP:', (await pg.inner_text('#topinfo')).replace('\n', ' | '))
     print('XUR:', (await pg.inner_text('#xurPanel')).replace('\n', ' | ')[:400])
+    print('DIAG:', (await pg.text_content('#vDiagBody')).replace('\n',' | ')[:500])
     print('CORE:', (await pg.inner_text('#corePanel')).replace('\n', ' | ')[:700])
     print('GROUPS:', (await pg.inner_text('#groups')).replace('\n', ' | ')[:900])
     await pg.uncheck('#hideCipher'); await pg.wait_for_timeout(100)

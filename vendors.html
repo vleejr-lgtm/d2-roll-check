@@ -269,6 +269,7 @@
   </div>
 
   <div id="groups"></div>
+  <details class="drawer" id="vDiag"><summary>What Bungie sent <span class="dim-lbl">every vendor in the data, hidden ones too, with its categories and how many items have a roll you can see</span></summary><div id="vDiagBody" class="dim-lbl">Loads with the vendors.</div></details>
 </main>
 <footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
 
@@ -601,7 +602,7 @@ async function loadVendors(cid){
   const statDefs = await entMany('DestinyStatDefinition', [...statHashes]);
   const statName = h => ((statDefs[h] || {}).displayProperties || {}).name || '';
 
-  const vendors = [], random = [], weaponHashes = new Set(), salesLog = [], weeklyVendors = [];
+  const vendors = [], random = [], weaponHashes = new Set(), salesLog = [], weeklyVendors = [], diag = [];
   for (const vh of hashes){
     const def = vDefs[vh], vc = vData[vh]; if (!def) continue;
     const dp = def.displayProperties || {};
@@ -622,9 +623,14 @@ async function loadVendors(cid){
     const sk = (ic.sockets || {}).data || {}, st = (ic.stats || {}).data || {}, ins = (ic.instances || {}).data || {}, rp = (ic.reusablePlugs || {}).data || {};
     const sales = ((((r.sales || {}).data || {})[vh] || {}).saleItems) || {};
     if (!hidden) salesLog.push({ n: dp.name || 'Vendor', due: vc.nextRefreshDate || null, h: [...new Set(Object.values(sales).map(x => x.itemHash))] });
+    { // diagnostics: every vendor, its categories and how much gear with a visible roll it has
+      let gear = 0, rolled = 0;
+      for (const ix in sales){ const d = state.defs[sales[ix].itemHash]; if (!d) continue; const k = d.it === 3 || (d.it === 2 && SLOT[d.b]); if (!k) continue; gear++; const so = (sk[ix] || {}).sockets; if (so && so.length && !so.some(x => /random/i.test(nameOf(x.plugHash)))) rolled++; }
+      diag.push({ n: dp.name || '(no name)', h: vh, hidden: def.visible === false, cats: [...new Set(Object.values(catOf).filter(Boolean))], items: Object.keys(sales).length, gear, rolled });
+    }
     const isXur = XUR_HASHES.has(vh) || isXurName(dp.name);
     const core = coreOf(vh, dp.name);
-    const weeklyOf = n => /vanguard|nightfall|strike/i.test(n || '') ? 'zavala' : /crucible|shaxx|pvp/i.test(n || '') ? 'shaxx' : null;
+    const weeklyOf = n => /vanguard|nightfall|strike|ops/i.test(n || '') && !/crucible/i.test(n || '') ? 'zavala' : /crucible|shaxx|pvp|trials|iron banner/i.test(n || '') ? 'shaxx' : null;
     const V0 = { hash: vh, name: dp.name || 'Vendor', icon: dp.smallTransparentIcon || dp.icon || '', where, refresh: vc.nextRefreshDate, enabled: vc.enabled !== false, isXur, core, items: [], rolls: [] };
     for (const ix in sales){
       const s = sales[ix], d = state.defs[s.itemHash];
@@ -689,6 +695,11 @@ async function loadVendors(cid){
   const xur = xurWindow();
   soon.push(xur.here ? xur.leaves : xur.arrives);
   state.vend[cid] = { at: Date.now(), due: Math.min(...soon) + 60e3, vendors, random, weaponHashes };
+  diag.sort((a, b) => b.rolled - a.rolled || b.gear - a.gear || a.n.localeCompare(b.n));
+  const looks = x => /weekly|reward|arsenal|armory|vanguard|crucible|portal|hub/i.test(x.n + ' ' + x.cats.join(' '));
+  $('vDiagBody').innerHTML = '<div style="margin:6px 0 8px">' + diag.length + ' vendors for your ' + esc(ch.name || 'character') + '. Rows that look like a weekly reward track are marked ★. Send a screenshot of this list if Zavala or Shaxx are missing gear you see in game.</div>' +
+    '<table class="vdiag"><tr><th></th><th>Vendor</th><th>Hidden</th><th>Items</th><th>Gear</th><th>Gear with a roll</th><th>Categories</th></tr>' +
+    diag.map(x => '<tr' + (looks(x) ? ' class="hit"' : '') + '><td>' + (looks(x) ? '★' : '') + '</td><td>' + esc(x.n) + ' <small>' + x.h + '</small></td><td>' + (x.hidden ? 'yes' : '') + '</td><td>' + x.items + '</td><td>' + x.gear + '</td><td>' + x.rolled + '</td><td>' + esc(x.cats.join(', ')) + '</td></tr>').join('') + '</table>';
   // slim copy of what every vendor sells, so other pages (Shaders) can say "Ada-1 has this now"
   ls.set('vendSales', JSON.stringify({ at: Date.now(), vendors: salesLog.filter(v => v.h.length) }));
   if (weaponHashes.size) await loadWishlist(weaponHashes);
@@ -776,6 +787,18 @@ function chips(el, opts, set, key, after){
   el.innerHTML = opts.map(([v, l, n]) => '<span class="chip ' + (set.has(v) ? 'on' : '') + '" data-v="' + v + '">' + l + (n != null ? '<b>' + n + '</b>' : '') + '</span>').join('');
   el.querySelectorAll('.chip').forEach(c => c.onclick = () => { const v = c.dataset.v; set.has(v) ? set.delete(v) : set.add(v); if (key) ls.set(key, JSON.stringify([...set])); after(); });
 }
+// the bottom line for every rated weapon or armor piece: Purchase, Maybe or Ignore, said plainly
+function decisionLine(it){
+  if (it.kind === 'other' || !it.v) return '';
+  const get = it.weekly ? 'Go get it' : 'Purchase';
+  const [cls, word] = it.v === 'buy' ? ['buy', get] : it.v === 'maybe' ? ['maybe', 'Maybe'] : it.v === 'unrated' ? ['unrated', 'Your call'] : ['skip', 'Ignore'];
+  const sub = it.v === 'buy' ? (it.kind === 'weapons' ? 'the perks match a recommended roll' : 'better than what you have for this slot')
+    : it.v === 'maybe' ? 'close to a good roll, worth it if you need this weapon or slot'
+    : it.v === 'have' ? 'you already own one as good or better'
+    : it.v === 'unrated' ? 'no community rolls to compare against'
+    : 'the perks don\'t match what the community recommends';
+  return '<div class="vdecide ' + cls + '"><b>' + word + '</b> · ' + sub + '</div>';
+}
 function card(it){
   const vb = '<span class="badge ' + it.v + '">' + V[it.v] + '</span>';
   const rar = (it.exotic ? '<span class="pill exotic">Exotic</span>' : '') + (it.weekly ? '<span class="pill weekly" title="' + esc(it.weekly) + '">Weekly reward</span>' : '');
@@ -793,7 +816,7 @@ function card(it){
   return '<div class="card vcard ' + (it.v || '') + '">' + tierIcon('<img decoding="async" class="icon" src="' + (it.icon ? 'https://www.bungie.net' + esc(it.icon) : '') + '" alt="">', it.tier || it.gearTier) +
     '<div class="body"><div class="top"><span class="name">' + esc(it.name) + '</span>' + (it.kind !== 'other' ? vb : '') + '</div>' +
     '<div class="meta">' + esc(cls + it.type) + (it.cat ? ' · ' + esc(it.cat) : '') + '</div>' + rar + body +
-    (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + (it.split && (it.split.pve || it.split.pvp) ? modeGraph(it.split, { compact: true }) : '') + cost + nb +
+    decisionLine(it) + (it.why ? '<div class="reason">' + esc(it.why) + '</div>' : '') + (it.split && (it.split.pve || it.split.pvp) ? modeGraph(it.split, { compact: true }) : '') + cost + nb +
     '<a class="cbtn" href="https://www.light.gg/db/items/' + it.hash + '/" target="_blank" rel="noopener">light.gg ↗</a></div></div>';
 }
 const passes = it => (it.kind === 'other' || state.show.has(it.v)) && state.kinds.has(it.kind) && !(it.cipher && $('hideCipher').checked) &&
