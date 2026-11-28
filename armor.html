@@ -167,6 +167,15 @@
   .sitefoot{max-width:1500px;margin:30px auto 0;padding:16px 22px 160px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;line-height:1.7}
   .sitefoot a{color:#9fc6ef} .sitefoot code{color:var(--text)}
   #charSel{padding:6px 8px;font-size:13px}
+  [data-fold].folded > :not(.foldhead){display:none !important}
+  [data-fold].folded > .foldhead{margin-bottom:0 !important}
+  .foldhead{cursor:pointer;user-select:none} .foldhead:hover h3, .foldhead:hover h4{color:var(--accent)}
+  .fcaret{display:inline-block;color:var(--dim);font-size:13px;transition:transform .15s;margin-left:4px} .folded .fcaret{transform:rotate(-90deg)}
+  .fsechead{display:flex;align-items:center;gap:10px;padding:6px 0;margin:0 0 8px;border-bottom:1px solid var(--line2)} .fsechead h3{margin:0;font-size:15px} .fsechead .fcaret{margin-left:auto}
+  .fsec:has(> #summary.hidden) > .fsechead, .fsec:has(> #toolbar.hidden) > .fsechead{display:none}
+  .fsec{margin-bottom:18px}
+  .fbox > .foldhead{display:flex;align-items:center;gap:6px;margin:4px 0 8px} .fbox > .foldhead h4{margin:0;font-size:14px}
+  .getbox[data-fold].folded{padding-bottom:20px}
   .summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:12px}
   .sum{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
   .sum b{font-size:18px;display:block}
@@ -283,13 +292,15 @@
   </div>
   </details>
 
-  <div id="summary" class="summary hidden"></div>
+  <section class="fsec" data-fold="classes"><div class="foldhead fsechead"><h3>Classes</h3><span class="fcaret" aria-hidden="true">▾</span></div>
+  <div id="summary" class="summary hidden"></div></section>
 
-  <div class="panel hidden" id="getPanel">
-    <div class="bar" style="margin:0 0 6px"><h3 style="margin:0">Gear to get</h3><div class="chips" id="getTabs"></div></div>
+  <div class="panel hidden" id="getPanel" data-fold="get">
+    <div class="bar foldhead" style="margin:0 0 6px"><h3 style="margin:0">Gear to get <span class="fcaret" aria-hidden="true">▾</span></h3><div class="chips" id="getTabs"></div></div>
     <div id="getBody"></div>
   </div>
 
+  <section class="fsec" data-fold="list"><div class="foldhead fsechead"><h3>Your armor</h3><span class="dim-lbl">filters, bulk actions and every piece</span><span class="fcaret" aria-hidden="true">▾</span></div>
   <div class="panel hidden" id="toolbar">
     <div class="fgrid">
       <div class="frow"><span class="flbl">Class</span><div class="chips" id="fCls"></div></div>
@@ -320,7 +331,7 @@
     </details>
   </div>
 
-  <div class="grid" id="grid"></div>
+  <div class="grid" id="grid"></div></section>
 </main>
 <footer class="sitefoot" id="sitefoot">Data: Bungie.net API</footer>
 
@@ -1134,24 +1145,26 @@ function renderGet(){
   const oldSlots = slots.filter(s => mine.some(i => i.legacy && !i.exotic && i.slot === s) && !mine.some(i => !i.legacy && i.slot === s));
   const chip = (attr, k, l, on) => '<span class="chip' + (on ? ' on' : '') + '" ' + attr + '="' + k + '">' + l + '</span>';
   $('getBody').innerHTML =
+    '<div class="fbox" data-fold="arch"><div class="foldhead"><h4>Archetypes by slot</h4><span class="fcaret" aria-hidden="true">▾</span></div>' +
     '<div class="dim-lbl">Your best ' + CLASS[getCls] + ' piece for each archetype and slot (keepers only). <span style="color:#e8b84a">T5</span> = done, <span style="color:#8cc8ff">T4</span> = fine, grey = worth upgrading, — = you have none. Click a cell to see those pieces.</div>' + grid +
-    (noT5.length ? '<div class="noT5" id="noT5"><b>Slots with no Tier 5 yet</b>' + noT5.map(s => '<span class="noT5s">' + s + '</span>').join('') + '</div>' : '') +
+    (noT5.length ? '<div class="noT5" id="noT5"><b>Slots with no Tier 5 yet</b>' + noT5.map(s => '<span class="noT5s">' + s + '</span>').join('') + '</div>' : '') + '</div>' +
     '<div class="getcols">' +
-      '<div class="getbox setbox"><div class="setbar"><h4>Set progress <span class="dim-lbl">' + setRows.length + '</span></h4><span class="chips" id="setSortChips">' +
+      '<div class="getbox setbox" data-fold="sets"><div class="setbar foldhead"><h4><span class="fcaret" aria-hidden="true">▾</span> Set progress <span class="dim-lbl">' + setRows.length + '</span></h4><span class="chips" id="setSortChips">' +
         [['rank', 'Community rank'], ['owned', 'Pieces owned']].map(([k, l]) => chip('data-ssort', k, l, setSort === k)).join('') + '</span></div>' +
         (setRows.length ? '<div class="setfilt"><input id="setFilter" type="search" placeholder="Filter sets" autocomplete="off"><span class="chips">' +
           [['all', 'All'], ['inc', 'Incomplete'], ['ready4', '4pc Ready']].map(([k, l]) => chip('data-sfil', k, l, setFil === k)).join('') + '</span></div>' +
           '<ul class="setprog" id="setProg">' + setRows.map(setLi).join('') + '</ul><div class="dim-lbl hidden" id="setNone">No sets match.</div>' +
           '<div class="dim-lbl shint">Hover a set name for its 2-piece and 4-piece bonus.</div>'
           : '<span class="dim-lbl">No set pieces found (set data comes from Bungie\'s Armor 3.0 set list).</span>') + '</div>' +
-      '<div class="getbox setbox" id="topSets"><div class="setbar"><h4>Top Community Sets <span class="dim-lbl" title="Sets rated S or A by published community guides (Nov 2026). Owned = pieces you have for this class.">ⓘ</span></h4><span class="chips" id="topModeChips">' +
+      '<div class="getbox setbox" id="topSets" data-fold="top"><div class="setbar foldhead"><h4><span class="fcaret" aria-hidden="true">▾</span> Top Community Sets <span class="dim-lbl" title="Sets rated S or A by published community guides (Nov 2026). Owned = pieces you have for this class.">ⓘ</span></h4><span class="chips" id="topModeChips">' +
         [['all', 'Both'], ['pve', 'PvE'], ['pvp', 'PvP']].map(([k, l]) => chip('data-topm', k, l, (tm || 'all') === k)).join('') + '</span></div>' +
         '<ul class="toplist">' + top.map(topLi).join('') + '</ul></div>' +
-      '<div class="getbox"><h4>Old exotics to re-acquire as Tier 5</h4>' + (oldBySlot.length ? oldBySlot.map(([sl, l]) => '<div class="oxslot"><div class="oxhead">' + sl + '</div>' +
+      '<div class="getbox" data-fold="oldex"><div class="foldhead"><h4><span class="fcaret" aria-hidden="true">▾</span> Old exotics to re-acquire as Tier 5</h4></div>' + (oldBySlot.length ? oldBySlot.map(([sl, l]) => '<div class="oxslot"><div class="oxhead">' + sl + '</div>' +
           l.map(i => '<div class="oxrow">' + esc(i.name) + (i.n > 1 ? '<span class="dupn" title="' + i.n + ' copies">×' + i.n + '</span>' : '') + '</div>').join('') + '</div>').join('')
           : '<span class="dim-lbl">None. Your exotics are all Armor 3.0.</span>') +
         (oldSlots.length ? '<div class="oxslot"><div class="oxhead">Slots still on old armor only</div>' + oldSlots.map(s => '<div class="oxrow">' + s + '</div>').join('') + '</div>' : '') + '</div>' +
     '</div>';
+  applyFolds();
   // set filter works on the rendered rows, so typing keeps focus
   const applySetFilter = () => { const t = ($('setFilter') || {}).value ? $('setFilter').value.trim().toLowerCase() : ''; let n = 0;
     document.querySelectorAll('#setProg .setrow').forEach(li => { const c = +li.dataset.cnt, ok = (setFil === 'inc' ? c < 5 : setFil === 'ready4' ? c >= 4 : true) && (!t || li.dataset.q.includes(t)); li.classList.toggle('hidden', !ok); if (ok) n++; });
@@ -1169,6 +1182,18 @@ function renderGet(){
     $('toolbar').scrollIntoView({ behavior: 'smooth' });
   });
 }
+
+/* ---- every section folds: click its header. Folded sections are kept in localStorage armorFold ---- */
+function foldKeys(){ try { return new Set(JSON.parse(localStorage.getItem('armorFold') || '[]')); } catch { return new Set(); } }
+function applyFolds(){ const f = foldKeys(); document.querySelectorAll('[data-fold]').forEach(el => el.classList.toggle('folded', f.has(el.dataset.fold))); }
+document.addEventListener('click', e => {
+  const h = e.target.closest('.foldhead'); if (!h || e.target.closest('.chip, button, input, select, label, a, textarea, [data-meta], [data-ssort], [data-sfil], [data-topm]')) return;
+  const box = h.closest('[data-fold]'); if (!box || h.closest('[data-fold]') !== box) return;
+  const f = foldKeys(), k = box.dataset.fold, now = !box.classList.contains('folded');
+  box.classList.toggle('folded', now); now ? f.add(k) : f.delete(k);
+  try { localStorage.setItem('armorFold', JSON.stringify([...f])); } catch {}
+});
+applyFolds();
 
 /* ===================== armor detail view ===================== */
 function closeArmor(){ $('detail').classList.add('hidden'); }
