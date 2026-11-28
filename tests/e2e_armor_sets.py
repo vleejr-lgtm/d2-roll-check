@@ -116,5 +116,16 @@ async def main():
     await pg.click('#getTabs [data-gc="0"]'); await pg.wait_for_timeout(200)
     await pg.evaluate("() => document.querySelector('.getcols').scrollIntoView({block:'start'})"); await pg.wait_for_timeout(200)
     await pg.screenshot(path='/home/claude/tests/armor_sets.png', full_page=False)
+    # every section folds from its header and stays folded after a reload
+    for k in ['classes', 'get', 'arch', 'sets', 'top', 'oldex', 'list']:
+        await pg.eval_on_selector('[data-fold="' + k + '"] .foldhead', 'e => e.click()'); await pg.wait_for_timeout(50)
+    print('FOLDED:', await pg.eval_on_selector_all('[data-fold]', "els => els.map(e => e.dataset.fold + '=' + e.classList.contains('folded'))"), await pg.evaluate("localStorage.getItem('armorFold')"))
+    print('grid visible when folded:', await pg.is_visible('#grid'), '| getBody visible:', await pg.is_visible('#getBody'))
+    await pg.screenshot(path='armor_folded.png', full_page=True)
+    await pg.reload(); await pg.wait_for_selector('#getPanel:not(.hidden)', timeout=30000); await pg.wait_for_timeout(500)
+    print('after reload:', await pg.eval_on_selector_all('[data-fold]', "els => els.filter(e => e.classList.contains('folded')).map(e => e.dataset.fold)"))
+    await pg.eval_on_selector('[data-fold="get"] .foldhead', 'e => e.click()'); await pg.eval_on_selector('[data-fold="sets"] .foldhead', 'e => e.click()')
+    await pg.click('[data-ssort="rank"]'); await pg.wait_for_timeout(200)
+    print('chip click does not fold:', await pg.eval_on_selector('[data-fold="sets"]', "e => e.classList.contains('folded')"))
     print('errors', errs); await b.close()
 asyncio.run(main())
